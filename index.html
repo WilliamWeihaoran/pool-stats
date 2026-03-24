@@ -42,7 +42,7 @@ h1{font-size:19px;font-weight:500;}
 .abt{font-size:12px;padding:7px 12px;border-radius:7px;border:.5px solid var(--bd);background:transparent;color:var(--t3);cursor:pointer;}
 .ikgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:13px;}
 /* logger */
-.lw{padding:12px 14px calc(var(--nh) + 8px);max-width:600px;margin:0 auto;}
+.lw{padding:12px 14px calc(var(--nh) - 8px);max-width:600px;margin:0 auto;}
 .lhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
 .ltitle{font-size:20px;font-weight:500;}
 .lmeta{font-size:12px;color:var(--t3);}
@@ -381,7 +381,13 @@ function bindTap(elId,key){
   var sx=0,sy=0;
   el.addEventListener('touchstart',function(e){lTA=true;lF=false;lMoved=false;sx=e.touches[0].clientX;sy=e.touches[0].clientY;lT=setTimeout(function(){lF=true;tAdj(key,-1);},500);},{passive:true});
   el.addEventListener('touchmove',function(e){var dx=e.touches[0].clientX-sx,dy=e.touches[0].clientY-sy;if(Math.sqrt(dx*dx+dy*dy)>10){lMoved=true;clearTimeout(lT);}},{passive:true});
-  el.addEventListener('touchend',function(e){clearTimeout(lT);if(!lF&&!lMoved){e.preventDefault();tAdj(key,1);}lF=false;lTA=false;lMoved=false;},{passive:false});
+  el.addEventListener('touchend',function(e){
+    clearTimeout(lT);
+    var wasFired=lF;
+    lF=false;lTA=false;lMoved=false;
+    if(!wasFired&&!lMoved) e.preventDefault();
+    if(!wasFired) tAdj(key,1);
+  },{passive:false});
   el.addEventListener('touchcancel',function(){clearTimeout(lT);lF=false;lTA=false;lMoved=false;});
   el.addEventListener('mousedown',function(){if(lTA) return;lF=false;lT=setTimeout(function(){lF=true;tAdj(key,-1);},500);});
   el.addEventListener('mouseup',function(){if(lTA) return;clearTimeout(lT);if(!lF) tAdj(key,1);lF=false;});
