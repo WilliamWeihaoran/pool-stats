@@ -42,7 +42,7 @@ h1{font-size:19px;font-weight:500;}
 .abt{font-size:12px;padding:7px 12px;border-radius:7px;border:.5px solid var(--bd);background:transparent;color:var(--t3);cursor:pointer;}
 .ikgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-bottom:13px;}
 /* logger */
-.lw{padding:12px 14px calc(var(--nh) - 8px);max-width:600px;margin:0 auto;}
+.lw{padding:12px 14px 68px;max-width:600px;margin:0 auto;}
 .lhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
 .ltitle{font-size:20px;font-weight:500;}
 .lmeta{font-size:12px;color:var(--t3);}
@@ -558,14 +558,18 @@ function refreshD(){
 }
 
 function bTrend(sA){
+  if(CH.tr){CH.tr.destroy();CH.tr=null;}
   var sorted=sA.slice().sort(function(a,b){return a.ts-b.ts;});
-  if(CH.tr){CH.tr.destroy();CH.tr=null;}if(sorted.length<2) return;
+  if(sorted.length<2) return;
   var bk=Math.min(12,sorted.length),st=Math.max(1,Math.floor(sorted.length/bk)),labs=[],mD=[],rD=[];
   for(var i=st-1;i<sorted.length;i+=st){
-    var sl=sorted.slice(0,i+1),mW2=sl.filter(function(s){var w=s.racks.filter(function(r){return r.result==='won';}).length;return w>s.racks.length/2;}).length;
-    var aR2=sl.reduce(function(a,s){return a.concat(s.racks);},[]),rW2=aR2.filter(function(r){return r.result==='won';}).length;
+    var sl=sorted.slice(Math.max(0,i-st+1),i+1);
+    var mW2=sl.filter(function(s){var w=s.racks.filter(function(r){return r.result==='won';}).length;return w>s.racks.length/2;}).length;
+    var aR2=sl.reduce(function(a,s){return a.concat(s.racks);},[]);
+    var rW2=aR2.filter(function(r){return r.result==='won';}).length;
     labs.push(new Date(sorted[i].ts).toLocaleDateString('en-US',{month:'short',day:'numeric'}));
-    mD.push(Math.round(mW2/sl.length*100));rD.push(aR2.length?Math.round(rW2/aR2.length*100):0);
+    mD.push(sl.length?Math.round(mW2/sl.length*100):0);
+    rD.push(aR2.length?Math.round(rW2/aR2.length*100):0);
   }
   CH.tr=new Chart(document.getElementById('cTrend'),{type:'line',data:{labels:labs,datasets:[{data:mD,borderColor:'#a78bfa',backgroundColor:'rgba(167,139,250,.07)',pointBackgroundColor:'#a78bfa',pointRadius:3,borderWidth:2,tension:.35},{data:rD,borderColor:'#5eead4',backgroundColor:'rgba(94,234,212,.07)',pointBackgroundColor:'#5eead4',pointRadius:3,borderWidth:2,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:GR,font:{size:11},maxRotation:0},grid:{display:false},border:{color:'#2a2a3a'}},y:{min:0,max:100,ticks:{color:GR,font:{size:11},stepSize:25,callback:function(v){return v+'%';}},grid:{color:'#1a1a22'},border:{color:'#2a2a3a'}}}}});
 }
@@ -609,14 +613,19 @@ function bRadar(racks){
   var pos=racks.reduce(function(s,r){return s+r.badPosition;},0),saf=racks.reduce(function(s,r){return s+r.badSafety;},0),fou=racks.reduce(function(s,r){return s+r.fouls;},0);
   var tP=0,tA=0;fS().forEach(function(s){s.racks.forEach(function(r){var p=ep(r,s.game);tP+=p;tA+=p+(r.missEasy+r.missMed+r.missHard);});});
   var pct=tA?tP/tA:.72,posScore=tA>0?Math.round((1-pos/tA)*100):50;
-  var fScore=Math.round(Math.max(0,100*(1-Math.log(1+fou/n)/Math.log(4))));
+  var fScore=Math.round(Math.max(0,100*(1-Math.log(1+fou/n)/Math.log(4.5))));
   var sScore=Math.round(Math.max(0,100*(1-Math.log(1+saf/n)/Math.log(5))));
   var mRacks=matchR(),ww=0,wwT=0,wl=0,wlT=0;
   for(var i=1;i<mRacks.length;i++){
     if(mRacks[i-1].result==='won'){wwT++;if(mRacks[i].result==='won') ww++;}
     else if(mRacks[i-1].result==='lost'){wlT++;if(mRacks[i].result==='won') wl++;}
   }
-  var consScore=Math.round(((wwT>0?ww/wwT:.5)*.6+(wlT>0?wl/wlT:.5)*.4)*100);
+  var wwR=wwT>0?ww/wwT:null,wlR=wlT>0?wl/wlT:null;
+  var consScore;
+  if(wwR!==null&&wlR!==null) consScore=Math.round((wwR*.6+wlR*.4)*100);
+  else if(wwR!==null) consScore=Math.round(wwR*100);
+  else if(wlR!==null) consScore=Math.round(wlR*100);
+  else consScore=50;
   var sd=[Math.round(pct*100),posScore,sScore,fScore,consScore];
   var sl=['Potting','Position','Safety','Fouls','Consistency'],bc=['#a78bfa','#5eead4','#6ee7b7','#f87171','#60a5fa'];
   if(CH.ra) CH.ra.destroy();
@@ -640,7 +649,7 @@ function bFargo(racks){
   var fg=Math.round(imp.reduce(function(s,v,i){return s+v*ws[i];},0));
   document.getElementById('fRange').textContent=(fg-25)+'–'+(fg+25);
   var facts=[{n:'Runout rate',im:rI,val:rR,fmt:function(v){return(v*100).toFixed(0)+'%';},w:'35%'},{n:'Break & run',im:bI,val:bR,fmt:function(v){return(v*100).toFixed(1)+'%';},w:'15%'},{n:'Potting',im:pI,val:pPct,fmt:function(v){return(v*100).toFixed(0)+'%';},w:'25%'},{n:'Easy misses',im:eI,val:eM,fmt:function(v){return v.toFixed(2)+'/rack';},w:'15%'},{n:'Errors/rack',im:errI,val:eR,fmt:function(v){return v.toFixed(2)+'/rack';},w:'10%'}];
-  document.getElementById('fFactors').innerHTML=facts.map(function(f){var d=Math.round(f.im-500),cls=d>8?'pos':d<-8?'neg':'neu',sg=d>=0?'+':'',bp=Math.min(100,Math.abs(d)/80*100),bc=d>8?'#5eead4':d<-8?'#f87171':'#555';return'<div class="ff"><span style="color:#ccc;font-size:12px;">'+f.n+'</span><span style="font-size:11px;color:#555;margin-left:6px;">'+f.fmt(f.val)+'</span><div class="fbw"><div style="height:100%;width:'+bp+'%;background:'+bc+';border-radius:2px;"></div></div><span style="font-size:10px;color:#444;min-width:26px;text-align:right;">'+f.w+'</span><span class="fd '+cls+'">'+sg+d+'</span></div>';}).join('');
+  document.getElementById('fFactors').innerHTML=facts.map(function(f,i){var contrib=Math.round((f.im-500)*ws[i]),cls=contrib>2?'pos':contrib<-2?'neg':'neu',sg=contrib>=0?'+':'',bp=Math.min(100,Math.abs(contrib)/30*100),bc=contrib>2?'#5eead4':contrib<-2?'#f87171':'#555';return'<div class="ff"><span style="color:#ccc;font-size:12px;">'+f.n+'</span><span style="font-size:11px;color:#555;margin-left:6px;">'+f.fmt(f.val)+'</span><div class="fbw"><div style="height:100%;width:'+bp+'%;background:'+bc+';border-radius:2px;"></div></div><span style="font-size:10px;color:#444;min-width:26px;text-align:right;">'+f.w+'</span><span class="fd '+cls+'">'+sg+contrib+'</span></div>';}).join('');
 }
 function bInsights(aR,mR){
   var mBP=mR.filter(function(r){return r.breaker==='me'&&r.breakBalls>=1;}),mBD=mR.filter(function(r){return r.breaker==='me'&&r.breakBalls===0;});
