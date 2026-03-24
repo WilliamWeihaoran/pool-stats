@@ -9,6 +9,7 @@
 :root{--bg:#0f0f13;--bg2:#17171f;--bg3:#12121a;--bd:#2a2a3a;--t:#f5f5fa;--t2:#d0d0de;--t3:#777;--pu:#a78bfa;--te:#5eead4;--re:#f87171;--am:#fbbf24;--bl:#60a5fa;--gr:#6ee7b7;--nh:60px;}
 body{background:var(--bg);color:var(--t);font-family:system-ui,sans-serif;}
 .page{display:none;padding:10px 15px calc(var(--nh)+8px);max-width:820px;margin:0 auto;}
+
 .page.active{display:block;}
 .bnav{position:fixed;bottom:0;left:0;right:0;height:var(--nh);background:#13131c;border-top:.5px solid var(--bd);display:flex;z-index:100;}
 .bnav-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--t3);font-size:11px;}
@@ -132,9 +133,9 @@ h1{font-size:19px;font-weight:500;}
 </style>
 </head>
 <body>
-<div class="page active" id="pg-dash">
+<div class="page active" id="pg-dash" style="padding:10px 22px 120px;">
   <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;flex-wrap:wrap;gap:7px;">
-    <div><h1>Pool Stats</h1><div class="mut">8-ball &amp; 9-ball</div></div>
+    <div><h1>Pool Stats <span style="font-size:11px;color:#444;font-weight:400;">v23</span></h1><div class="mut">8-ball &amp; 9-ball</div></div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;" id="tF">
       <button class="fbtn" data-f="1">Today</button><button class="fbtn" data-f="7">Week</button><button class="fbtn" data-f="30">Month</button><button class="fbtn" data-f="90">3mo</button><button class="fbtn" data-f="365">Year</button><button class="fbtn on" data-f="all">All</button>
     </div>
@@ -259,7 +260,7 @@ h1{font-size:19px;font-weight:500;}
   </div>
 </div>
 
-<div class="page" id="pg-hist">
+<div class="page" id="pg-hist" style="padding:10px 22px 120px;">
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px;flex-wrap:wrap;gap:7px;">
     <div><h1>History</h1><div class="mut" id="hCnt"></div></div>
   </div>
@@ -278,7 +279,7 @@ h1{font-size:19px;font-weight:500;}
   <div class="hwrap"><table class="ht"><thead><tr><th><input type="checkbox" class="cb" id="selAll" onchange="togAll()"></th><th>Label</th><th>Date</th><th>Type</th><th>Racks</th><th>Win%</th><th>B&amp;R</th><th>Err/rack</th></tr></thead><tbody id="hBody"></tbody></table></div>
 </div>
 
-<div class="page" id="pg-sum">
+<div class="page" id="pg-sum" style="padding:10px 22px 120px;">
   <div style="margin-bottom:14px;"><h1>Summary</h1><div class="mut" id="sumSub"></div></div>
   <div style="margin-bottom:13px;"><input class="inp" id="sumLbl" placeholder="Add a session label…"></div>
   <div class="ss2">
@@ -430,11 +431,16 @@ function initButtons(){
     var el=document.getElementById(id);
     if(!el) return;
     if(isTouch){
-      var sx=0,sy=0;
-      el.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+      var sx=0,sy=0,moved=false;
+      el.addEventListener('touchstart',function(e){
+        sx=e.touches[0].clientX;sy=e.touches[0].clientY;moved=false;
+      },{passive:true});
+      el.addEventListener('touchmove',function(e){
+        var dx=e.touches[0].clientX-sx,dy=e.touches[0].clientY-sy;
+        if(Math.sqrt(dx*dx+dy*dy)>8) moved=true;
+      },{passive:true});
       el.addEventListener('touchend',function(e){
-        var dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;
-        if(Math.sqrt(dx*dx+dy*dy)>10) return;
+        if(moved) return;
         e.preventDefault();fn();
       },{passive:false});
     } else {
