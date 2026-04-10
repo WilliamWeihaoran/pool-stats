@@ -1,8 +1,6 @@
 # pool-stats
 
-A mobile-first web app for tracking your 8-ball and 9-ball pool sessions. No account needed, no server, no ads — just open it and play.
-
-**Live app:** https://williamweihaoran.github.io/pool-stats/
+A native iOS app for tracking 8-ball and 9-ball sessions with rich analytics. Built in SwiftUI with CloudKit sync.
 
 ---
 
@@ -16,7 +14,7 @@ pool-stats lets you log every rack you play and gives you real analytics on your
 
 **Session logging**
 - Supports 8-ball and 9-ball, match and practice modes
-- Log break details (who broke, balls potted, dry break)
+- Log break details (who broke, balls potted, break foul)
 - Rate layout at first visit: open, clustered, problematic, or snookered
 - Track mistakes per rack: fouls, bad safety, bad position, pattern changes
 - Track misses by difficulty: easy, medium, hard
@@ -37,26 +35,26 @@ pool-stats lets you log every rack you play and gives you real analytics on your
 - Click any session to view its full rack-by-rack summary
 - Select and delete sessions
 - Export and import data as JSON
+- Restore built-in sample data from the History view when empty
 
 **Data privacy**
-- All data is stored locally in your browser — nothing is sent anywhere
-- Each person who opens the app has their own completely separate data
+- CloudKit is used for storage and sync (iCloud account required)
 - Export JSON to back up your data or transfer it to another device
 
 ---
 
 ## Usage
 
-Just open the link. No install, no login.
+Open `ios/PoolStats/PoolStats.xcodeproj` in Xcode, select a simulator or device, then Run.
 
 - **Dashboard** — your stats and charts
 - **Log** — start a new session
 - **History** — browse past sessions
 
-To back up your data, tap **Export JSON** on the dashboard or history page. To restore, tap **Import JSON** and select your file.
+To back up your data, tap **Export JSON** on the dashboard. To restore, tap **Import JSON** and select your file.
 
 ---
 
 ## Tech
 
-Plain HTML, CSS, and JavaScript. No frameworks, no backend. Uses [Chart.js](https://www.chartjs.org/) for charts and `localStorage` for data persistence.
+SwiftUI + Swift Charts. CloudKit for storage. JSON import/export for portability.
