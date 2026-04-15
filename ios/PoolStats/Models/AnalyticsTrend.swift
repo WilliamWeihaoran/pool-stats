@@ -88,7 +88,8 @@ extension Analytics {
             rackVals.append(rs.isEmpty ? nil : Double(rW) / Double(rs.count) * 100.0)
         }
 
-        return TrendSeries(labels: labels, match: matchVals, rack: rackVals)
+        let compressed = compressSeries(labels: labels, match: matchVals, rack: rackVals)
+        return TrendSeries(labels: compressed.labels, match: compressed.match, rack: compressed.rack)
     }
 
     private static func shortMonth(_ date: Date) -> String {
@@ -120,5 +121,35 @@ extension Analytics {
         let left = df.string(from: start)
         let right = df.string(from: calendar.date(byAdding: .day, value: -1, to: end) ?? end)
         return "\(left)–\(right)"
+    }
+
+    private static func compressSeries(labels: [String], match: [Double?], rack: [Double?]) -> TrendSeries {
+        guard labels.count == match.count, labels.count == rack.count else {
+            return TrendSeries(labels: labels, match: match, rack: rack)
+        }
+
+        var order: [String] = []
+        var buckets: [String: (match: [Double], rack: [Double])] = [:]
+
+        for idx in labels.indices {
+            let key = labels[idx]
+            if buckets[key] == nil {
+                buckets[key] = ([], [])
+                order.append(key)
+            }
+            if let v = match[idx] { buckets[key]?.match.append(v) }
+            if let v = rack[idx] { buckets[key]?.rack.append(v) }
+        }
+
+        var outLabels: [String] = []
+        var outMatch: [Double?] = []
+        var outRack: [Double?] = []
+        for key in order {
+            guard let b = buckets[key] else { continue }
+            outLabels.append(key)
+            outMatch.append(b.match.isEmpty ? nil : b.match.reduce(0, +) / Double(b.match.count))
+            outRack.append(b.rack.isEmpty ? nil : b.rack.reduce(0, +) / Double(b.rack.count))
+        }
+        return TrendSeries(labels: outLabels, match: outMatch, rack: outRack)
     }
 }

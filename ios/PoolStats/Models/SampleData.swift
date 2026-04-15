@@ -77,13 +77,16 @@ struct SampleData {
             }
 
             let label = isPr ? "Practice" : "Sample"
+            let minutesPerRack = rng.nextInt(4, 8)
+            let durationSeconds = racksCount * minutesPerRack * 60
             let sess = Session(
                 id: Int64(now.timeIntervalSince1970 * 1000) + Int64(i * 7),
                 label: label,
                 game: game,
                 type: isPr ? "practice" : "match",
                 ts: ts,
-                racks: racks
+                racks: racks,
+                durationSeconds: durationSeconds
             )
             out.append(sess)
         }

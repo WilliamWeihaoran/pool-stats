@@ -19,6 +19,7 @@ final class CloudKitStore {
         static let game = "game"
         static let type = "type"
         static let ts = "ts"
+        static let durationSeconds = "durationSeconds"
 
         static let sessionRef = "sessionRef"
         static let index = "index"
@@ -167,6 +168,9 @@ final class CloudKitStore {
         record[RecordKeys.game] = session.game
         record[RecordKeys.type] = session.type
         record[RecordKeys.ts] = session.ts
+        if let durationSeconds = session.durationSeconds {
+            record[RecordKeys.durationSeconds] = durationSeconds
+        }
         return record
     }
 
@@ -199,7 +203,8 @@ final class CloudKitStore {
         let game = record[RecordKeys.game] as? String ?? "8ball"
         let type = record[RecordKeys.type] as? String ?? "match"
         let ts = record[RecordKeys.ts] as? Date ?? Date()
-        return Session(id: id, label: label, game: game, type: type, ts: ts, racks: racks)
+        let duration = record[RecordKeys.durationSeconds] as? Int
+        return Session(id: id, label: label, game: game, type: type, ts: ts, racks: racks, durationSeconds: duration)
     }
 
     private func rackFromRecord(_ record: CKRecord) -> Rack? {

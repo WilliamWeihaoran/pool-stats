@@ -13,28 +13,45 @@ final class DataStore: ObservableObject {
 
     private let service = SessionService()
     private let seedFlagKey = "didSeedSampleData"
+    private let localURL: URL
 
     init() {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
+        localURL = dir.appendingPathComponent("sessions.json")
+        loadLocal()
         Task { await refresh() }
     }
 
     func refresh() async {
         isLoading = true
         defer { isLoading = false }
+        let localSnapshot = sessions
         do {
-            sessions = try await service.fetchAllSessions()
+            let fetched = try await service.fetchAllSessions()
+            if fetched.isEmpty && !localSnapshot.isEmpty {
+                sessions = localSnapshot
+                try? await service.replaceAllSessions(existingIDs: [], with: localSnapshot)
+            } else {
+                sessions = fetched
+            }
+            saveLocal()
             lastError = nil
             await seedIfNeeded()
         } catch {
             lastError = error.localizedDescription
-            await seedFallback()
+            if sessions.isEmpty {
+                await seedFallback()
+            }
         }
     }
 
-    func startSession(game: String, type: String, label: String) {
+    func startSession(game: String, type: String, label: String, date: Date) {
         let finalLabel = type == "practice" ? "Practice" : label
-        currentSession = Session(label: finalLabel, game: game, type: type)
-        sessionStart = Date()
+        let cal = Calendar.current
+        let sessionDate = cal.startOfDay(for: date)
+        currentSession = Session(label: finalLabel, game: game, type: type, ts: sessionDate)
+        sessionStart = cal.isDateInToday(date) ? Date() : nil
         resetRack()
     }
 
@@ -42,7 +59,7 @@ final class DataStore: ObservableObject {
         guard let session = currentSession else { return }
         let nextIndex = session.racks.count + 1
         currentRack = Rack(index: nextIndex)
-        rackStart = Date()
+        rackStart = sessionStart == nil ? nil : Date()
     }
 
     func updateRack(_ update: (inout Rack) -> Void) {
@@ -71,7 +88,7 @@ final class DataStore: ObservableObject {
     }
 
     func endSession() async {
-        guard let session = currentSession else { return }
+        guard var session = currentSession else { return }
         if session.racks.isEmpty {
             currentSession = nil
             currentRack = nil
@@ -79,9 +96,13 @@ final class DataStore: ObservableObject {
             rackStart = nil
             return
         }
+        if let start = sessionStart {
+            session.durationSeconds = max(0, Int(Date().timeIntervalSince(start)))
+        }
         do {
             try await service.saveSession(session)
             sessions.append(session)
+            saveLocal()
             currentSession = nil
             currentRack = nil
             sessionStart = nil
@@ -89,7 +110,14 @@ final class DataStore: ObservableObject {
             lastEndedSession = session
             lastError = nil
         } catch {
-            lastError = error.localizedDescription
+            sessions.append(session)
+            saveLocal()
+            currentSession = nil
+            currentRack = nil
+            sessionStart = nil
+            rackStart = nil
+            lastEndedSession = session
+            lastError = "Saved locally. iCloud sync failed."
         }
     }
 
@@ -103,12 +131,17 @@ final class DataStore: ObservableObject {
             } else {
                 sessions.append(sess)
             }
+            saveLocal()
             if lastEndedSession?.id == sessionID {
                 lastEndedSession = sess
             }
             lastError = nil
         } catch {
             lastError = error.localizedDescription
+            if let idx = sessions.firstIndex(where: { $0.id == sessionID }) {
+                sessions[idx] = sess
+                saveLocal()
+            }
         }
     }
 
@@ -116,6 +149,7 @@ final class DataStore: ObservableObject {
         do {
             try await service.deleteSessions(ids)
             sessions.removeAll { ids.contains($0.id) }
+            saveLocal()
             if let last = lastEndedSession, ids.contains(last.id) {
                 lastEndedSession = nil
             }
@@ -145,10 +179,12 @@ final class DataStore: ObservableObject {
             let existingIDs = sessions.map { $0.id }
             try await service.replaceAllSessions(existingIDs: existingIDs, with: sample)
             sessions = sample
+            saveLocal()
             UserDefaults.standard.set(true, forKey: seedFlagKey)
             lastError = nil
         } catch {
             sessions = sample
+            saveLocal()
             UserDefaults.standard.set(true, forKey: seedFlagKey)
             lastError = error.localizedDescription
         }
@@ -158,6 +194,7 @@ final class DataStore: ObservableObject {
         let existingIDs = sessions.map { $0.id }
         try await service.replaceAllSessions(existingIDs: existingIDs, with: newSessions)
         sessions = newSessions
+        saveLocal()
         lastEndedSession = nil
     }
 
@@ -168,6 +205,7 @@ final class DataStore: ObservableObject {
         do {
             sessions = sample
             try await service.replaceAllSessions(existingIDs: [], with: sample)
+            saveLocal()
             UserDefaults.standard.set(true, forKey: seedFlagKey)
         } catch {
             lastError = error.localizedDescription
@@ -178,6 +216,21 @@ final class DataStore: ObservableObject {
         guard sessions.isEmpty else { return }
         if UserDefaults.standard.bool(forKey: seedFlagKey) { return }
         sessions = SampleData.makeSessions()
+        saveLocal()
         UserDefaults.standard.set(true, forKey: seedFlagKey)
+    }
+
+    private func loadLocal() {
+        guard let data = try? Data(contentsOf: localURL) else { return }
+        if let loaded = try? JSONTransfer.importSessions(data) {
+            sessions = loaded
+        }
+    }
+
+    private func saveLocal() {
+        guard let data = JSONTransfer.exportSessions(sessions) else { return }
+        let dir = localURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try? data.write(to: localURL, options: .atomic)
     }
 }

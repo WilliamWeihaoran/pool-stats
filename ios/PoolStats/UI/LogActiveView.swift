@@ -18,7 +18,9 @@ struct LogActiveView: View {
                             .foregroundColor(Theme.muted)
                     }
 
-                    LogTimerRow(rackCount: session.racks.count)
+                    if store.sessionStart != nil {
+                        LogTimerRow(rackCount: session.racks.count)
+                    }
                     sessionStats(session: session)
                 }
 

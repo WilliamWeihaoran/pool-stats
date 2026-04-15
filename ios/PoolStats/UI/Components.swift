@@ -59,6 +59,66 @@ struct PillButton: View {
     }
 }
 
+struct SegmentedRow<Item: Hashable>: View {
+    let items: [Item]
+    @Binding var selection: Item
+    let label: (Item) -> String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(items, id: \.self) { item in
+                Button {
+                    selection = item
+                } label: {
+                    Text(label(item))
+                        .font(.caption)
+                        .foregroundColor(selection == item ? Theme.text : Theme.muted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background(selection == item ? Theme.panel2 : Color.clear)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(6)
+        .background(Theme.panel)
+        .cornerRadius(10)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
+    }
+}
+
+struct SegmentedGrid<Item: Hashable>: View {
+    let items: [Item]
+    let columns: Int
+    @Binding var selection: Item
+    let label: (Item) -> String
+
+    var body: some View {
+        let grid = Array(repeating: GridItem(.flexible(), spacing: 6), count: columns)
+        LazyVGrid(columns: grid, spacing: 6) {
+            ForEach(items, id: \.self) { item in
+                Button {
+                    selection = item
+                } label: {
+                    Text(label(item))
+                        .font(.caption)
+                        .foregroundColor(selection == item ? Theme.text : Theme.muted)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background(selection == item ? Theme.panel2 : Color.clear)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(6)
+        .background(Theme.panel)
+        .cornerRadius(10)
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
+    }
+}
+
 struct MiniLabel: View {
     let text: String
     var body: some View {

@@ -99,24 +99,8 @@ struct DashboardView: View {
 
     private var headerFilters: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(TimeFilter.allCases) { f in
-                        PillButton(label: f.label, isOn: f == timeFilter) {
-                            timeFilter = f
-                        }
-                    }
-                }
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(ModeFilter.allCases) { m in
-                        PillButton(label: m.label, isOn: m == mode) {
-                            mode = m
-                        }
-                    }
-                }
-            }
+            SegmentedGrid(items: TimeFilter.allCases, columns: 3, selection: $timeFilter) { $0.label }
+            SegmentedRow(items: ModeFilter.allCases, selection: $mode) { $0.label }
         }
     }
 

@@ -25,14 +25,19 @@ struct HistoryView: View {
                     List(selection: $selection) {
                         ForEach(filteredSessions) { session in
                             NavigationLink(destination: SummaryView(session: session)) {
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading, spacing: 6) {
                                     Text(session.label.isEmpty ? "—" : session.label)
                                         .font(.headline)
-                                    Text(metaLine(session))
-                                        .font(.caption)
-                                        .foregroundColor(Theme.muted)
+                                    HStack(spacing: 8) {
+                                        Text(dateText(session.ts))
+                                        Text("•")
+                                        Text(durationText(session))
+                                    }
+                                    .font(.caption)
+                                    .foregroundColor(Theme.muted)
                                 }
                             }
+                            .listRowBackground(sessionTint(session).opacity(0.12))
                         }
                     }
                     .listStyle(.plain)
@@ -48,10 +53,9 @@ struct HistoryView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     EditButton()
                 }
-                ToolbarItem(placement: .bottomBar) {
-                    Button("Delete") { showDeleteConfirm = true }
-                        .disabled(selection.isEmpty)
-                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                deleteBar
             }
             .searchable(text: $searchText)
             .alert("Delete selected sessions?", isPresented: $showDeleteConfirm) {
@@ -95,23 +99,48 @@ struct HistoryView: View {
         return rows
     }
 
-    private func metaLine(_ session: Session) -> String {
+    private func dateText(_ date: Date) -> String {
         let df = DateFormatter()
         df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateFormat = "MMM d, yy"
-        let date = df.string(from: session.ts)
-        let badge = session.isPractice ? "Practice" : (session.game == "8ball" ? "8-ball" : "9-ball")
-        let racks = session.racks.count
-        let winPercent: String
-        if session.isPractice {
-            winPercent = "—"
-        } else {
-            let won = session.racks.filter { $0.result == "won" }.count
-            winPercent = racks == 0 ? "—" : "\(Int(round(Double(won) / Double(racks) * 100)))%"
+        df.dateFormat = "MMM d, yyyy"
+        return df.string(from: date)
+    }
+
+    private func durationText(_ session: Session) -> String {
+        guard let seconds = session.durationSeconds, seconds > 0 else { return "—" }
+        let hrs = seconds / 3600
+        let mins = (seconds % 3600) / 60
+        if hrs > 0 {
+            return "\(hrs)h \(mins)m"
         }
-        let bnr = session.racks.filter { $0.breakAndRun }.count
-        let errors = session.racks.reduce(0) { $0 + $1.fouls + $1.badSafety + $1.badPosition + $1.planChange + $1.missEasy + $1.missMed + $1.missHard }
-        let errPerRack = racks == 0 ? "—" : String(format: "%.1f", Double(errors) / Double(racks))
-        return "\(date) · \(badge) · \(racks) racks · \(winPercent) · B&R \(bnr) · \(errPerRack) err/rack"
+        return "\(mins)m"
+    }
+
+    private func sessionTint(_ session: Session) -> Color {
+        guard !session.isPractice else { return Color.clear }
+        let wins = session.racks.filter { $0.result == "won" }.count
+        let losses = session.racks.filter { $0.result == "lost" }.count
+        if wins > losses { return Theme.green }
+        if losses > wins { return Theme.red }
+        return Color.clear
+    }
+
+    private var deleteBar: some View {
+        HStack {
+            Button {
+                showDeleteConfirm = true
+            } label: {
+                Text("Delete Selected")
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.red)
+            .disabled(selection.isEmpty)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 6)
+        .background(Theme.bg.opacity(0.98))
     }
 }
