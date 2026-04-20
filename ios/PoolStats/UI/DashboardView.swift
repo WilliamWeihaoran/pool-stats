@@ -17,31 +17,30 @@ struct DashboardView: View {
     @State private var showImportConfirm: Bool = false
     @State private var showImportError: Bool = false
 
+    @Environment(\.horizontalSizeClass) private var hSizeClass
     private let shotColors: [Color] = [Theme.red, Theme.red, Theme.amber, Theme.blue, Theme.teal, Theme.purple, Theme.green]
 
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 14) {
-                    headerFilters
-                    statGrid
-                    if !isPracticeMode { trendSection }
-                    mistakesSection
-                    if !isPracticeMode { wlSection }
-                    if !isPracticeMode { outcomesSection }
-                    skillSection
-                    if !isPracticeMode { fargoSection }
-                    insightsSection
-                    exportImportSection
-                }
-                .padding(.horizontal, 14)
-                .padding(.top, 4)
-                .padding(.bottom, 10)
+        ScrollView {
+            VStack(spacing: 14) {
+                headerFilters
+                statGrid
+                if !isPracticeMode { trendSection }
+                mistakesSection
+                if !isPracticeMode { wlSection }
+                if !isPracticeMode { outcomesSection }
+                skillSection
+                if !isPracticeMode { fargoSection }
+                insightsSection
+                exportImportSection
             }
-            .background(Theme.bg)
-            .navigationTitle("Pool Stats")
-            .navigationBarTitleDisplayMode(.inline)
+            .padding(.horizontal, Layout.pagePadding)
+            .padding(.top, 4)
+            .padding(.bottom, 10)
         }
+        .background(Theme.bg)
+        .navigationTitle("Pool Stats")
+        .navigationBarTitleDisplayMode(.inline)
         .fileExporter(isPresented: $showExporter, document: exportDocument, contentType: .json, defaultFilename: "pool.json") { _ in }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
             switch result {
@@ -98,9 +97,9 @@ struct DashboardView: View {
     }
 
     private var headerFilters: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            SegmentedGrid(items: TimeFilter.allCases, columns: 3, selection: $timeFilter) { $0.label }
-            SegmentedRow(items: ModeFilter.allCases, selection: $mode) { $0.label }
+        HStack(spacing: 10) {
+            FilterMenuButton(title: "Time", items: TimeFilter.allCases, selection: $timeFilter) { $0.label }
+            FilterMenuButton(title: "Mode", items: ModeFilter.allCases, selection: $mode) { $0.label }
         }
     }
 
@@ -110,7 +109,7 @@ struct DashboardView: View {
         let matchWin = matchWinPercentText()
         let rackWin = rackWinPercentText()
 
-        return LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
+        return LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
             StatCard(label: "Sessions", value: sessionsCount == 0 ? "—" : String(sessionsCount))
             StatCard(label: "Racks", value: racksCount == 0 ? "—" : String(racksCount))
             StatCard(label: "Match win%", value: isPracticeMode ? "—" : matchWin)
@@ -126,36 +125,41 @@ struct DashboardView: View {
                     .font(.caption)
                     .foregroundColor(Theme.muted)
             } else {
-                let count = series.labels.count
-                let tickStep = max(1, count / 6)
-                let ticks = stride(from: 0, to: count, by: tickStep).map { $0 }
-                Chart {
-                    ForEach(Array(series.labels.enumerated()), id: \.offset) { idx, label in
-                        if let v = series.match[idx] {
-                            LineMark(x: .value("Index", idx), y: .value("Match", v))
+                let points = Array(zip(series.dates, series.match)).compactMap { date, value in
+                    value.map { (date, $0) }
+                }
+                if points.isEmpty {
+                    Text("Not enough data")
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+                } else {
+                    let count = points.count
+                    let tickStep = max(1, count / 6)
+                    let tickDates = stride(from: 0, to: count, by: tickStep).map { points[$0].0 }
+                    let domainStart = series.dates.first ?? points[0].0
+                    let domainEnd = series.dates.last ?? points[0].0
+                    Chart {
+                        ForEach(Array(points.enumerated()), id: \.offset) { _, point in
+                            LineMark(x: .value("Date", point.0), y: .value("Match", point.1))
                                 .foregroundStyle(Theme.purple)
-                                .symbol(Circle())
-                                .interpolationMethod(.catmullRom)
-                        }
-                        if let v = series.rack[idx] {
-                            LineMark(x: .value("Index", idx), y: .value("Rack", v))
-                                .foregroundStyle(Theme.teal)
-                                .symbol(Circle())
-                                .interpolationMethod(.catmullRom)
+                                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                                .interpolationMethod(.monotone)
+                            PointMark(x: .value("Date", point.0), y: .value("Match", point.1))
+                                .foregroundStyle(Theme.purple)
                         }
                     }
-                }
-                .chartXScale(domain: 0...(max(0, count - 1)))
-                .chartXAxis {
-                    AxisMarks(values: ticks) { value in
-                        if let idx = value.as(Int.self), idx >= 0, idx < series.labels.count {
-                            AxisValueLabel {
-                                Text(series.labels[idx])
+                    .chartXAxis {
+                        AxisMarks(values: tickDates) { value in
+                            if let date = value.as(Date.self), let idx = series.dates.firstIndex(of: date), idx < series.labels.count {
+                                AxisValueLabel {
+                                    Text(series.labels[idx])
+                                }
                             }
                         }
                     }
+                    .chartXScale(domain: domainStart...domainEnd)
+                    .frame(height: Layout.chartHeight(Layout.chartSm, hSizeClass: hSizeClass))
                 }
-                .frame(height: 180)
             }
         }
     }
@@ -163,7 +167,7 @@ struct DashboardView: View {
     private var mistakesSection: some View {
         let racks = Analytics.filteredRacks(filteredSessions, game: shotGame)
         let items = Analytics.mistakesPerRack(racks).sorted { $0.value > $1.value }
-        return SectionCard(title: "Mistakes per rack") {
+        return SectionCard(title: "Unforced errors per rack") {
             HStack(spacing: 6) {
                 PillButton(label: "8-ball", isOn: shotGame == "8ball") { shotGame = "8ball" }
                 PillButton(label: "9-ball", isOn: shotGame == "9ball") { shotGame = "9ball" }
@@ -178,14 +182,14 @@ struct DashboardView: View {
                     .cornerRadius(4)
                 }
             }
-            .frame(height: 200)
+            .frame(height: Layout.chartHeight(Layout.chartMd, hSizeClass: hSizeClass))
         }
     }
 
     private var wlSection: some View {
         let racks = Analytics.matchRacks(filteredSessions, game: wlGame)
         let result = Analytics.wonLostItems(racks)
-        return SectionCard(title: "Mistakes: won vs lost") {
+        return SectionCard(title: "Unforced errors: won vs lost") {
             HStack(spacing: 6) {
                 PillButton(label: "8-ball", isOn: wlGame == "8ball") { wlGame = "8ball" }
                 PillButton(label: "9-ball", isOn: wlGame == "9ball") { wlGame = "9ball" }
@@ -206,7 +210,7 @@ struct DashboardView: View {
                     .position(by: .value("Type", "Lost"))
                 }
             }
-            .frame(height: 220)
+            .frame(height: Layout.chartHeight(Layout.chartLg, hSizeClass: hSizeClass))
             Text(result.lossText)
                 .font(.caption)
                 .foregroundColor(Theme.muted)
@@ -242,7 +246,7 @@ struct DashboardView: View {
         return SectionCard(title: "Skill breakdown") {
             VStack(spacing: 16) {
                 RadarChart(labels: labels, values: scores, color: Theme.purple)
-                    .frame(height: 240)
+                    .frame(height: Layout.chartHeight(Layout.chartRadar, hSizeClass: hSizeClass))
                 VStack(spacing: 14) {
                     ForEach(Array(labels.enumerated()), id: \.offset) { idx, label in
                         VStack(alignment: .leading, spacing: 6) {
@@ -295,7 +299,7 @@ struct DashboardView: View {
         let insights = Analytics.insights(allRacks: allRacks, matchRacks: matchRacks)
         let layoutLabels = ["Open", "Clustered", "Problematic", "Snookered"]
         return SectionCard(title: "Break & layout insights") {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
+            LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
                 ForEach(insights.breakCards, id: \.0) { item in
                     StatCard(label: item.0, value: item.1 != nil ? "\(item.1!)%" : "—")
                 }
@@ -310,7 +314,7 @@ struct DashboardView: View {
                     .foregroundStyle(colorForLayout(idx))
                 }
             }
-            .frame(height: 180)
+            .frame(height: Layout.chartHeight(Layout.chartSm, hSizeClass: hSizeClass))
         }
     }
 
@@ -334,10 +338,7 @@ struct DashboardView: View {
     private func matchWinPercentText() -> String {
         let m = matchSessions
         if m.isEmpty { return "—" }
-        let wins = m.filter { s in
-            let w = s.racks.filter { $0.result == "won" }.count
-            return w > s.racks.count / 2
-        }.count
+        let wins = m.filter { $0.wins > $0.racks.count / 2 }.count
         return "\(Int(round(Double(wins) / Double(m.count) * 100)))%"
     }
 

@@ -28,4 +28,9 @@ struct Session: Identifiable, Codable, Hashable {
     }
 
     var isPractice: Bool { type == "practice" }
+    var wins: Int { racks.filter { $0.result == "won" }.count }
+    var losses: Int { racks.filter { $0.result == "lost" }.count }
+    var isDraw: Bool { !isPractice && wins == losses && wins > 0 }
+    var gameLabel: String { game == "8ball" ? "8-ball" : "9-ball" }
+    var typeLabel: String { isPractice ? "Practice" : "Match" }
 }

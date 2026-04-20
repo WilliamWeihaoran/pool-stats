@@ -13,7 +13,7 @@ extension Analytics {
             for r in s.racks {
                 let p = Double(ep(r, game: s.game))
                 tP += p
-                tA += p + Double(r.missEasy + r.missMed + r.missHard)
+                tA += p + Double(r.missCount)
             }
         }
         let pct = tA > 0 ? tP / tA : 0.72
@@ -28,7 +28,7 @@ extension Analytics {
 
         func errCV(_ racks: [Rack]) -> Double {
             guard racks.count >= 2 else { return 0 }
-            let errs = racks.map { $0.fouls + $0.badSafety + $0.badPosition + $0.planChange + $0.missEasy + $0.missMed + $0.missHard }
+            let errs = racks.map { $0.fouls + $0.badSafety + $0.badPosition + $0.planChange + $0.missCount }
             let mean = Double(errs.reduce(0, +)) / Double(errs.count)
             if mean == 0 { return 0 }
             let variance = errs.reduce(0.0) { $0 + pow(Double($1) - mean, 2) } / Double(errs.count)
@@ -102,7 +102,7 @@ extension Analytics {
     }
 
     static func ep(_ r: Rack, game: String) -> Int {
-        let m = r.missEasy + r.missMed + r.missHard
+        let m = r.missCount
         let oR = r.outcome == "runout" && r.result == "lost"
         let sB = r.outcome == "safety"
         let ru = r.outcome == "runout" && r.result == "won"

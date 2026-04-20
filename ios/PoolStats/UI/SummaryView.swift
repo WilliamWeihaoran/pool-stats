@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SummaryView: View {
     @EnvironmentObject private var store: DataStore
+    @Environment(\.horizontalSizeClass) private var hSizeClass
 
     let session: Session
     @State private var labelText: String = ""
@@ -37,9 +38,8 @@ struct SummaryView: View {
     private var summaryCards: some View {
         let rs = session.racks
         let n = Double(max(rs.count, 1))
-        let won = rs.filter { $0.result == "won" }.count
         let runouts = rs.filter { $0.outcome == "runout" }.count
-        let errTotal = rs.reduce(0) { $0 + errCount($1) }
+        let errTotal = rs.reduce(0) { $0 + $1.unforcedErrorCount }
 
         let top: [(String, String)]
         if session.isPractice {
@@ -51,14 +51,14 @@ struct SummaryView: View {
         } else {
             top = [
                 ("Racks", "\(rs.count)"),
-                ("Won", "\(won)"),
-                ("Lost", "\(rs.count - won)"),
-                ("Win%", rs.isEmpty ? "—" : "\(Int(round(Double(won) / Double(rs.count) * 100)))%")
+                ("Won", "\(session.wins)"),
+                ("Lost", "\(session.losses)"),
+                ("Win%", rs.isEmpty ? "—" : "\(Int(round(Double(session.wins) / Double(rs.count) * 100)))%")
             ]
         }
 
         return SectionCard(title: "Summary") {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
+            LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
                 ForEach(top, id: \.0) { item in
                     StatCard(label: item.0, value: item.1)
                 }
@@ -70,7 +70,7 @@ struct SummaryView: View {
         let rs = session.racks
         func sum(_ key: KeyPath<Rack, Int>) -> Int { rs.reduce(0) { $0 + $1[keyPath: key] } }
         return SectionCard(title: "Mistakes") {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
+            LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
                 StatCard(label: "Fouls", value: "\(sum(\.fouls))")
                 StatCard(label: "Bad safety", value: "\(sum(\.badSafety))")
                 StatCard(label: "Bad pos", value: "\(sum(\.badPosition))")
@@ -81,16 +81,13 @@ struct SummaryView: View {
 
     private var missesSection: some View {
         let rs = session.racks
-        let easy = rs.reduce(0) { $0 + $1.missEasy }
-        let med = rs.reduce(0) { $0 + $1.missMed }
-        let hard = rs.reduce(0) { $0 + $1.missHard }
-        let total = easy + med + hard
+        let total = rs.reduce(0) { $0 + $1.missCount }
         return SectionCard(title: "Misses") {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
-                StatCard(label: "Easy", value: "\(easy)")
-                StatCard(label: "Medium", value: "\(med)")
-                StatCard(label: "Hard", value: "\(hard)")
-                StatCard(label: "Total", value: "\(total)")
+            LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
+                StatCard(label: "Miss", value: "\(total)")
+                StatCard(label: "Positional", value: "\(rs.reduce(0) { $0 + $1.positionalCount })")
+                StatCard(label: "Safety", value: "\(rs.reduce(0) { $0 + $1.safetyCount })")
+                StatCard(label: "Foul", value: "\(rs.reduce(0) { $0 + $1.foulCount })")
             }
         }
     }
@@ -110,7 +107,7 @@ struct SummaryView: View {
             ("Runouts", "\(rus)")
         ]
         if session.isPractice {
-            let errTotal = rs.reduce(0) { $0 + errCount($1) }
+            let errTotal = rs.reduce(0) { $0 + $1.unforcedErrorCount }
             rows.append(("Err/rack", String(format: "%.1f", Double(errTotal) / n)))
         } else {
             rows.append(("Opp runouts", "\(oRus)"))
@@ -119,7 +116,7 @@ struct SummaryView: View {
         rows.append(("Avg potted", String(format: "%.1f", avgP)))
 
         return SectionCard(title: "Break") {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
+            LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
                 ForEach(rows, id: \.0) { item in
                     StatCard(label: item.0, value: item.1)
                 }
@@ -132,7 +129,7 @@ struct SummaryView: View {
         return SectionCard(title: "Rack log") {
             VStack(spacing: 8) {
                 ForEach(Array(rs.enumerated()), id: \.offset) { idx, r in
-                    let err = errCount(r)
+                    let err = r.unforcedErrorCount
                     HStack(spacing: 8) {
                         Text("\(idx + 1)")
                             .font(.caption)
@@ -153,7 +150,7 @@ struct SummaryView: View {
                             .font(.caption2)
                             .foregroundColor(Theme.muted)
                         Spacer()
-                        Text("\(r.missEasy)E \(r.missMed)M \(r.missHard)H")
+                        Text("\(r.missCount) miss")
                             .font(.caption2)
                             .foregroundColor(Theme.muted)
                         if r.breakAndRun {
@@ -169,27 +166,18 @@ struct SummaryView: View {
     }
 
     private func metaText() -> String {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateFormat = "MMM d, yyyy"
-        let date = df.string(from: session.ts)
-        let game = session.game == "8ball" ? "8-ball" : "9-ball"
-        let type = session.isPractice ? "Practice" : "Match"
-        return "\(type) · \(game) · \(session.racks.count) racks · \(date)"
+        "\(session.typeLabel) · \(session.gameLabel) · \(session.racks.count) racks · \(AppFormatters.sessionDate(session.ts))"
     }
 
     private func outcomeLabel(_ outcome: String?) -> String {
         switch outcome {
         case "runout": return "Runout"
+        case "noRunout": return "No runout"
         case "safety": return "Safety"
         case "error": return "Error"
         case "other": return "Other"
         default: return "—"
         }
-    }
-
-    private func errCount(_ r: Rack) -> Int {
-        r.fouls + r.badSafety + r.badPosition + r.planChange + r.missEasy + r.missMed + r.missHard
     }
 
     private func saveLabel() {

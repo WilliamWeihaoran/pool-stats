@@ -1,60 +1,70 @@
 # pool-stats
 
-A native iOS app for tracking 8-ball and 9-ball sessions with rich analytics. Built in SwiftUI with CloudKit sync.
+Pool Stats is a native iOS app for logging pool sessions and turning them into actionable stats. It is built in SwiftUI and uses CloudKit plus a local JSON cache for persistence.
 
 ---
 
-## What it does
+## What It Does
 
-pool-stats lets you log every rack you play and gives you real analytics on your game over time. It tracks not just wins and losses, but *why* you're losing — position errors, bad safeties, missed shots by difficulty, fouls, and pattern mistakes. After enough sessions, you'll have a clear picture of what's actually holding you back.
+Pool Stats helps you log sessions rack by rack without turning the app into homework. The current model focuses on a small set of high-signal stats:
+
+- Result: win or loss
+- Break: who broke and break quality
+- Layout: open, clustered, problematic, or snookered
+- Unforced errors: miss, positional, safety, foul
+- Runout tracking: `Runout at first visit`
+
+That gives you enough detail to improve your game without forcing you to record every tiny shot.
 
 ---
 
-## Core features
+## Core Features
 
 **Session logging**
-- Supports 8-ball and 9-ball, match and practice modes
-- Log break details (who broke, balls potted, break foul)
-- Rate layout at first visit: open, clustered, problematic, or snookered
-- Track mistakes per rack: fouls, bad safety, bad position, pattern changes
-- Track misses by difficulty: easy, medium, hard
-- Record rack outcome: runout, safety win, error, or other
-- Mark runout-first-visit and break-and-run achievements
-- Tap to increment counters, long-press to decrement
+- Supports 8-ball and 9-ball
+- Supports match and practice sessions
+- Break section combines breaker and break outcome
+- Layout section is separate and uses the four layout states above
+- Result section includes the runout tracker
+- Unforced errors are logged as a small set of categories rather than by shot difficulty
+- Backdated sessions are supported
+- Session and rack timers are tracked for current sessions
 
 **Dashboard analytics**
-- Win rate over time chart, bucketed intelligently by filter (daily / weekly / biweekly / monthly)
-- Mistakes per rack breakdown by category
-- Won vs. lost mistake comparison — shows your biggest loss factor
+- Win rate over time
+- Outcome rings for match and rack results
+- Fargo estimate
 - Skill radar: Potting, Position, Safety, Fouls, Consistency
-- Fargo rating estimate based on execution metrics
-- Break & layout insights: win rate by who broke, layout type, and break quality
+- Mistake / unforced-error breakdowns
+- Break and layout insights
+- Conversion rate based on open-layout racks only
 
 **History**
-- Full session log with search and filtering by game type
-- Click any session to view its full rack-by-rack summary
-- Select and delete sessions
-- Export and import data as JSON
-- Restore built-in sample data from the History view when empty
+- Clean session list with date, duration, and outcome styling
+- Select mode for deleting sessions
+- Practice sessions and match draws are visually distinguished
+- Sync status indicator for local cache vs. iCloud
+- Import / export JSON
+- Built-in sample data can be restored
 
-**Data privacy**
-- CloudKit is used for storage and sync (iCloud account required)
-- Export JSON to back up your data or transfer it to another device
+**Storage**
+- Primary sync is CloudKit private database under the app’s iCloud container
+- The app also keeps a local JSON cache in Application Support so sessions are not lost if sync is delayed or unavailable
 
 ---
 
 ## Usage
 
-Open `ios/PoolStats/PoolStats.xcodeproj` in Xcode, select a simulator or device, then Run.
+Open `ios/PoolStats/PoolStats.xcodeproj` in Xcode, select a simulator or device, then run the app.
 
-- **Dashboard** — your stats and charts
+- **Dashboard** — stats and charts
 - **Log** — start a new session
-- **History** — browse past sessions
+- **History** — browse and manage past sessions
 
-To back up your data, tap **Export JSON** on the dashboard. To restore, tap **Import JSON** and select your file.
+To move data between devices or keep a backup, use the JSON export/import flow.
 
 ---
 
 ## Tech
 
-SwiftUI + Swift Charts. CloudKit for storage. JSON import/export for portability.
+SwiftUI, Swift Charts, CloudKit, and a local JSON cache for resilience.

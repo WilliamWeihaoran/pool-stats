@@ -2,61 +2,91 @@ import SwiftUI
 
 struct LogView: View {
     @EnvironmentObject private var store: DataStore
+    @EnvironmentObject private var logStore: SessionLogStore
     @State private var label: String = ""
     @State private var showSaveToast: Bool = false
     @State private var showEndConfirm: Bool = false
 
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 10) {
-                    if store.currentSession == nil {
-                        LogStartView(label: $label)
-                    } else {
-                        LogActiveView(showSaveToast: $showSaveToast, showEndConfirm: $showEndConfirm)
-                    }
+        ScrollView {
+            VStack(spacing: 10) {
+                if logStore.currentSession == nil {
+                    LogStartView(label: $label)
+                } else {
+                    LogActiveView(showSaveToast: $showSaveToast, showEndConfirm: $showEndConfirm)
                 }
-                .padding(.horizontal, 12)
-                .padding(.top, 2)
-                .padding(.bottom, 12)
             }
-            .background(Theme.bg)
-            .alert("End session?", isPresented: $showEndConfirm) {
-                Button("End Session", role: .destructive) {
-                    Task { await store.endSession() }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will finish the current session and save it to history.")
-            }
+            .padding(.horizontal, 12)
+            .padding(.top, 2)
+            .padding(.bottom, 12)
         }
-        .navigationBarHidden(true)
+        .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(isPresented: $showEndConfirm) {
+            EndSessionConfirmationSheet(
+                onSave: {
+                    Task { await logStore.endSession(savingTo: store) }
+                },
+                onDiscard: {
+                    logStore.discardSession()
+                }
+            )
+            .presentationDetents([.height(220)])
+            .presentationDragIndicator(.visible)
+        }
         .sheet(item: Binding(
-            get: { store.lastEndedSession },
-            set: { _ in store.lastEndedSession = nil }
+            get: { logStore.lastEndedSession },
+            set: { _ in logStore.lastEndedSession = nil }
         )) { session in
-            NavigationView {
+            NavigationStack {
                 SummaryView(session: session)
             }
         }
     }
 }
 
-struct LogSectionCard<Content: View>: View {
-    let title: String
-    @ViewBuilder let content: Content
+private struct EndSessionConfirmationSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let onSave: () -> Void
+    let onDiscard: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.caption)
-                .foregroundColor(Theme.muted)
-            content
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("End session?")
+                    .font(.headline)
+                    .foregroundColor(Theme.text)
+                Text("Save the session to history, discard it, or keep logging.")
+                    .font(.caption)
+                    .foregroundColor(Theme.muted)
+            }
+
+            HStack(spacing: 10) {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .buttonStyle(.bordered)
+                .tint(Theme.text2)
+                .frame(maxWidth: .infinity)
+
+                Button("Discard") {
+                    dismiss()
+                    onDiscard()
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.red)
+                .frame(maxWidth: .infinity)
+            }
+
+            Button("Save") {
+                dismiss()
+                onSave()
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Theme.teal)
+            .frame(maxWidth: .infinity)
         }
-        .padding(8)
-        .background(Theme.panel)
-        .cornerRadius(12)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+        .padding(16)
+        .background(Theme.bg)
     }
 }

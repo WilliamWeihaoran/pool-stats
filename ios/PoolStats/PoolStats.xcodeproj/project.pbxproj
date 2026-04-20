@@ -33,6 +33,7 @@
 		AA1000010000000000000018 /* AnalyticsInsights.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000001B /* AnalyticsInsights.swift */; };
 		AA1000010000000000000019 /* AnalyticsMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000001C /* AnalyticsMath.swift */; };
 		AA100001000000000000001A /* SessionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000001D /* SessionService.swift */; };
+		AA100001000000000000001B /* AppFormatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000001E /* AppFormatters.swift */; };
 		AA1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -67,6 +68,7 @@
 		AA200001000000000000001B /* AnalyticsInsights.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsInsights.swift; sourceTree = "<group>"; };
 		AA200001000000000000001C /* AnalyticsMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalyticsMath.swift; sourceTree = "<group>"; };
 		AA200001000000000000001D /* SessionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionService.swift; sourceTree = "<group>"; };
+		AA200001000000000000001E /* AppFormatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFormatters.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -126,6 +128,7 @@
 				AA200001000000000000001B /* AnalyticsInsights.swift */,
 				AA200001000000000000001C /* AnalyticsMath.swift */,
 				AA2000010000000000000014 /* SampleData.swift */,
+				AA200001000000000000001E /* AppFormatters.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -250,6 +253,7 @@
 				AA1000010000000000000018 /* AnalyticsInsights.swift in Sources */,
 				AA1000010000000000000019 /* AnalyticsMath.swift in Sources */,
 				AA100001000000000000001A /* SessionService.swift in Sources */,
+				AA100001000000000000001B /* AppFormatters.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -260,12 +264,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -289,12 +294,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;

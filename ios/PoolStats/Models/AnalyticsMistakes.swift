@@ -7,13 +7,10 @@ extension Analytics {
             Double(racks.reduce(0) { $0 + $1[keyPath: key] })
         }
         return [
-            MetricItem(label: "Bad pos", value: sum(\.badPosition) / n),
-            MetricItem(label: "Hard miss", value: sum(\.missHard) / n),
-            MetricItem(label: "Med miss", value: sum(\.missMed) / n),
-            MetricItem(label: "Bad safety", value: sum(\.badSafety) / n),
-            MetricItem(label: "Easy miss", value: sum(\.missEasy) / n),
-            MetricItem(label: "Fouls", value: sum(\.fouls) / n),
-            MetricItem(label: "Pattern", value: sum(\.planChange) / n)
+            MetricItem(label: "Miss", value: sum(\.missCount) / n),
+            MetricItem(label: "Positional", value: (sum(\.badPosition) + sum(\.planChange)) / n),
+            MetricItem(label: "Safety", value: sum(\.badSafety) / n),
+            MetricItem(label: "Foul", value: sum(\.fouls) / n)
         ]
     }
 

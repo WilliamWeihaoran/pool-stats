@@ -4,10 +4,11 @@ extension Analytics {
     static func trendSeries(sessions: [Session], timeFilter: TimeFilter) -> TrendSeries {
         let sorted = sessions.sorted { $0.ts < $1.ts }
         guard sorted.count >= 2 else {
-            return TrendSeries(labels: [], match: [], rack: [])
+            return TrendSeries(dates: [], labels: [], match: [], rack: [])
         }
         let now = Date()
         var buckets: [(start: Date, end: Date, sessions: [Session])] = []
+        var dates: [Date] = []
         var labels: [String] = []
         let cal = Calendar.current
 
@@ -27,6 +28,7 @@ extension Analytics {
                 let start = cal.date(from: DateComponents(year: year, month: month, day: 1)) ?? Date()
                 let end = cal.date(byAdding: .month, value: 1, to: start) ?? start
                 buckets.append((start, end, list))
+                dates.append(start)
                 if let year = key / 100 as Int?, let month = key % 100 as Int? {
                     let date = cal.date(from: DateComponents(year: year, month: month, day: 1)) ?? Date()
                     labels.append(multiYear ? shortMonthYear(date) : shortMonth(date))
@@ -41,6 +43,7 @@ extension Analytics {
                 let e = min(t.addingTimeInterval(span), now)
                 let list = sorted.filter { $0.ts >= t && $0.ts < e }
                 buckets.append((t, e, list))
+                dates.append(t)
                 labels.append(rangeLabel(start: t, end: e, calendar: cal))
                 t = e
             }
@@ -51,6 +54,7 @@ extension Analytics {
                 let e = min(t.addingTimeInterval(span), now)
                 let list = sorted.filter { $0.ts >= t && $0.ts < e }
                 buckets.append((t, e, list))
+                dates.append(t)
                 labels.append(rangeLabel(start: t, end: e, calendar: cal))
                 t = e
             }
@@ -61,11 +65,13 @@ extension Analytics {
                 let e = min(t.addingTimeInterval(span), now)
                 let list = sorted.filter { $0.ts >= t && $0.ts < e }
                 buckets.append((t, e, list))
+                dates.append(t)
                 labels.append(shortMonthDay(t))
                 t = e
             }
         } else {
             buckets.append((now, now, sorted))
+            dates.append(now)
             labels.append("Today")
         }
 
@@ -88,8 +94,8 @@ extension Analytics {
             rackVals.append(rs.isEmpty ? nil : Double(rW) / Double(rs.count) * 100.0)
         }
 
-        let compressed = compressSeries(labels: labels, match: matchVals, rack: rackVals)
-        return TrendSeries(labels: compressed.labels, match: compressed.match, rack: compressed.rack)
+        let compressed = compressSeries(dates: dates, labels: labels, match: matchVals, rack: rackVals)
+        return TrendSeries(dates: compressed.dates, labels: compressed.labels, match: compressed.match, rack: compressed.rack)
     }
 
     private static func shortMonth(_ date: Date) -> String {
@@ -123,33 +129,35 @@ extension Analytics {
         return "\(left)–\(right)"
     }
 
-    private static func compressSeries(labels: [String], match: [Double?], rack: [Double?]) -> TrendSeries {
-        guard labels.count == match.count, labels.count == rack.count else {
-            return TrendSeries(labels: labels, match: match, rack: rack)
+    private static func compressSeries(dates: [Date], labels: [String], match: [Double?], rack: [Double?]) -> TrendSeries {
+        guard dates.count == labels.count, labels.count == match.count, labels.count == rack.count else {
+            return TrendSeries(dates: dates, labels: labels, match: match, rack: rack)
         }
 
         var order: [String] = []
-        var buckets: [String: (match: [Double], rack: [Double])] = [:]
+        var buckets: [String: (date: Date, match: [Double], rack: [Double])] = [:]
 
         for idx in labels.indices {
             let key = labels[idx]
             if buckets[key] == nil {
-                buckets[key] = ([], [])
+                buckets[key] = (dates[idx], [], [])
                 order.append(key)
             }
             if let v = match[idx] { buckets[key]?.match.append(v) }
             if let v = rack[idx] { buckets[key]?.rack.append(v) }
         }
 
+        var outDates: [Date] = []
         var outLabels: [String] = []
         var outMatch: [Double?] = []
         var outRack: [Double?] = []
         for key in order {
             guard let b = buckets[key] else { continue }
+            outDates.append(b.date)
             outLabels.append(key)
             outMatch.append(b.match.isEmpty ? nil : b.match.reduce(0, +) / Double(b.match.count))
             outRack.append(b.rack.isEmpty ? nil : b.rack.reduce(0, +) / Double(b.rack.count))
         }
-        return TrendSeries(labels: outLabels, match: outMatch, rack: outRack)
+        return TrendSeries(dates: outDates, labels: outLabels, match: outMatch, rack: outRack)
     }
 }

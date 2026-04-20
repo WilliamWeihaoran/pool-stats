@@ -19,6 +19,14 @@ struct Rack: Identifiable, Codable, Hashable {
     var runoutFirst: Bool
     var breakAndRun: Bool
 
+    var converted: Bool { outcome == "runout" }
+    var isNoRunout: Bool { outcome == "noRunout" }
+    var missCount: Int { missEasy + missMed + missHard }
+    var positionalCount: Int { badPosition + planChange }
+    var safetyCount: Int { badSafety }
+    var foulCount: Int { fouls }
+    var unforcedErrorCount: Int { foulCount + safetyCount + positionalCount + missCount }
+
     init(
         id: String = UUID().uuidString,
         index: Int,
@@ -26,7 +34,7 @@ struct Rack: Identifiable, Codable, Hashable {
         breaker: String = "none",
         breakBalls: Int = -1,
         breakFoul: Bool = false,
-        layout: String = "open",
+        layout: String = "none",
         outcome: String? = nil,
         fouls: Int = 0,
         badSafety: Int = 0,

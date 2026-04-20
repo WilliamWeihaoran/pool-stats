@@ -8,8 +8,8 @@ extension Analytics {
 
         let rR = Double(racks.filter { $0.outcome == "runout" && $0.result == "won" }.count) / n
         let bR = Double(racks.filter { $0.breakAndRun }.count) / n
-        let eM = Double(racks.reduce(0) { $0 + $1.missEasy }) / n
-        let eR = Double(racks.reduce(0) { $0 + $1.fouls + $1.badSafety + $1.badPosition + $1.missEasy + $1.missMed + $1.missHard }) / n
+        let eM = Double(racks.reduce(0) { $0 + $1.unforcedErrorCount }) / n
+        let eR = Double(racks.reduce(0) { $0 + $1.unforcedErrorCount }) / n
 
         var tP: Double = 0
         var tA: Double = 0
@@ -17,7 +17,7 @@ extension Analytics {
             for r in s.racks {
                 let p = Double(ep(r, game: s.game))
                 tP += p
-                tA += p + Double(r.missEasy + r.missMed + r.missHard)
+                tA += p + Double(r.missCount)
             }
         }
         let pPct = tA > 0 ? tP / tA : 0.72
@@ -36,7 +36,7 @@ extension Analytics {
             ("Runout rate", rR, { String(format: "%.0f%%", $0 * 100) }, "35%", rI),
             ("Break & run", bR, { String(format: "%.1f%%", $0 * 100) }, "15%", bI),
             ("Potting", pPct, { String(format: "%.0f%%", $0 * 100) }, "25%", pI),
-            ("Easy misses", eM, { String(format: "%.2f/rack", $0) }, "15%", eI),
+            ("Unforced errors", eM, { String(format: "%.2f/rack", $0) }, "15%", eI),
             ("Errors/rack", eR, { String(format: "%.2f/rack", $0) }, "10%", errI)
         ]
 

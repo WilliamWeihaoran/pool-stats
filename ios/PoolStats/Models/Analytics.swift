@@ -14,6 +14,7 @@ struct WLItem: Identifiable {
 }
 
 struct TrendSeries {
+    let dates: [Date]
     let labels: [String]
     let match: [Double?]
     let rack: [Double?]
