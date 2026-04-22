@@ -6,10 +6,79 @@ struct Goal: Identifiable, Codable, Hashable {
     var metric: GoalMetric
     var target: Double
     var window: GoalWindow
+    var valueStyle: GoalValueStyle = .cumulative
+    var averageBasis: GoalAverageBasis = .racks
+    var sessionScope: GoalSessionScope = .all
     var createdAt: Date = Date()
     var notes: String = ""
     var isArchived: Bool = false
     var completedAt: Date? = nil
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, metric, target, window, valueStyle, averageBasis, sessionScope, createdAt, notes, isArchived, completedAt
+    }
+
+    init(id: UUID = UUID(),
+         title: String,
+         metric: GoalMetric,
+         target: Double,
+         window: GoalWindow,
+         valueStyle: GoalValueStyle = .cumulative,
+         averageBasis: GoalAverageBasis = .racks,
+         sessionScope: GoalSessionScope = .all,
+         createdAt: Date = Date(),
+         notes: String = "",
+         isArchived: Bool = false,
+         completedAt: Date? = nil) {
+        self.id = id
+        self.title = title
+        self.metric = metric
+        self.target = target
+        self.window = window
+        self.valueStyle = metric.supportsValueStyle ? valueStyle : .cumulative
+        self.averageBasis = metric.supportsValueStyle ? averageBasis : metric.defaultAverageBasis
+        self.sessionScope = sessionScope
+        self.createdAt = createdAt
+        self.notes = notes
+        self.isArchived = isArchived
+        self.completedAt = completedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        title = try container.decode(String.self, forKey: .title)
+        metric = try container.decode(GoalMetric.self, forKey: .metric)
+        target = try container.decode(Double.self, forKey: .target)
+        window = try container.decode(GoalWindow.self, forKey: .window)
+        let decodedStyle = try container.decodeIfPresent(GoalValueStyle.self, forKey: .valueStyle) ?? .cumulative
+        let decodedBasis = try container.decodeIfPresent(GoalAverageBasis.self, forKey: .averageBasis) ?? metric.defaultAverageBasis
+        sessionScope = try container.decodeIfPresent(GoalSessionScope.self, forKey: .sessionScope) ?? .all
+        valueStyle = metric.supportsValueStyle ? decodedStyle : .cumulative
+        averageBasis = metric.supportsValueStyle ? decodedBasis : metric.defaultAverageBasis
+        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(metric, forKey: .metric)
+        try container.encode(target, forKey: .target)
+        try container.encode(window, forKey: .window)
+        if metric.supportsValueStyle {
+            try container.encode(valueStyle, forKey: .valueStyle)
+            try container.encode(averageBasis, forKey: .averageBasis)
+        }
+        try container.encode(sessionScope, forKey: .sessionScope)
+        try container.encode(createdAt, forKey: .createdAt)
+        try container.encode(notes, forKey: .notes)
+        try container.encode(isArchived, forKey: .isArchived)
+        try container.encodeIfPresent(completedAt, forKey: .completedAt)
+    }
 }
 
 @MainActor
@@ -79,29 +148,23 @@ final class GoalsStore: ObservableObject {
     }
 
     private func saveLocal() {
-        guard let data = try? JSONEncoder.pretty.encode(goals) else { return }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(goals) else { return }
         let dir = localURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try? data.write(to: localURL, options: .atomic)
+        try? data.write(to: localURL, options: Data.WritingOptions.atomic)
     }
 
     private static func sampleGoals() -> [Goal] {
         [
-            Goal(title: "Open layouts to 55%", metric: .conversionRate, target: 55, window: .rolling(.init(amount: 30, unit: .sessions))),
-            Goal(title: "Match win rate above 70%", metric: .matchWinRate, target: 70, window: .rolling(.init(amount: 10, unit: .sessions))),
-            Goal(title: "Keep positional errors under 6", metric: .positionalErrors, target: 6, window: .rolling(.init(amount: 100, unit: .racks))),
-            Goal(title: "Record 100 runouts by year end", metric: .runouts, target: 100, window: .dueDate(Calendar.current.date(from: DateComponents(year: Calendar.current.component(.year, from: Date()), month: 12, day: 31)) ?? Date())),
-            Goal(title: "Break-and-run 2+ times a week", metric: .breakAndRuns, target: 2, window: .rolling(.init(amount: 1, unit: .weeks))),
-            Goal(title: "Average performance 7.0+", metric: .averagePerformance, target: 7.0, window: .rolling(.init(amount: 10, unit: .sessions))),
-            Goal(title: "Keep miss errors under 8", metric: .missErrors, target: 8, window: .rolling(.init(amount: 30, unit: .sessions)))
+            Goal(title: "Open layouts to 55%", metric: .conversionRate, target: 55, window: .rolling(.init(amount: 30, unit: .sessions)), sessionScope: .match),
+            Goal(title: "Match win rate above 70%", metric: .matchWinRate, target: 70, window: .rolling(.init(amount: 10, unit: .sessions)), sessionScope: .match),
+            Goal(title: "Keep positional errors under 6 per rack", metric: .positionalErrors, target: 6, window: .rolling(.init(amount: 100, unit: .racks)), valueStyle: .average, averageBasis: .racks, sessionScope: .practice),
+            Goal(title: "Record 100 runouts by year end", metric: .runouts, target: 100, window: .dueDate(Calendar.current.date(from: DateComponents(year: Calendar.current.component(.year, from: Date()), month: 12, day: 31)) ?? Date()), valueStyle: .cumulative),
+            Goal(title: "Average 2 break-and-runs per week", metric: .breakAndRuns, target: 2, window: .rolling(.init(amount: 1, unit: .weeks)), valueStyle: .average, averageBasis: .sessions, sessionScope: .match),
+            Goal(title: "Average performance 7.0+", metric: .averagePerformance, target: 7.0, window: .rolling(.init(amount: 10, unit: .sessions)), sessionScope: .all),
+            Goal(title: "Keep miss errors under 8 per rack", metric: .missErrors, target: 8, window: .rolling(.init(amount: 30, unit: .sessions)), valueStyle: .average, averageBasis: .racks, sessionScope: .practice)
         ]
-    }
-}
-
-private extension JSONEncoder {
-    static var pretty: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return encoder
     }
 }

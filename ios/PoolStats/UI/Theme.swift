@@ -21,6 +21,10 @@ enum ThemeStyle: String, CaseIterable, Identifiable {
     case midnight
     case paper
     case ivory
+    case forest
+    case ember
+    case lagoon
+    case parchment
 
     var id: String { rawValue }
 
@@ -30,6 +34,10 @@ enum ThemeStyle: String, CaseIterable, Identifiable {
         case .midnight: return "Midnight"
         case .paper: return "Paper"
         case .ivory: return "Ivory"
+        case .forest: return "Forest"
+        case .ember: return "Ember"
+        case .lagoon: return "Lagoon"
+        case .parchment: return "Parchment"
         }
     }
 
@@ -39,6 +47,10 @@ enum ThemeStyle: String, CaseIterable, Identifiable {
         case .midnight: return "Deep dark"
         case .paper: return "Cool light"
         case .ivory: return "Warm light"
+        case .forest: return "Dark green"
+        case .ember: return "Warm dark"
+        case .lagoon: return "Soft aqua"
+        case .parchment: return "Cream light"
         }
     }
 
@@ -46,8 +58,10 @@ enum ThemeStyle: String, CaseIterable, Identifiable {
         switch self {
         case .paper, .ivory:
             return .light
-        case .slate, .midnight:
+        case .slate, .midnight, .forest, .ember:
             return .dark
+        case .lagoon, .parchment:
+            return .light
         }
     }
 
@@ -117,6 +131,70 @@ enum ThemeStyle: String, CaseIterable, Identifiable {
                 blue: Color(red: 0.2, green: 0.5, blue: 0.9),
                 green: Color(red: 0.2, green: 0.59, blue: 0.38)
             )
+        case .forest:
+            return ThemePalette(
+                bg: Color(red: 0.04, green: 0.08, blue: 0.06),
+                panel: Color(red: 0.07, green: 0.12, blue: 0.1),
+                panel2: Color(red: 0.05, green: 0.09, blue: 0.08),
+                border: Color(red: 0.14, green: 0.2, blue: 0.18),
+                text: Color(red: 0.96, green: 0.98, blue: 0.95),
+                text2: Color(red: 0.82, green: 0.88, blue: 0.84),
+                muted: Color(red: 0.45, green: 0.52, blue: 0.47),
+                purple: Color(red: 0.48, green: 0.8, blue: 0.56),
+                teal: Color(red: 0.34, green: 0.88, blue: 0.71),
+                red: Color(red: 0.93, green: 0.39, blue: 0.43),
+                amber: Color(red: 0.85, green: 0.7, blue: 0.26),
+                blue: Color(red: 0.37, green: 0.67, blue: 0.94),
+                green: Color(red: 0.28, green: 0.78, blue: 0.46)
+            )
+        case .ember:
+            return ThemePalette(
+                bg: Color(red: 0.09, green: 0.05, blue: 0.04),
+                panel: Color(red: 0.13, green: 0.08, blue: 0.07),
+                panel2: Color(red: 0.1, green: 0.06, blue: 0.05),
+                border: Color(red: 0.23, green: 0.15, blue: 0.13),
+                text: Color(red: 0.99, green: 0.96, blue: 0.94),
+                text2: Color(red: 0.88, green: 0.82, blue: 0.79),
+                muted: Color(red: 0.56, green: 0.49, blue: 0.46),
+                purple: Color(red: 0.98, green: 0.58, blue: 0.32),
+                teal: Color(red: 0.98, green: 0.43, blue: 0.34),
+                red: Color(red: 0.99, green: 0.29, blue: 0.31),
+                amber: Color(red: 0.98, green: 0.74, blue: 0.26),
+                blue: Color(red: 0.42, green: 0.64, blue: 0.98),
+                green: Color(red: 0.42, green: 0.86, blue: 0.52)
+            )
+        case .lagoon:
+            return ThemePalette(
+                bg: Color(red: 0.95, green: 0.98, blue: 0.98),
+                panel: Color(red: 0.9, green: 0.95, blue: 0.95),
+                panel2: Color(red: 0.94, green: 0.98, blue: 0.98),
+                border: Color(red: 0.8, green: 0.87, blue: 0.88),
+                text: Color(red: 0.1, green: 0.13, blue: 0.15),
+                text2: Color(red: 0.23, green: 0.28, blue: 0.31),
+                muted: Color(red: 0.44, green: 0.5, blue: 0.52),
+                purple: Color(red: 0.12, green: 0.58, blue: 0.74),
+                teal: Color(red: 0.11, green: 0.7, blue: 0.68),
+                red: Color(red: 0.85, green: 0.3, blue: 0.38),
+                amber: Color(red: 0.94, green: 0.67, blue: 0.21),
+                blue: Color(red: 0.18, green: 0.5, blue: 0.96),
+                green: Color(red: 0.18, green: 0.68, blue: 0.46)
+            )
+        case .parchment:
+            return ThemePalette(
+                bg: Color(red: 0.99, green: 0.97, blue: 0.93),
+                panel: Color(red: 0.95, green: 0.92, blue: 0.87),
+                panel2: Color(red: 0.97, green: 0.95, blue: 0.91),
+                border: Color(red: 0.87, green: 0.83, blue: 0.77),
+                text: Color(red: 0.14, green: 0.11, blue: 0.08),
+                text2: Color(red: 0.33, green: 0.29, blue: 0.25),
+                muted: Color(red: 0.53, green: 0.48, blue: 0.43),
+                purple: Color(red: 0.58, green: 0.35, blue: 0.82),
+                teal: Color(red: 0.08, green: 0.62, blue: 0.58),
+                red: Color(red: 0.86, green: 0.33, blue: 0.32),
+                amber: Color(red: 0.91, green: 0.56, blue: 0.19),
+                blue: Color(red: 0.23, green: 0.47, blue: 0.88),
+                green: Color(red: 0.18, green: 0.56, blue: 0.36)
+            )
         }
     }
 }
@@ -125,17 +203,20 @@ enum ThemeStyle: String, CaseIterable, Identifiable {
 final class ThemeStore: ObservableObject {
     private static let storageKey = "themeStyle"
 
-    @Published var selectedTheme: ThemeStyle {
-        didSet {
-            Theme.apply(selectedTheme.palette)
-            UserDefaults.standard.set(selectedTheme.rawValue, forKey: Self.storageKey)
-        }
-    }
+    @Published private(set) var selectedTheme: ThemeStyle
 
     init() {
         let raw = UserDefaults.standard.string(forKey: Self.storageKey)
-        selectedTheme = ThemeStyle(rawValue: raw ?? ThemeStyle.slate.rawValue) ?? .slate
-        Theme.apply(selectedTheme.palette)
+        let initial = ThemeStyle(rawValue: raw ?? ThemeStyle.slate.rawValue) ?? .slate
+        selectedTheme = initial
+        Theme.apply(initial.palette)
+    }
+
+    func setTheme(_ style: ThemeStyle) {
+        guard style != selectedTheme else { return }
+        Theme.apply(style.palette)
+        selectedTheme = style
+        UserDefaults.standard.set(style.rawValue, forKey: Self.storageKey)
     }
 }
 

@@ -23,6 +23,8 @@ That gives you enough detail to improve your game without forcing you to record 
 **Session logging**
 - Supports 8-ball and 9-ball
 - Supports match and practice sessions
+- Opponent field supports typeahead + quick-pick from existing opponents
+- You can create a new opponent inline directly from the log flow
 - Break section combines breaker and break outcome
 - Layout section is separate and uses the four layout states above
 - Result section includes the runout tracker

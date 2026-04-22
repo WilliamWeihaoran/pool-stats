@@ -14,6 +14,9 @@ struct GoalDraft: Identifiable {
     var title: String = ""
     var metric: GoalMetric = .conversionRate
     var target: Double = 55
+    var valueStyle: GoalValueStyle = .cumulative
+    var averageBasis: GoalAverageBasis = .racks
+    var sessionScope: GoalSessionScope = .all
     var notes: String = ""
     var windowMode: GoalWindowMode = .rolling
     var rollingAmount: Int = 30
@@ -29,6 +32,9 @@ struct GoalDraft: Identifiable {
         title = goal.title
         metric = goal.metric
         target = goal.target
+        valueStyle = goal.valueStyle
+        averageBasis = goal.averageBasis
+        sessionScope = goal.sessionScope
         notes = goal.notes
         switch goal.window {
         case .rolling(let rolling):
@@ -46,6 +52,9 @@ struct GoalDraft: Identifiable {
         title = goal.title
         metric = goal.metric
         target = goal.metric.suggestedResetTarget(from: goal.target)
+        valueStyle = goal.valueStyle
+        averageBasis = goal.averageBasis
+        sessionScope = goal.sessionScope
         notes = goal.notes
         switch goal.window {
         case .rolling(let rolling):
@@ -65,6 +74,9 @@ struct GoalDraft: Identifiable {
         title = template.title
         metric = template.metric
         target = template.target
+        valueStyle = template.metric.supportsValueStyle ? template.metric.defaultValueStyle : .cumulative
+        averageBasis = template.metric.defaultAverageBasis
+        sessionScope = .all
         notes = ""
         switch template.window {
         case .rolling(let rolling):
@@ -87,11 +99,26 @@ struct GoalDraft: Identifiable {
         }
     }
 
+    mutating func normalizeAggregation() {
+        guard metric.supportsValueStyle else {
+            valueStyle = .cumulative
+            averageBasis = metric.defaultAverageBasis
+            return
+        }
+        if valueStyle != .average, metric.defaultValueStyle == .average {
+            valueStyle = .average
+        }
+        averageBasis = valueStyle == .average && averageBasis == .sessions ? .sessions : metric.defaultAverageBasis
+    }
+
     func makeGoal() -> Goal {
         Goal(title: title.trimmingCharacters(in: .whitespacesAndNewlines),
              metric: metric,
              target: target,
              window: window,
+             valueStyle: valueStyle,
+             averageBasis: averageBasis,
+             sessionScope: sessionScope,
              notes: notes.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 
@@ -163,7 +190,7 @@ struct MetricGroupSection: View {
                     .foregroundColor(Theme.muted)
             }
 
-            LazyVGrid(columns: columns, spacing: 6) {
+            LazyVGrid(columns: columns, spacing: 4) {
                 ForEach(metrics) { metric in
                     MetricChoiceButton(metric: metric,
                                        accent: accent,
@@ -195,15 +222,15 @@ struct MetricChoiceButton: View {
                     .font(.caption)
                     .foregroundColor(isSelected ? accent : Theme.border)
             }
-            .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
             .background(isSelected ? accent.opacity(0.16) : Color.clear)
             .cornerRadius(12)
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(isSelected ? accent : Theme.border, lineWidth: isSelected ? 1 : 0.7))
-            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -218,12 +245,12 @@ struct GhostChipButton: View {
                 .font(.caption.weight(.semibold))
                 .foregroundColor(accent)
                 .frame(maxWidth: .infinity)
-                .frame(height: 34)
+                .frame(height: 32)
                 .background(accent.opacity(0.08))
                 .cornerRadius(10)
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(accent.opacity(0.45), lineWidth: 0.8))
-                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .contentShape(RoundedRectangle(cornerRadius: 10))
     }
 }

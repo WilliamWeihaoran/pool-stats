@@ -118,26 +118,20 @@ struct SegmentedGrid<Item: Hashable>: View {
     }
 }
 
-struct FilterMenuButton<Item: Hashable>: View {
+struct InlinePickerCard<Item: Hashable>: View {
+    let id: String
     let title: String
     let items: [Item]
     @Binding var selection: Item
+    @Binding var activeID: String?
     let label: (Item) -> String
 
+    private var isOpen: Bool { activeID == id }
+
     var body: some View {
-        Menu {
-            ForEach(items, id: \.self) { item in
-                Button {
-                    selection = item
-                } label: {
-                    HStack {
-                        Text(label(item))
-                        Spacer()
-                        if selection == item {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
+        Button {
+            withAnimation(.easeInOut(duration: 0.18)) {
+                activeID = isOpen ? nil : id
             }
         } label: {
             HStack(spacing: 10) {
@@ -148,16 +142,95 @@ struct FilterMenuButton<Item: Hashable>: View {
                 Text(label(selection))
                     .font(.caption)
                     .foregroundColor(Theme.text)
+                    .lineLimit(1)
                 Image(systemName: "chevron.down")
                     .font(.caption2.weight(.semibold))
                     .foregroundColor(Theme.muted)
+                    .rotationEffect(.degrees(isOpen ? 180 : 0))
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
             .background(Theme.panel)
             .cornerRadius(10)
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(isOpen ? Theme.purple.opacity(0.75) : Theme.border, lineWidth: isOpen ? 0.9 : 0.5))
         }
+        .buttonStyle(.plain)
+    }
+}
+
+struct OverlayPickerPanel<Item: Hashable>: View {
+    let title: String
+    let items: [Item]
+    @Binding var selection: Item
+    let label: (Item) -> String
+    let onDismiss: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.45)
+                .ignoresSafeArea()
+                .onTapGesture(perform: onDismiss)
+
+            VStack {
+                Spacer(minLength: 0)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text(title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(Theme.text)
+                        Spacer(minLength: 0)
+                        Button(action: onDismiss) {
+                            Image(systemName: "xmark")
+                                .font(.caption.weight(.bold))
+                                .foregroundColor(Theme.text2)
+                                .frame(width: 24, height: 24)
+                                .background(Theme.panel2)
+                                .clipShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    ScrollView {
+                        VStack(spacing: 7) {
+                            ForEach(items, id: \.self) { item in
+                                Button {
+                                    selection = item
+                                    onDismiss()
+                                } label: {
+                                    HStack(spacing: 10) {
+                                        Text(label(item))
+                                            .font(.subheadline.weight(.medium))
+                                            .foregroundColor(selection == item ? Theme.text : Theme.text2)
+                                            .lineLimit(1)
+                                        Spacer(minLength: 0)
+                                        if selection == item {
+                                            Image(systemName: "checkmark")
+                                                .font(.caption2.weight(.bold))
+                                                .foregroundColor(Theme.purple)
+                                        }
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 11)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(selection == item ? Theme.panel2 : Theme.bg.opacity(0.45))
+                                    .cornerRadius(10)
+                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(selection == item ? Theme.purple.opacity(0.75) : Theme.border, lineWidth: 0.6))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 360)
+                }
+                .padding(14)
+                .background(Theme.panel)
+                .cornerRadius(18)
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border, lineWidth: 0.5))
+                .padding(.horizontal, Layout.pagePadding)
+                .padding(.bottom, 12)
+            }
+        }
+        .transition(.opacity.combined(with: .move(edge: .bottom)))
     }
 }
 

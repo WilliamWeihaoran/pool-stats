@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsDetailView: View {
     let section: SettingsSection
     @EnvironmentObject private var store: DataStore
+    @EnvironmentObject private var opponentStore: OpponentStore
     @EnvironmentObject private var themeStore: ThemeStore
     @Environment(\.dismiss) private var dismiss
 
@@ -17,6 +18,9 @@ struct SettingsDetailView: View {
             .padding(.bottom, 12)
         }
         .background(Theme.bg)
+        .task {
+            opponentStore.sync(with: store.sessions)
+        }
     }
 
     private var detailHeader: some View {
@@ -35,20 +39,22 @@ struct SettingsDetailView: View {
             .buttonStyle(.plain)
 
             VStack(alignment: .leading, spacing: 4) {
+                Text("Settings")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Theme.muted)
                 Text(section.title)
                     .font(.title.bold())
                     .foregroundColor(Theme.text)
                 Text(section.subtitle)
                     .font(.caption)
                     .foregroundColor(Theme.muted)
+                    .lineLimit(2)
             }
 
             Spacer(minLength: 0)
         }
-        .padding(18)
-        .background(Theme.panel)
-        .cornerRadius(18)
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border, lineWidth: 0.5))
+        .padding(.horizontal, 2)
+        .padding(.top, 4)
     }
 
     @ViewBuilder
@@ -56,6 +62,8 @@ struct SettingsDetailView: View {
         switch section {
         case .me:
             meSection
+        case .opponents:
+            OpponentManagementView()
         case .stats:
             statsSection
         case .recentForm:
@@ -135,7 +143,7 @@ struct SettingsDetailView: View {
                 LazyVGrid(columns: Layout.twoColumn(), spacing: 10) {
                     ForEach(ThemeStyle.allCases) { style in
                         ThemeChoiceCard(style: style, isOn: themeStore.selectedTheme == style) {
-                            themeStore.selectedTheme = style
+                            themeStore.setTheme(style)
                         }
                     }
                 }
@@ -256,14 +264,7 @@ struct SettingsDetailView: View {
     }
 
     private var favoriteOpponent: String {
-        let names = store.sessions
-            .map(\.opponent)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        guard !names.isEmpty else { return "—" }
-        let counts = Dictionary(grouping: names, by: { $0 }).mapValues(\.count)
-        guard let top = counts.max(by: { $0.value < $1.value }) else { return "—" }
-        return top.key
+        opponentStore.favoriteOpponent(from: store.sessions)
     }
 
     private var matchWinText: String {

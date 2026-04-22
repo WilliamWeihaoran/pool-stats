@@ -6,6 +6,7 @@ struct PoolStatsApp: App {
     @StateObject private var logStore = SessionLogStore()
     @StateObject private var themeStore = ThemeStore()
     @StateObject private var goalsStore = GoalsStore()
+    @StateObject private var opponentStore = OpponentStore()
 
     var body: some Scene {
         WindowGroup {
@@ -14,6 +15,7 @@ struct PoolStatsApp: App {
                 .environmentObject(logStore)
                 .environmentObject(themeStore)
                 .environmentObject(goalsStore)
+                .environmentObject(opponentStore)
         }
     }
 }

@@ -3,10 +3,12 @@ import UIKit
 
 struct SummaryView: View {
     @EnvironmentObject private var store: DataStore
+    @EnvironmentObject private var opponentStore: OpponentStore
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
     let session: Session
     @State private var labelText: String = ""
+    @State private var opponentText: String = ""
     @State private var performanceRating: Int? = nil
     @State private var performanceValue: Int = 5
 
@@ -28,6 +30,7 @@ struct SummaryView: View {
         .navigationTitle("Summary")
         .onAppear {
             labelText = session.label
+            opponentText = session.opponent
             performanceRating = session.performanceRating
             performanceValue = session.performanceRating ?? 5
         }
@@ -40,6 +43,47 @@ struct SummaryView: View {
                 .foregroundColor(Theme.muted)
             TextField("Add a session label…", text: $labelText, onCommit: saveLabel)
                 .textFieldStyle(.roundedBorder)
+            opponentEditor
+        }
+    }
+
+    private var opponentEditor: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text("Opponent")
+                    .font(.caption)
+                    .foregroundColor(Theme.muted)
+                Spacer(minLength: 0)
+                Text(opponentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Optional" : opponentText.trimmingCharacters(in: .whitespacesAndNewlines))
+                    .font(.caption2.weight(.medium))
+                    .foregroundColor(Theme.text2)
+            }
+
+            TextField("Opponent name", text: $opponentText, onCommit: saveOpponent)
+                .textFieldStyle(.roundedBorder)
+
+            if !opponentSuggestions.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(opponentSuggestions.prefix(8), id: \.self) { name in
+                            Button {
+                                opponentText = name
+                                saveOpponent()
+                            } label: {
+                                Text(name)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(Theme.text)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Theme.panel2)
+                                    .cornerRadius(999)
+                                    .overlay(Capsule().stroke(Theme.border, lineWidth: 0.6))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -54,7 +98,8 @@ struct SummaryView: View {
             top = [
                 ("Racks", "\(rs.count)"),
                 ("Runouts", "\(runouts)"),
-                ("Err/rack", String(format: "%.1f", Double(errTotal) / n))
+                ("Err/rack", String(format: "%.1f", Double(errTotal) / n)),
+                ("Rating", session.performanceRating.map { "\($0)/10" } ?? "—")
             ]
         } else {
             top = [
@@ -66,9 +111,9 @@ struct SummaryView: View {
         }
 
         return SectionCard(title: "Summary") {
-            LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
+            LazyVGrid(columns: Layout.fourColumn(), spacing: 8) {
                 ForEach(top, id: \.0) { item in
-                    StatCard(label: item.0, value: item.1)
+                    MiniStatCard(label: item.0, value: item.1)
                 }
             }
         }
@@ -80,12 +125,17 @@ struct SummaryView: View {
         let adjustedValue = duration.map { AppFormatters.elapsed(session.bufferedSessionSeconds(totalSeconds: $0)) } ?? "—"
         let pacePct = duration.map { session.bufferedPacePercent(totalSeconds: $0) } ?? 0
         let bufferPct = session.bufferedPaceBufferPercent()
+        let rackCount = max(session.racks.count, 1)
+        let avgRawRack = duration.map { AppFormatters.elapsed($0 / Double(rackCount)) } ?? "—"
+        let avgAdjRack = duration.map { AppFormatters.elapsed(session.bufferedAverageRackSeconds(totalSeconds: $0)) } ?? "—"
 
         return SectionCard(title: "Time") {
             VStack(alignment: .leading, spacing: 10) {
-                LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
-                    StatCard(label: "Raw time", value: rawValue)
-                    StatCard(label: "Adjusted time", value: adjustedValue)
+                LazyVGrid(columns: Layout.fourColumn(), spacing: 8) {
+                    MiniStatCard(label: "Raw", value: rawValue)
+                    MiniStatCard(label: "Adjusted", value: adjustedValue)
+                    MiniStatCard(label: "Avg raw", value: avgRawRack)
+                    MiniStatCard(label: "Avg adj", value: avgAdjRack)
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -172,11 +222,11 @@ struct SummaryView: View {
     private var errorsSection: some View {
         let rs = session.racks
         return SectionCard(title: "Unforced errors") {
-            LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
-                StatCard(label: "Miss", value: "\(rs.reduce(0) { $0 + $1.missCount })")
-                StatCard(label: "Positional", value: "\(rs.reduce(0) { $0 + $1.positionalCount })")
-                StatCard(label: "Safety", value: "\(rs.reduce(0) { $0 + $1.safetyCount })")
-                StatCard(label: "Foul", value: "\(rs.reduce(0) { $0 + $1.foulCount })")
+            LazyVGrid(columns: Layout.fourColumn(), spacing: 8) {
+                MiniStatCard(label: "Miss", value: "\(rs.reduce(0) { $0 + $1.missCount })")
+                MiniStatCard(label: "Pos", value: "\(rs.reduce(0) { $0 + $1.positionalCount })")
+                MiniStatCard(label: "Safety", value: "\(rs.reduce(0) { $0 + $1.safetyCount })")
+                MiniStatCard(label: "Foul", value: "\(rs.reduce(0) { $0 + $1.foulCount })")
             }
         }
     }
@@ -205,9 +255,9 @@ struct SummaryView: View {
         rows.append(("Avg potted", String(format: "%.1f", avgP)))
 
         return SectionCard(title: "Break") {
-            LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
+            LazyVGrid(columns: Layout.fourColumn(), spacing: 8) {
                 ForEach(rows, id: \.0) { item in
-                    StatCard(label: item.0, value: item.1)
+                    MiniStatCard(label: item.0, value: item.1)
                 }
             }
         }
@@ -277,6 +327,17 @@ struct SummaryView: View {
 
     private func savePerformanceRating(_ rating: Int) {
         Task { await store.updateSessionMeta(sessionID: session.id, performanceRating: rating) }
+    }
+
+    private func saveOpponent() {
+        Task { await store.updateSessionMeta(sessionID: session.id, opponent: opponentText.trimmingCharacters(in: .whitespaces)) }
+    }
+
+    private var opponentSuggestions: [String] {
+        let names = opponentStore.availableNames(from: store.sessions)
+            .filter { $0 != "All opponents" }
+        let current = opponentText.trimmingCharacters(in: .whitespacesAndNewlines)
+        return names.filter { current.isEmpty || $0 != current }
     }
 }
 

@@ -2,6 +2,7 @@ import SwiftUI
 
 enum SettingsSection: String, CaseIterable, Hashable {
     case me
+    case opponents
     case stats
     case recentForm
     case appearance
@@ -11,6 +12,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     var title: String {
         switch self {
         case .me: return "Me"
+        case .opponents: return "Opponents"
         case .stats: return "Stats"
         case .recentForm: return "Recent form"
         case .appearance: return "Appearance"
@@ -22,6 +24,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     var subtitle: String {
         switch self {
         case .me: return "Your profile, best opponent, and biggest leak"
+        case .opponents: return "Add, edit, favorite, and compare opponents"
         case .stats: return "Session totals and performance snapshots"
         case .recentForm: return "A quick look at how the last 10 sessions went"
         case .appearance: return "Choose a color theme for the app"
@@ -33,6 +36,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     var icon: String {
         switch self {
         case .me: return "person.crop.circle.fill"
+        case .opponents: return "person.2.fill"
         case .stats: return "chart.bar.fill"
         case .recentForm: return "waveform.path.ecg"
         case .appearance: return "paintbrush.fill"
@@ -43,18 +47,15 @@ enum SettingsSection: String, CaseIterable, Hashable {
 }
 
 struct SettingsView: View {
-    @EnvironmentObject private var store: DataStore
-    @EnvironmentObject private var themeStore: ThemeStore
-
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 14) {
+                VStack(spacing: 12) {
                     header
                     sectionList
                 }
                 .padding(.horizontal, Layout.pagePadding)
-                .padding(.top, 8)
+                .padding(.top, 0)
                 .padding(.bottom, 12)
             }
             .background(Theme.bg)
@@ -67,26 +68,49 @@ struct SettingsView: View {
     }
 
     private var header: some View {
-        HStack {
+        VStack(alignment: .leading, spacing: 4) {
             Text("Settings")
                 .font(.title.bold())
                 .foregroundColor(Theme.text)
-            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, 4)
-        .padding(.horizontal, 2)
     }
 
     private var sectionList: some View {
-        VStack(spacing: 10) {
-            ForEach(SettingsSection.allCases, id: \.self) { section in
-                NavigationLink(value: section) {
-                    SettingsSectionRow(section: section)
+        VStack(spacing: 12) {
+            ForEach(settingGroups) { group in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(group.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.text2)
+                        .padding(.horizontal, 2)
+                    VStack(spacing: 8) {
+                        ForEach(group.sections, id: \.self) { section in
+                            NavigationLink(value: section) {
+                                SettingsSectionRow(section: section)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
             }
         }
     }
+
+    private var settingGroups: [SettingsGroup] {
+        [
+            SettingsGroup(title: "Player", sections: [.me, .stats, .recentForm]),
+            SettingsGroup(title: "People", sections: [.opponents]),
+            SettingsGroup(title: "App", sections: [.appearance, .data, .about])
+        ]
+    }
+}
+
+private struct SettingsGroup: Identifiable {
+    let id = UUID()
+    let title: String
+    let sections: [SettingsSection]
 }
 
 private struct SettingsSectionRow: View {
@@ -95,12 +119,12 @@ private struct SettingsSectionRow: View {
     var body: some View {
         HStack(spacing: 12) {
             ZStack {
-                Circle()
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(Theme.panel2)
-                    .frame(width: 38, height: 38)
+                    .frame(width: 34, height: 34)
                 Image(systemName: section.icon)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundColor(Theme.purple)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(iconColor)
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -110,7 +134,7 @@ private struct SettingsSectionRow: View {
                 Text(section.subtitle)
                     .font(.caption2)
                     .foregroundColor(Theme.text2)
-                    .lineLimit(2)
+                    .lineLimit(1)
             }
 
             Spacer(minLength: 10)
@@ -119,10 +143,21 @@ private struct SettingsSectionRow: View {
                 .font(.caption.weight(.semibold))
                 .foregroundColor(Theme.muted)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 13)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
         .background(Theme.panel)
-        .cornerRadius(14)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 0.5))
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+    }
+
+    private var iconColor: Color {
+        switch section {
+        case .me: return Theme.purple
+        case .opponents: return Theme.teal
+        case .stats, .recentForm: return Theme.blue
+        case .appearance: return Theme.amber
+        case .data: return Theme.green
+        case .about: return Theme.text2
+        }
     }
 }

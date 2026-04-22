@@ -17,8 +17,11 @@ struct GoalEditorSheet: View {
                 editorHeader
                 titleSection
                 metricSection
+                sessionTypeSection
+                measureSection
                 windowSection
                 targetSection
+                previewSection
                 notesSection
                 actionButtons
             }
@@ -27,6 +30,9 @@ struct GoalEditorSheet: View {
             .padding(.bottom, 18)
         }
         .background(Theme.bg.ignoresSafeArea())
+        .onChange(of: draft.metric) { _ in
+            draft.normalizeAggregation()
+        }
     }
 
     private var editorHeader: some View {
@@ -59,6 +65,28 @@ struct GoalEditorSheet: View {
                 MetricGroupSection(title: "Grow", subtitle: "Goals you want to lift", accent: Theme.teal, metrics: growthMetrics, selectedMetric: $draft.metric)
                 MetricGroupSection(title: "Trim", subtitle: "Goals you want to bring down", accent: Theme.amber, metrics: trimMetrics, selectedMetric: $draft.metric)
             }
+        }
+    }
+
+    private var measureSection: some View {
+        Group {
+            if draft.metric.supportsValueStyle {
+                GoalEditorCard(title: "Measure") {
+                    VStack(alignment: .leading, spacing: 10) {
+                        SegmentedRow(items: GoalValueStyle.allCases, selection: $draft.valueStyle) { $0.label }
+
+                        if draft.valueStyle == .average {
+                            SegmentedRow(items: GoalAverageBasis.allCases, selection: $draft.averageBasis) { $0.label }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var sessionTypeSection: some View {
+        GoalEditorCard(title: "Session type") {
+            SegmentedRow(items: GoalSessionScope.allCases, selection: $draft.sessionScope) { $0.label }
         }
     }
 
@@ -174,6 +202,7 @@ struct GoalEditorSheet: View {
                 .datePickerStyle(.graphical)
                 .labelsHidden()
                 .tint(Theme.purple)
+                .frame(maxWidth: .infinity, minHeight: 330, alignment: .top)
                 .padding(10)
                 .background(Theme.panel2)
                 .cornerRadius(10)
@@ -216,6 +245,15 @@ struct GoalEditorSheet: View {
             .background(Theme.panel2)
             .cornerRadius(10)
             .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
+        }
+    }
+
+    private var previewSection: some View {
+        GoalEditorCard(title: "Plain English") {
+            Text(previewText)
+                .font(.caption)
+                .foregroundColor(Theme.text2)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -273,5 +311,17 @@ struct GoalEditorSheet: View {
 
     private var trimMetrics: [GoalMetric] {
         GoalMetric.allCases.filter { $0.direction == .reduce }
+    }
+
+    private var previewText: String {
+        let draftGoal = Goal(title: draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "This goal" : draft.title,
+                             metric: draft.metric,
+                             target: draft.target,
+                             window: draft.window,
+                             valueStyle: draft.valueStyle,
+                             averageBasis: draft.averageBasis,
+                             sessionScope: draft.sessionScope,
+                             notes: draft.notes)
+        return draftGoal.plainEnglishSummary
     }
 }

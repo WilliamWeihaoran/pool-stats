@@ -17,7 +17,7 @@ struct LogView: View {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.top, 2)
+            .padding(.top, 0)
             .padding(.bottom, 12)
         }
         .background(Theme.bg)

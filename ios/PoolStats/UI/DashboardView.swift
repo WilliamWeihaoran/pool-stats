@@ -4,9 +4,11 @@ import UniformTypeIdentifiers
 
 struct DashboardView: View {
     @EnvironmentObject private var store: DataStore
+    @EnvironmentObject private var opponentStore: OpponentStore
     @State private var timeFilter: TimeFilter = .all
     @State private var mode: ModeFilter = .all
     @State private var opponentFilter: String = "All opponents"
+    @State private var activePickerID: String? = nil
     @State private var shotGame: String = "8ball"
     @State private var wlGame: String = "8ball"
     @State private var outcomeTarget: OutcomeTarget = .match
@@ -22,23 +24,26 @@ struct DashboardView: View {
     private let shotColors: [Color] = [Theme.red, Theme.red, Theme.amber, Theme.blue, Theme.teal, Theme.purple, Theme.green]
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                header
-                headerFilters
-                statGrid
-                if !isPracticeMode { trendSection }
-                mistakesSection
-                if !isPracticeMode { wlSection }
-                if !isPracticeMode { outcomesSection }
-                skillSection
-                if !isPracticeMode { fargoSection }
-                insightsSection
-                exportImportSection
+        ZStack {
+            ScrollView {
+                VStack(spacing: 12) {
+                    header
+                    headerFilters
+                    statGrid
+                    if !isPracticeMode { trendSection }
+                    mistakesSection
+                    if !isPracticeMode { wlSection }
+                    if !isPracticeMode { outcomesSection }
+                    skillSection
+                    if !isPracticeMode { fargoSection }
+                    insightsSection
+                    exportImportSection
+                }
+                .padding(.horizontal, Layout.pagePadding)
+                .padding(.top, 0)
+                .padding(.bottom, 10)
             }
-            .padding(.horizontal, Layout.pagePadding)
-            .padding(.top, 8)
-            .padding(.bottom, 10)
+            pickerOverlay
         }
         .background(Theme.bg)
         .fileExporter(isPresented: $showExporter, document: exportDocument, contentType: .json, defaultFilename: "pool.json") { _ in }
@@ -74,6 +79,32 @@ struct DashboardView: View {
         .alert("Import failed.", isPresented: $showImportError) {
             Button("OK", role: .cancel) { }
         }
+        .task {
+            opponentStore.sync(with: store.sessions)
+        }
+    }
+
+    @ViewBuilder
+    private var pickerOverlay: some View {
+        if activePickerID == "dashboard.time" {
+            OverlayPickerPanel(title: "Time",
+                               items: TimeFilter.allCases,
+                               selection: $timeFilter,
+                               label: { $0.label },
+                               onDismiss: { activePickerID = nil })
+        } else if activePickerID == "dashboard.mode" {
+            OverlayPickerPanel(title: "Mode",
+                               items: ModeFilter.allCases,
+                               selection: $mode,
+                               label: { $0.label },
+                               onDismiss: { activePickerID = nil })
+        } else if activePickerID == "dashboard.opponent" {
+            OverlayPickerPanel(title: "Opponent",
+                               items: opponentOptions,
+                               selection: $opponentFilter,
+                               label: { $0 },
+                               onDismiss: { activePickerID = nil })
+        }
     }
 
     private var header: some View {
@@ -90,7 +121,7 @@ struct DashboardView: View {
     private var filteredSessions: [Session] {
         var rows = Analytics.filteredSessions(store.sessions, timeFilter: timeFilter, mode: mode)
         if opponentFilter != "All opponents" {
-            rows = rows.filter { $0.opponent == opponentFilter }
+            rows = rows.filter { opponentStore.matches($0.opponent, selected: opponentFilter) }
         }
         return rows
     }
@@ -112,33 +143,40 @@ struct DashboardView: View {
     }
 
     private var headerFilters: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 10) {
-                FilterMenuButton(title: "Time", items: TimeFilter.allCases, selection: $timeFilter) { $0.label }
-                FilterMenuButton(title: "Mode", items: ModeFilter.allCases, selection: $mode) { $0.label }
+        VStack(spacing: 6) {
+            HStack(spacing: 8) {
+                InlinePickerCard(id: "dashboard.time",
+                                 title: "Time",
+                                 items: TimeFilter.allCases,
+                                 selection: $timeFilter,
+                                 activeID: $activePickerID) { $0.label }
+                InlinePickerCard(id: "dashboard.mode",
+                                 title: "Mode",
+                                 items: ModeFilter.allCases,
+                                 selection: $mode,
+                                 activeID: $activePickerID) { $0.label }
             }
             if !opponentOptions.isEmpty {
-                FilterMenuButton(title: "Opponent", items: opponentOptions, selection: $opponentFilter) { $0 }
+                InlinePickerCard(id: "dashboard.opponent",
+                                 title: "Opponent",
+                                 items: opponentOptions,
+                                 selection: $opponentFilter,
+                                 activeID: $activePickerID) { $0 }
             }
         }
     }
 
     private var opponentOptions: [String] {
-        let names = store.sessions
-            .map(\.opponent)
-            .map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { !$0.isEmpty }
-        let unique = Array(NSOrderedSet(array: names)) as? [String] ?? []
-        return ["All opponents"] + unique
+        opponentStore.availableNames(from: store.sessions)
     }
 
     private var statGrid: some View {
         let sessionsCount = filteredSessions.count
         let racksCount = allRacks.count
 
-        return LazyVGrid(columns: Layout.twoColumn(), spacing: Layout.gridSpacing) {
-            StatCard(label: "Sessions", value: sessionsCount == 0 ? "—" : String(sessionsCount))
-            StatCard(label: "Racks", value: racksCount == 0 ? "—" : String(racksCount))
+        return HStack(spacing: 8) {
+            DashboardKPI(label: "Sessions", value: sessionsCount == 0 ? "—" : String(sessionsCount))
+            DashboardKPI(label: "Racks", value: racksCount == 0 ? "—" : String(racksCount))
         }
     }
 
@@ -385,5 +423,27 @@ struct DashboardView: View {
         case 2: return Theme.red
         default: return Theme.purple
         }
+    }
+}
+
+private struct DashboardKPI: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.callout)
+                .foregroundColor(Theme.muted)
+            Text(value)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundColor(Theme.text)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+        .background(Theme.panel)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
     }
 }

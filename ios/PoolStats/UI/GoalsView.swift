@@ -20,10 +20,9 @@ struct GoalsView: View {
                     if archivedGoals.isEmpty == false {
                         archivedSection
                     }
-                    addSection
                 }
                 .padding(.horizontal, Layout.pagePadding)
-                .padding(.top, 8)
+                .padding(.top, 0)
                 .padding(.bottom, 12)
             }
             .background(Theme.bg)
@@ -78,6 +77,9 @@ struct GoalsView: View {
                     next.metric = updated.metric
                     next.window = updated.window
                     next.target = updated.target
+                    next.valueStyle = updated.valueStyle
+                    next.averageBasis = updated.averageBasis
+                    next.sessionScope = updated.sessionScope
                     next.notes = updated.notes
                     goalsStore.update(next)
                 } else {
@@ -93,6 +95,18 @@ struct GoalsView: View {
                 .font(.title.bold())
                 .foregroundColor(Theme.text)
             Spacer(minLength: 0)
+            Button {
+                editorDraft = GoalDraft()
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Theme.text)
+                    .frame(width: 34, height: 34)
+                    .background(Theme.panel2)
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Theme.border, lineWidth: 0.5))
+            }
+            .buttonStyle(.plain)
         }
         .padding(.top, 4)
         .padding(.horizontal, 2)
@@ -101,17 +115,10 @@ struct GoalsView: View {
     private var overviewSection: some View {
         let active = activeGoals
         let complete = active.filter { isComplete($0) }.count
-        return VStack(alignment: .leading, spacing: 10) {
-            Text("Overview")
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(Theme.text2)
-                .padding(.horizontal, 2)
-            LazyVGrid(columns: Layout.fourColumn(), spacing: Layout.gridSpacing) {
-                StatCard(label: "Active", value: "\(active.count)")
-                StatCard(label: "Complete", value: "\(complete)")
-                StatCard(label: "Archived", value: "\(archivedGoals.count)")
-                StatCard(label: "Sessions", value: "\(store.sessions.count)")
-            }
+        return LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
+            StatCard(label: "Active", value: "\(active.count)")
+            StatCard(label: "Complete", value: "\(complete)")
+            StatCard(label: "Archived", value: "\(archivedGoals.count)")
         }
     }
 
@@ -138,82 +145,44 @@ struct GoalsView: View {
     }
 
     private var archivedSection: some View {
-        SectionCard(title: "Archived") {
-            VStack(spacing: 10) {
-                Toggle(isOn: $showArchived) {
-                    Text("Show archived goals")
-                        .font(.caption)
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showArchived.toggle()
+                }
+            } label: {
+                HStack(spacing: 10) {
+                    Text("Archived goals")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.text2)
+                    Spacer(minLength: 0)
+                    Text("\(archivedGoals.count)")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.text2)
+                    Image(systemName: showArchived ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(Theme.text2)
                 }
-                .tint(Theme.purple)
-
-                if showArchived {
-                    VStack(spacing: 10) {
-                        ForEach(archivedGoals) { goal in
-                            GoalCard(goal: goal,
-                                     currentValue: currentValue(for: goal),
-                                     isComplete: isComplete(goal),
-                                     archived: true,
-                                     onEdit: { editorDraft = GoalDraft(goal: goal) },
-                                     onMore: { actionGoal = goal })
-                        }
-                    }
-                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Theme.bg)
+                .cornerRadius(12)
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
             }
-        }
-    }
+            .buttonStyle(.plain)
 
-    private var addSection: some View {
-        SectionCard(title: "Start here") {
-            VStack(alignment: .leading, spacing: 10) {
+            if showArchived {
                 VStack(spacing: 10) {
-                    ForEach(Self.templates) { template in
-                        Button {
-                            editorDraft = GoalDraft(template: template)
-                        } label: {
-                            HStack(spacing: 10) {
-                                Text(template.title)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundColor(Theme.text)
-                                Spacer(minLength: 0)
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(Theme.purple)
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Theme.panel2)
-                            .cornerRadius(12)
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
-                        }
-                        .buttonStyle(.plain)
+                    ForEach(archivedGoals) { goal in
+                        GoalCard(goal: goal,
+                                 currentValue: currentValue(for: goal),
+                                 isComplete: isComplete(goal),
+                                 archived: true,
+                                 onEdit: { editorDraft = GoalDraft(goal: goal) },
+                                 onMore: { actionGoal = goal })
                     }
                 }
-
-                Button {
-                    editorDraft = GoalDraft()
-                } label: {
-                    HStack {
-                        Image(systemName: "plus")
-                        Text("Create custom goal")
-                        Spacer()
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(Theme.text)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(Theme.panel2)
-                    .cornerRadius(12)
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
-                }
-                .buttonStyle(.plain)
-
-                Button("Restore starter goals") {
-                    goalsStore.resetToSamples()
-                }
-                .font(.caption.weight(.medium))
-                .buttonStyle(.bordered)
-                .tint(Theme.purple)
             }
         }
     }
@@ -240,8 +209,7 @@ struct GoalsView: View {
     }
 
     private func currentValue(for goal: Goal) -> Double {
-        let sessions = goal.window.apply(to: store.sessions, createdAt: goal.createdAt)
-        return goal.metric.value(from: sessions)
+        goal.currentValue(from: store.sessions)
     }
 
     private func isComplete(_ goal: Goal) -> Bool {
@@ -263,13 +231,4 @@ struct GoalsView: View {
         }
     }
 
-    private static let templates: [GoalTemplate] = [
-        GoalTemplate(title: "Open conversion to 55%", metric: .conversionRate, window: .rolling(.init(amount: 30, unit: .sessions)), target: 55),
-        GoalTemplate(title: "Match win rate above 60%", metric: .matchWinRate, window: .rolling(.init(amount: 10, unit: .sessions)), target: 60),
-        GoalTemplate(title: "Miss errors under 8", metric: .missErrors, window: .rolling(.init(amount: 30, unit: .sessions)), target: 8),
-        GoalTemplate(title: "Positional errors under 6", metric: .positionalErrors, window: .rolling(.init(amount: 30, unit: .sessions)), target: 6),
-        GoalTemplate(title: "Average rating 7.0+", metric: .averagePerformance, window: .rolling(.init(amount: 10, unit: .sessions)), target: 7),
-        GoalTemplate(title: "Record 4+ runouts", metric: .runouts, window: .rolling(.init(amount: 30, unit: .sessions)), target: 4),
-        GoalTemplate(title: "Break-and-runs: 2+", metric: .breakAndRuns, window: .rolling(.init(amount: 30, unit: .sessions)), target: 2)
-    ]
 }

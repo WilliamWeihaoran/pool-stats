@@ -48,6 +48,8 @@
 		AA1000010000000000000027 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000002A /* Cards.swift */; };
 		AA1000010000000000000028 /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000002B /* Controls.swift */; };
 		AA1000010000000000000029 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000002C /* Layout.swift */; };
+		AA100001000000000000002D /* OpponentStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000002D /* OpponentStore.swift */; };
+		AA100001000000000000002E /* OpponentManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000002E /* OpponentManagementView.swift */; };
 		AA1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -97,6 +99,8 @@
 		AA200001000000000000002A /* Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cards.swift; sourceTree = "<group>"; };
 		AA200001000000000000002B /* Controls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controls.swift; sourceTree = "<group>"; };
 		AA200001000000000000002C /* Layout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Layout.swift; sourceTree = "<group>"; };
+		AA200001000000000000002D /* OpponentStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpponentStore.swift; sourceTree = "<group>"; };
+		AA200001000000000000002E /* OpponentManagementView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpponentManagementView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -157,6 +161,7 @@
 				AA200001000000000000001C /* AnalyticsMath.swift */,
 				AA2000010000000000000014 /* SampleData.swift */,
 				AA200001000000000000001E /* AppFormatters.swift */,
+				AA200001000000000000002D /* OpponentStore.swift */,
 				AA2000010000000000000020 /* Goals.swift */,
 				AA2000010000000000000022 /* GoalWindow.swift */,
 				AA2000010000000000000023 /* GoalMetric.swift */,
@@ -188,6 +193,7 @@
 				AA200001000000000000002C /* Layout.swift */,
 				AA200001000000000000001F /* SettingsView.swift */,
 				AA2000010000000000000028 /* SettingsDetailView.swift */,
+				AA200001000000000000002E /* OpponentManagementView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -310,6 +316,8 @@
 				AA1000010000000000000027 /* Cards.swift in Sources */,
 				AA1000010000000000000028 /* Controls.swift in Sources */,
 				AA1000010000000000000029 /* Layout.swift in Sources */,
+				AA100001000000000000002D /* OpponentStore.swift in Sources */,
+				AA100001000000000000002E /* OpponentManagementView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -35,7 +35,9 @@ struct RootView: View {
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             AppTabBar(selection: $selectedTab)
+                .id("tabbar-\(themeStore.selectedTheme.rawValue)")
         }
+        .id("root-theme-\(themeStore.selectedTheme.rawValue)")
         .background(Theme.bg.ignoresSafeArea())
         .preferredColorScheme(themeStore.selectedTheme.scheme)
     }

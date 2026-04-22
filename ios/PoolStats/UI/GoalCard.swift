@@ -51,9 +51,20 @@ struct GoalCard: View {
                                 .cornerRadius(999)
                         }
                     }
-                    Text("\(goal.metric.label) · \(goal.window.label)")
-                        .font(.caption2)
-                        .foregroundColor(Theme.muted)
+                    HStack(spacing: 8) {
+                        Text(goal.window.label)
+                            .font(.caption2)
+                            .foregroundColor(Theme.muted)
+                            .lineLimit(1)
+                        Spacer(minLength: 0)
+                        Text(goal.sessionScope.label)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundColor(scopeColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(scopeColor.opacity(0.14))
+                            .cornerRadius(999)
+                    }
                 }
                 Spacer(minLength: 0)
                 Button(action: onMore) {
@@ -65,11 +76,11 @@ struct GoalCard: View {
             }
 
             HStack {
-                Text(goal.metric.format(currentValue))
+                Text(goal.metric.format(currentValue, style: goal.valueStyle, basis: goal.averageBasis))
                     .font(.headline)
                     .foregroundColor(archived ? Theme.text2 : barColor)
                 Spacer()
-                Text("Target \(goal.metric.format(goal.target))")
+                Text("Target \(goal.metric.format(goal.target, style: goal.valueStyle, basis: goal.averageBasis))")
                     .font(.caption.weight(.medium))
                     .foregroundColor(Theme.text2)
             }
@@ -87,5 +98,13 @@ struct GoalCard: View {
         if goal.completedAt != nil { return "Completed" }
         if archived { return "Archived" }
         return nil
+    }
+
+    private var scopeColor: Color {
+        switch goal.sessionScope {
+        case .all: return Theme.text2
+        case .match: return Theme.teal
+        case .practice: return Theme.amber
+        }
     }
 }
