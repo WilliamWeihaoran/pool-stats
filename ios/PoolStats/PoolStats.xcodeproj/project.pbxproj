@@ -35,8 +35,19 @@
 		AA100001000000000000001A /* SessionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000001D /* SessionService.swift */; };
 		AA100001000000000000001B /* AppFormatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000001E /* AppFormatters.swift */; };
 		AA100001000000000000001C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000001F /* SettingsView.swift */; };
+		AA1000010000000000000025 /* SettingsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000028 /* SettingsDetailView.swift */; };
 		AA100001000000000000001D /* Goals.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000020 /* Goals.swift */; };
 		AA100001000000000000001E /* GoalsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000021 /* GoalsView.swift */; };
+		AA100001000000000000001F /* GoalWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000022 /* GoalWindow.swift */; };
+		AA1000010000000000000020 /* GoalMetric.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000023 /* GoalMetric.swift */; };
+		AA1000010000000000000021 /* GoalsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000024 /* GoalsStore.swift */; };
+		AA1000010000000000000022 /* GoalCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000025 /* GoalCard.swift */; };
+		AA1000010000000000000023 /* GoalOverlays.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000026 /* GoalOverlays.swift */; };
+		AA1000010000000000000024 /* GoalEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000027 /* GoalEditorSheet.swift */; };
+		AA1000010000000000000026 /* GoalEditorSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000029 /* GoalEditorSupport.swift */; };
+		AA1000010000000000000027 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000002A /* Cards.swift */; };
+		AA1000010000000000000028 /* Controls.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000002B /* Controls.swift */; };
+		AA1000010000000000000029 /* Layout.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000002C /* Layout.swift */; };
 		AA1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -73,8 +84,19 @@
 		AA200001000000000000001D /* SessionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionService.swift; sourceTree = "<group>"; };
 		AA200001000000000000001E /* AppFormatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppFormatters.swift; sourceTree = "<group>"; };
 		AA200001000000000000001F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA2000010000000000000028 /* SettingsDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsDetailView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000020 /* Goals.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Goals.swift; sourceTree = "<group>"; };
 		AA2000010000000000000021 /* GoalsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsView.swift; sourceTree = "<group>"; };
+		AA2000010000000000000022 /* GoalWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalWindow.swift; sourceTree = "<group>"; };
+		AA2000010000000000000023 /* GoalMetric.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalMetric.swift; sourceTree = "<group>"; };
+		AA2000010000000000000024 /* GoalsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalsStore.swift; sourceTree = "<group>"; };
+		AA2000010000000000000025 /* GoalCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalCard.swift; sourceTree = "<group>"; };
+		AA2000010000000000000026 /* GoalOverlays.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalOverlays.swift; sourceTree = "<group>"; };
+		AA2000010000000000000027 /* GoalEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalEditorSheet.swift; sourceTree = "<group>"; };
+		AA2000010000000000000029 /* GoalEditorSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalEditorSupport.swift; sourceTree = "<group>"; };
+		AA200001000000000000002A /* Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cards.swift; sourceTree = "<group>"; };
+		AA200001000000000000002B /* Controls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Controls.swift; sourceTree = "<group>"; };
+		AA200001000000000000002C /* Layout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Layout.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -136,6 +158,9 @@
 				AA2000010000000000000014 /* SampleData.swift */,
 				AA200001000000000000001E /* AppFormatters.swift */,
 				AA2000010000000000000020 /* Goals.swift */,
+				AA2000010000000000000022 /* GoalWindow.swift */,
+				AA2000010000000000000023 /* GoalMetric.swift */,
+				AA2000010000000000000024 /* GoalsStore.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -154,7 +179,15 @@
 				AA200001000000000000000F /* SummaryView.swift */,
 				AA2000010000000000000010 /* DashboardView.swift */,
 				AA2000010000000000000021 /* GoalsView.swift */,
+				AA2000010000000000000025 /* GoalCard.swift */,
+				AA2000010000000000000026 /* GoalOverlays.swift */,
+				AA2000010000000000000027 /* GoalEditorSheet.swift */,
+				AA2000010000000000000029 /* GoalEditorSupport.swift */,
+				AA200001000000000000002A /* Cards.swift */,
+				AA200001000000000000002B /* Controls.swift */,
+				AA200001000000000000002C /* Layout.swift */,
 				AA200001000000000000001F /* SettingsView.swift */,
+				AA2000010000000000000028 /* SettingsDetailView.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -266,6 +299,17 @@
 				AA100001000000000000001C /* SettingsView.swift in Sources */,
 				AA100001000000000000001D /* Goals.swift in Sources */,
 				AA100001000000000000001E /* GoalsView.swift in Sources */,
+				AA100001000000000000001F /* GoalWindow.swift in Sources */,
+				AA1000010000000000000020 /* GoalMetric.swift in Sources */,
+				AA1000010000000000000021 /* GoalsStore.swift in Sources */,
+				AA1000010000000000000022 /* GoalCard.swift in Sources */,
+				AA1000010000000000000023 /* GoalOverlays.swift in Sources */,
+				AA1000010000000000000024 /* GoalEditorSheet.swift in Sources */,
+				AA1000010000000000000026 /* GoalEditorSupport.swift in Sources */,
+				AA1000010000000000000025 /* SettingsDetailView.swift in Sources */,
+				AA1000010000000000000027 /* Cards.swift in Sources */,
+				AA1000010000000000000028 /* Controls.swift in Sources */,
+				AA1000010000000000000029 /* Layout.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

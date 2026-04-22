@@ -1,7 +1,7 @@
 # CLAUDE.md
 
 This repository contains `pool-stats`, a native SwiftUI iOS app for logging pool matches and practice sessions, syncing data with CloudKit, and surfacing analytics in Dashboard / Log / History.
-The app also has a custom bottom nav bar, a Me tab, and a Settings tab with theme selection.
+The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings tab with theme selection.
 
 ## Scope
 
@@ -14,9 +14,9 @@ The app also has a custom bottom nav bar, a Me tab, and a Settings tab with them
 - Open `ios/PoolStats/PoolStats.xcodeproj` in Xcode.
 - Use `xcodebuild` for verification:
 ```bash
-/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project ios/PoolStats/PoolStats.xcodeproj -scheme PoolStats -destination 'generic/platform=iOS Simulator' build
+/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -project ios/PoolStats/PoolStats.xcodeproj -scheme PoolStats -destination 'generic/platform=iOS' -derivedDataPath /tmp/poolstats-derived CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 ```
-- The build currently succeeds with a recurring headermap warning; treat that warning as non-blocking unless it becomes a real issue.
+- The build currently succeeds; if local DerivedData permissions get in the way, prefer the `/tmp/poolstats-derived` path above.
 - After meaningful edits, run the `xcodebuild` command above to catch regressions.
 
 ## App Architecture
@@ -56,9 +56,11 @@ The app also has a custom bottom nav bar, a Me tab, and a Settings tab with them
   - `Result`
 - `Break` combines who broke and break quality.
 - `Runout at first visit` lives inside the Result section and is the conversion tracker.
+- The end-session confirmation supports Save, Cancel, and Discard.
 - Unselected layout and break buttons are intentionally faint.
 - The save gate requires the key rack fields to be set before a rack can be saved.
 - The session summary is shared by both History and the post-session view.
+- Session summary timing shows raw time and adjusted time with a 45-second rack buffer.
 
 ## Stats Rules
 
@@ -86,6 +88,11 @@ The app also has a custom bottom nav bar, a Me tab, and a Settings tab with them
   - the app’s native JSON format
   - the legacy `index.html` session structure
 - The app currently uses iCloud-only identity for sync; Sign in with Apple is a future enhancement to consider later, not a current requirement.
+- The app tabs are currently Dashboard, Log, History, Goals, and Settings.
+- Settings is a drill-in list with Me, Stats, Recent form, Appearance, Data, and About sections.
+- Goals has a custom action panel with Edit, Complete, Archive/Reset, and Delete, plus a celebration/reset flow.
+- Goal editor metrics are split into Grow and Trim groups.
+- Rolling goal windows use a slider with quick-set chips; due dates use a graphical date picker.
 
 ## Editing Notes
 
@@ -93,4 +100,6 @@ The app also has a custom bottom nav bar, a Me tab, and a Settings tab with them
 - Prefer small, high-signal logging controls over dense “all mistakes” screens.
 - When touching analytics, update Dashboard and Summary together so labels and logic stay aligned.
 - Keep the custom bottom nav bar anchored to the bottom and visually restrained.
+- If you touch Goals, keep the custom action panel, completion flow, and reset target nudging in sync with the model.
+- If you touch Settings, keep the drill-in section list and detail pages aligned with the current tabs.
 - After meaningful edits, run the `xcodebuild` command above to catch regressions.

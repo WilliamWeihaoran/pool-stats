@@ -1,6 +1,6 @@
 # pool-stats
 
-Pool Stats is a native iOS app for logging pool sessions and turning them into actionable stats. It is built in SwiftUI and uses CloudKit plus a local JSON cache for persistence. The app now includes a custom bottom nav, a dedicated Me tab, and a Settings page with theme choices.
+Pool Stats is a native iOS app for logging pool sessions and turning them into actionable stats. It is built in SwiftUI and uses CloudKit plus a local JSON cache for persistence. The app now includes a custom bottom nav, a Goals tab, and a drill-in Settings page with theme choices.
 
 ---
 
@@ -30,6 +30,7 @@ That gives you enough detail to improve your game without forcing you to record 
 - Backdated sessions are supported
 - Session and rack timers are tracked for current sessions
 - Session summary includes a drag-to-rate performance control
+- Session summary also shows raw time and adjusted time with a 45-second rack buffer
 
 **Dashboard analytics**
 - Win rate over time
@@ -51,9 +52,16 @@ That gives you enough detail to improve your game without forcing you to record 
 
 **Navigation / Settings**
 - Custom bottom navigation bar
-- Dashboard, Log, History, Me, and Settings tabs
+- Dashboard, Log, History, Goals, and Settings tabs
 - Four theme presets: two dark, two light
-- Settings page for appearance and sync-related actions
+- Settings is split into drill-in sections for Me, Stats, Recent form, Appearance, Data, and About
+
+**Goals**
+- Custom goal cards with completion, archive, edit, delete, and reset actions
+- Grow vs Trim metric grouping
+- Rolling time frames or due dates
+- Goal completion celebration and reset suggestions
+- Goal metrics stay tied to the stats already tracked in the app
 
 **Storage**
 - Primary sync is CloudKit private database under the app’s iCloud container
@@ -68,8 +76,8 @@ Open `ios/PoolStats/PoolStats.xcodeproj` in Xcode, select a simulator or device,
 - **Dashboard** — stats and charts
 - **Log** — start a new session
 - **History** — browse and manage past sessions
-- **Me** — personal summary and performance snapshot
-- **Settings** — theme selection and app actions
+- **Goals** — track long-term training targets
+- **Settings** — personal summary, appearance, sync, and app actions
 
 To move data between devices or keep a backup, use the JSON export/import flow.
 
