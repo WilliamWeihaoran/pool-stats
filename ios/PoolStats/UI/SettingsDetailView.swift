@@ -1,11 +1,17 @@
 import SwiftUI
+import AuthenticationServices
 
 struct SettingsDetailView: View {
     let section: SettingsSection
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
     @EnvironmentObject private var themeStore: ThemeStore
+    @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var goalsStore: GoalsStore
+    @EnvironmentObject private var profileStore: PlayerProfileStore
     @Environment(\.dismiss) private var dismiss
+    @State private var baselineFargoText: String = ""
+    @State private var pendingDedication: DedicationLevel?
 
     var body: some View {
         ScrollView {
@@ -20,6 +26,28 @@ struct SettingsDetailView: View {
         .background(Theme.bg)
         .task {
             opponentStore.sync(with: store.sessions)
+            baselineFargoText = "\(profileStore.profile.clampedBaseline)"
+        }
+        .alert("Regenerate starter goals?", isPresented: Binding(
+            get: { pendingDedication != nil },
+            set: { if !$0 { pendingDedication = nil } }
+        )) {
+            Button("Keep current goals", role: .cancel) {
+                if let next = pendingDedication {
+                    profileStore.updateProfile { $0.dedication = next }
+                }
+                pendingDedication = nil
+            }
+            Button("Regenerate") {
+                if let next = pendingDedication {
+                    profileStore.updateProfile { $0.dedication = next }
+                    let starter = goalsStore.starterGoals(from: profileStore.profile)
+                    goalsStore.applyStarterGoals(starter, replaceExistingStarter: true)
+                }
+                pendingDedication = nil
+            }
+        } message: {
+            Text("Use your new dedication level to regenerate starter-generated goals?")
         }
     }
 
@@ -78,12 +106,157 @@ struct SettingsDetailView: View {
     }
 
     private var meSection: some View {
-        SectionCard(title: "Me") {
-            VStack(spacing: 10) {
-                infoRow(label: "Favorite opponent", value: favoriteOpponent)
-                infoRow(label: "Biggest leak", value: Analytics.biggestLeakSummary(Analytics.matchRacks(store.sessions)))
-                infoRow(label: "Latest session", value: latestSessionText)
+        VStack(spacing: 12) {
+            SectionCard(title: "Player profile") {
+                VStack(alignment: .leading, spacing: 10) {
+                    profileRow(label: "Skill", content: {
+                        SegmentedRow(items: SkillLevel.allCases, selection: Binding(
+                            get: { profileStore.profile.skillLevel },
+                            set: { newValue in
+                                profileStore.updateProfile {
+                                    $0.skillLevel = newValue
+                                    $0.baselineFargo = newValue.defaultFargo
+                                }
+                                baselineFargoText = "\(profileStore.profile.clampedBaseline)"
+                            }
+                        )) { $0.label }
+                    })
+
+                    profileRow(label: "Baseline Fargo", content: {
+                        HStack(spacing: 8) {
+                            TextField("0-850", text: $baselineFargoText)
+                                .keyboardType(.numberPad)
+                                .multilineTextAlignment(.trailing)
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundColor(Theme.text)
+                                .onChange(of: baselineFargoText) { value in
+                                    let filtered = value.filter(\.isNumber)
+                                    if filtered != value { baselineFargoText = filtered }
+                                    profileStore.updateProfile {
+                                        $0.baselineFargo = min(max(Int(filtered) ?? 0, 0), 850)
+                                    }
+                                }
+                            Text("0–850")
+                                .font(.caption2)
+                                .foregroundColor(Theme.muted)
+                        }
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 9)
+                        .background(Theme.panel2)
+                        .cornerRadius(10)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
+                    })
+
+                    profileRow(label: "Dedication", content: {
+                        SegmentedRow(items: DedicationLevel.allCases, selection: Binding(
+                            get: { profileStore.profile.dedication },
+                            set: { newValue in
+                                guard newValue != profileStore.profile.dedication else { return }
+                                pendingDedication = newValue
+                            }
+                        )) { $0.label }
+                    })
+
+                    profileRow(label: "Primary game", content: {
+                        SegmentedRow(items: PrimaryGame.allCases, selection: Binding(
+                            get: { profileStore.profile.primaryGame },
+                            set: { newValue in
+                                profileStore.updateProfile { $0.primaryGame = newValue }
+                            }
+                        )) { $0.label }
+                    })
+
+                    profileRow(label: "Frequency", content: {
+                        SegmentedRow(items: FrequencyBand.allCases, selection: Binding(
+                            get: { profileStore.profile.weeklyFrequencyBand },
+                            set: { newValue in
+                                profileStore.updateProfile { $0.weeklyFrequencyBand = newValue }
+                            }
+                        )) { $0.label }
+                    })
+
+                    Button {
+                        profileStore.requestRerunOnboarding()
+                        dismiss()
+                    } label: {
+                        Text("Re-run onboarding")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(Theme.purple)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Theme.purple.opacity(0.12))
+                            .cornerRadius(10)
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.purple.opacity(0.45), lineWidth: 0.8))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
+
+            SectionCard(title: "Account") {
+                VStack(alignment: .leading, spacing: 10) {
+                    infoRow(label: "Data sync", value: "iCloud account")
+                    infoRow(label: "Profile link", value: "Sign in with Apple")
+
+                    HStack(spacing: 6) {
+                        Image(systemName: authStore.isSignedIn ? "checkmark.circle.fill" : "minus.circle.fill")
+                            .foregroundColor(authStore.isSignedIn ? Theme.green : Theme.text2)
+                            .font(.caption)
+                        Text(authStore.isSignedIn ? "Auth linked" : "Not linked")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(Theme.text2)
+                    }
+
+                    if authStore.isSignedIn {
+                        infoRow(label: "Name", value: authStore.displayName ?? "—")
+                        infoRow(label: "Email", value: authStore.email ?? "—")
+                        infoRow(label: "Apple ID", value: authStore.maskedUserID)
+                        infoRow(label: "Last linked", value: authStore.lastAuthDate.map(AppFormatters.sessionDate) ?? "—")
+
+                        Button(role: .destructive) {
+                            authStore.signOutLocal()
+                        } label: {
+                            Text("Sign out")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Theme.red)
+                    } else {
+                        SignInWithAppleButton(.signIn) { request in
+                            authStore.signIn()
+                            request.requestedScopes = [.fullName, .email]
+                        } onCompletion: { result in
+                            authStore.signIn(result: result)
+                        }
+                        .signInWithAppleButtonStyle(.white)
+                        .frame(height: 44)
+                        .cornerRadius(10)
+                    }
+
+                    if let error = authStore.lastError, !error.isEmpty {
+                        Text(error)
+                            .font(.caption)
+                            .foregroundColor(Theme.amber)
+                    }
+                }
+            }
+
+            SectionCard(title: "Me") {
+                VStack(spacing: 10) {
+                    infoRow(label: "Favorite opponent", value: favoriteOpponent)
+                    infoRow(label: "Biggest leak", value: Analytics.biggestLeakSummary(Analytics.matchRacks(store.sessions)))
+                    infoRow(label: "Latest session", value: latestSessionText)
+                }
+            }
+        }
+    }
+
+    private func profileRow<Content: View>(label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(label)
+                .font(.caption)
+                .foregroundColor(Theme.muted)
+            content()
         }
     }
 
@@ -162,6 +335,14 @@ struct SettingsDetailView: View {
                     syncBadge
                 }
 
+                infoRow(label: "Sync health", value: syncHealthText)
+                infoRow(label: "Last cloud sync", value: lastCloudSyncText)
+                if let reason = store.lastSyncFailureReason, !reason.isEmpty {
+                    Text(reason)
+                        .font(.caption)
+                        .foregroundColor(Theme.amber)
+                }
+
                 Button("Restore sample data") {
                     Task { await store.restoreSampleData() }
                 }
@@ -231,6 +412,29 @@ struct SettingsDetailView: View {
         case .localOnly: return "Local cache active"
         case .error: return "Sync issue"
         }
+    }
+
+    private var syncHealthText: String {
+        if let reason = store.lastSyncFailureReason, !reason.isEmpty {
+            return "Needs attention"
+        }
+        if store.lastSyncSuccessAt != nil {
+            return "Healthy"
+        }
+        if store.lastSyncAttemptAt != nil {
+            return "Checking"
+        }
+        return "Unknown"
+    }
+
+    private var lastCloudSyncText: String {
+        if let last = store.lastSyncSuccessAt {
+            return AppFormatters.shortDateTime(last)
+        }
+        if let attempted = store.lastSyncAttemptAt {
+            return "Last attempt \(AppFormatters.shortDateTime(attempted))"
+        }
+        return "Never"
     }
 
     private var appName: String {

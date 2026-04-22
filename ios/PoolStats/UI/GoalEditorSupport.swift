@@ -18,6 +18,7 @@ struct GoalDraft: Identifiable {
     var averageBasis: GoalAverageBasis = .racks
     var sessionScope: GoalSessionScope = .all
     var notes: String = ""
+    var starterGenerated: Bool = false
     var windowMode: GoalWindowMode = .rolling
     var rollingAmount: Int = 30
     var rollingUnit: GoalWindowUnit = .sessions
@@ -36,6 +37,7 @@ struct GoalDraft: Identifiable {
         averageBasis = goal.averageBasis
         sessionScope = goal.sessionScope
         notes = goal.notes
+        starterGenerated = goal.starterGenerated
         switch goal.window {
         case .rolling(let rolling):
             windowMode = .rolling
@@ -56,6 +58,7 @@ struct GoalDraft: Identifiable {
         averageBasis = goal.averageBasis
         sessionScope = goal.sessionScope
         notes = goal.notes
+        starterGenerated = false
         switch goal.window {
         case .rolling(let rolling):
             windowMode = .rolling
@@ -78,6 +81,7 @@ struct GoalDraft: Identifiable {
         averageBasis = template.metric.defaultAverageBasis
         sessionScope = .all
         notes = ""
+        starterGenerated = false
         switch template.window {
         case .rolling(let rolling):
             windowMode = .rolling
@@ -119,7 +123,8 @@ struct GoalDraft: Identifiable {
              valueStyle: valueStyle,
              averageBasis: averageBasis,
              sessionScope: sessionScope,
-             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines))
+             notes: notes.trimmingCharacters(in: .whitespacesAndNewlines),
+             starterGenerated: starterGenerated)
     }
 
     static func defaultDueDate() -> Date {

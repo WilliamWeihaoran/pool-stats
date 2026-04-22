@@ -46,6 +46,6 @@ extension Analytics {
         }
 
         let rangeText = "\(fg - 25)–\(fg + 25)"
-        return FargoResult(rangeText: rangeText, factors: factors)
+        return FargoResult(estimatedScore: fg, rangeText: rangeText, factors: factors)
     }
 }

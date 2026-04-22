@@ -13,9 +13,10 @@ struct Goal: Identifiable, Codable, Hashable {
     var notes: String = ""
     var isArchived: Bool = false
     var completedAt: Date? = nil
+    var starterGenerated: Bool = false
 
     enum CodingKeys: String, CodingKey {
-        case id, title, metric, target, window, valueStyle, averageBasis, sessionScope, createdAt, notes, isArchived, completedAt
+        case id, title, metric, target, window, valueStyle, averageBasis, sessionScope, createdAt, notes, isArchived, completedAt, starterGenerated
     }
 
     init(id: UUID = UUID(),
@@ -29,7 +30,8 @@ struct Goal: Identifiable, Codable, Hashable {
          createdAt: Date = Date(),
          notes: String = "",
          isArchived: Bool = false,
-         completedAt: Date? = nil) {
+         completedAt: Date? = nil,
+         starterGenerated: Bool = false) {
         self.id = id
         self.title = title
         self.metric = metric
@@ -42,6 +44,7 @@ struct Goal: Identifiable, Codable, Hashable {
         self.notes = notes
         self.isArchived = isArchived
         self.completedAt = completedAt
+        self.starterGenerated = starterGenerated
     }
 
     init(from decoder: Decoder) throws {
@@ -60,6 +63,7 @@ struct Goal: Identifiable, Codable, Hashable {
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        starterGenerated = try container.decodeIfPresent(Bool.self, forKey: .starterGenerated) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -78,6 +82,7 @@ struct Goal: Identifiable, Codable, Hashable {
         try container.encode(notes, forKey: .notes)
         try container.encode(isArchived, forKey: .isArchived)
         try container.encodeIfPresent(completedAt, forKey: .completedAt)
+        try container.encode(starterGenerated, forKey: .starterGenerated)
     }
 }
 
@@ -85,7 +90,6 @@ struct Goal: Identifiable, Codable, Hashable {
 final class GoalsStore: ObservableObject {
     @Published var goals: [Goal] = []
 
-    private let seedKey = "poolstats.goals.seeded"
     private let localURL: URL
 
     init() {
@@ -93,7 +97,6 @@ final class GoalsStore: ObservableObject {
         let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
         localURL = dir.appendingPathComponent("goals.json")
         loadLocal()
-        seedIfNeeded()
     }
 
     func add(_ goal: Goal) {
@@ -128,15 +131,21 @@ final class GoalsStore: ObservableObject {
 
     func resetToSamples() {
         goals = Self.sampleGoals()
-        UserDefaults.standard.set(true, forKey: seedKey)
         saveLocal()
     }
 
-    private func seedIfNeeded() {
-        guard goals.isEmpty else { return }
-        if UserDefaults.standard.bool(forKey: seedKey) { return }
-        goals = Self.sampleGoals()
-        UserDefaults.standard.set(true, forKey: seedKey)
+    func applyStarterGoals(_ starterGoals: [Goal], replaceExistingStarter: Bool) {
+        let existingStarterIDs = Set(goals.filter(\.starterGenerated).map(\.id))
+        if replaceExistingStarter {
+            goals.removeAll { existingStarterIDs.contains($0.id) }
+            goals = starterGoals + goals
+            saveLocal()
+            return
+        }
+
+        let hasStarter = goals.contains(where: \.starterGenerated)
+        guard !hasStarter else { return }
+        goals = starterGoals + goals
         saveLocal()
     }
 
@@ -158,13 +167,13 @@ final class GoalsStore: ObservableObject {
 
     private static func sampleGoals() -> [Goal] {
         [
-            Goal(title: "Open layouts to 55%", metric: .conversionRate, target: 55, window: .rolling(.init(amount: 30, unit: .sessions)), sessionScope: .match),
-            Goal(title: "Match win rate above 70%", metric: .matchWinRate, target: 70, window: .rolling(.init(amount: 10, unit: .sessions)), sessionScope: .match),
-            Goal(title: "Keep positional errors under 6 per rack", metric: .positionalErrors, target: 6, window: .rolling(.init(amount: 100, unit: .racks)), valueStyle: .average, averageBasis: .racks, sessionScope: .practice),
-            Goal(title: "Record 100 runouts by year end", metric: .runouts, target: 100, window: .dueDate(Calendar.current.date(from: DateComponents(year: Calendar.current.component(.year, from: Date()), month: 12, day: 31)) ?? Date()), valueStyle: .cumulative),
-            Goal(title: "Average 2 break-and-runs per week", metric: .breakAndRuns, target: 2, window: .rolling(.init(amount: 1, unit: .weeks)), valueStyle: .average, averageBasis: .sessions, sessionScope: .match),
-            Goal(title: "Average performance 7.0+", metric: .averagePerformance, target: 7.0, window: .rolling(.init(amount: 10, unit: .sessions)), sessionScope: .all),
-            Goal(title: "Keep miss errors under 8 per rack", metric: .missErrors, target: 8, window: .rolling(.init(amount: 30, unit: .sessions)), valueStyle: .average, averageBasis: .racks, sessionScope: .practice)
+            Goal(title: "Open layouts to 55%", metric: .conversionRate, target: 55, window: .rolling(.init(amount: 30, unit: .sessions)), sessionScope: .match, starterGenerated: true),
+            Goal(title: "Match win rate above 70%", metric: .matchWinRate, target: 70, window: .rolling(.init(amount: 10, unit: .sessions)), sessionScope: .match, starterGenerated: true),
+            Goal(title: "Keep positional errors under 6 per rack", metric: .positionalErrors, target: 6, window: .rolling(.init(amount: 100, unit: .racks)), valueStyle: .average, averageBasis: .racks, sessionScope: .practice, starterGenerated: true),
+            Goal(title: "Record 100 runouts by year end", metric: .runouts, target: 100, window: .dueDate(Calendar.current.date(from: DateComponents(year: Calendar.current.component(.year, from: Date()), month: 12, day: 31)) ?? Date()), valueStyle: .cumulative, starterGenerated: true),
+            Goal(title: "Average 2 break-and-runs per week", metric: .breakAndRuns, target: 2, window: .rolling(.init(amount: 1, unit: .weeks)), valueStyle: .average, averageBasis: .sessions, sessionScope: .match, starterGenerated: true),
+            Goal(title: "Average performance 7.0+", metric: .averagePerformance, target: 7.0, window: .rolling(.init(amount: 10, unit: .sessions)), sessionScope: .all, starterGenerated: true),
+            Goal(title: "Keep miss errors under 8 per rack", metric: .missErrors, target: 8, window: .rolling(.init(amount: 30, unit: .sessions)), valueStyle: .average, averageBasis: .racks, sessionScope: .practice, starterGenerated: true)
         ]
     }
 }

@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct DashboardView: View {
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
+    @EnvironmentObject private var profileStore: PlayerProfileStore
     @State private var timeFilter: TimeFilter = .all
     @State private var mode: ModeFilter = .all
     @State private var opponentFilter: String = "All opponents"
@@ -332,10 +333,18 @@ struct DashboardView: View {
 
     private var fargoSection: some View {
         let fargo = Analytics.fargoResult(matchSessions: matchSessions)
+        let baseline = profileStore.profile.clampedBaseline
+        let performanceCenter = fargo.estimatedScore
+        let confidence = min(max(Double(matchRacks.count) / 200.0, 0), 1)
+        let blended = Int(round(Double(baseline) * (1 - confidence) + Double(performanceCenter) * confidence))
+        let blendedRange = "\(blended - 25)–\(blended + 25)"
         return SectionCard(title: "Fargo estimate") {
-            Text(fargo.rangeText)
+            Text(blendedRange)
                 .font(.largeTitle)
                 .foregroundColor(Theme.purple)
+            Text("Uses baseline + tracked performance")
+                .font(.caption2)
+                .foregroundColor(Theme.muted)
             VStack(spacing: 8) {
                 ForEach(fargo.factors) { f in
                     HStack {

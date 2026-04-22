@@ -15,12 +15,24 @@ enum AppFormatters {
         return df
     }()
 
+    private static let shortDateTimeFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.dateStyle = .medium
+        df.timeStyle = .short
+        return df
+    }()
+
     static func sessionDate(_ date: Date) -> String {
         sessionDateFormatter.string(from: date)
     }
 
     static func shortDate(_ date: Date) -> String {
         shortDateFormatter.string(from: date)
+    }
+
+    static func shortDateTime(_ date: Date) -> String {
+        shortDateTimeFormatter.string(from: date)
     }
 
     private static let dueDateFormatter: DateFormatter = {

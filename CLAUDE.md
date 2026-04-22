@@ -46,6 +46,15 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
 - `Rack.unforcedErrorCount` is the dashboard-facing aggregate for miss / positional / safety / foul errors.
 - `Session.performanceRating` is a 1-10 user rating set with a drag control on the summary screen.
 - `Session.opponent` stores the tracked opponent name when available.
+- `Goal` includes `starterGenerated` to distinguish app-generated starter goals from user-authored goals.
+- `PlayerProfile` stores onboarding/profile preferences:
+  - `hasCompletedOnboarding`
+  - `hasSeenLegacyPrompt`
+  - `skillLevel`
+  - `baselineFargo`
+  - `dedication`
+  - `primaryGame`
+  - `weeklyFrequencyBand`
 
 ## Logging Flow
 
@@ -57,6 +66,7 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
 - `Break` combines who broke and break quality.
 - `Runout at first visit` lives inside the Result section and is the conversion tracker.
 - The end-session confirmation supports Save, Cancel, and Discard.
+- Opponent selection on `Log a session` supports typeahead, quick-pick suggestions, and inline opponent creation.
 - Unselected layout and break buttons are intentionally faint.
 - The save gate requires the key rack fields to be set before a rack can be saved.
 - The session summary is shared by both History and the post-session view.
@@ -72,6 +82,10 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
 - Dashboard charts should read from the updated schema:
   - unforced errors = `miss` + `positional` + `safety` + `foul`
   - the win-rate trend chart should use a single cleaned series and date-based x-axis
+- Dashboard Fargo display is a blended estimate:
+  - baseline from `PlayerProfile.baselineFargo`
+  - performance center from analytics (`FargoResult.estimatedScore`)
+  - confidence ramps by tracked match racks (`count / 200`, clamped `0...1`)
 
 ## Session Timing
 
@@ -87,12 +101,25 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
 - JSON import supports both:
   - the app’s native JSON format
   - the legacy `index.html` session structure
-- The app currently uses iCloud-only identity for sync; Sign in with Apple is a future enhancement to consider later, not a current requirement.
+- Sign in with Apple is implemented as an optional profile link in `Settings → Me → Account`.
+- SIWA is intentionally independent from CloudKit sync and does not gate app usage.
+- Local sign-out clears auth identity metadata only and keeps sessions/history/cache untouched.
+- `PlayerProfileStore` is local app config persistence (UserDefaults JSON) and is independent from session sync.
 - The app tabs are currently Dashboard, Log, History, Goals, and Settings.
 - Settings is a drill-in list with Me, Stats, Recent form, Appearance, Data, and About sections.
 - Goals has a custom action panel with Edit, Complete, Archive/Reset, and Delete, plus a celebration/reset flow.
 - Goal editor metrics are split into Grow and Trim groups.
 - Rolling goal windows use a slider with quick-set chips; due dates use a graphical date picker.
+
+## Onboarding
+
+- Onboarding is optional and non-blocking.
+- Trigger behavior:
+  - New users: onboarding appears automatically until completed or skipped.
+  - Existing users: one-time legacy prompt offers personalization; “Not now” suppresses repeats.
+- On completion, user can choose to create starter goals immediately.
+- Starter goal regeneration (from Settings dedication changes) only replaces goals with `starterGenerated == true`.
+- “Re-run onboarding” is available in `Settings → Me`.
 
 ## Editing Notes
 

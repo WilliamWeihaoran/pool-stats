@@ -29,6 +29,7 @@ struct FargoFactor: Identifiable {
 }
 
 struct FargoResult {
+    let estimatedScore: Int
     let rangeText: String
     let factors: [FargoFactor]
 }
