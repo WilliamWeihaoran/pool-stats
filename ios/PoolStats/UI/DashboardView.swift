@@ -6,6 +6,7 @@ struct DashboardView: View {
     @EnvironmentObject private var store: DataStore
     @State private var timeFilter: TimeFilter = .all
     @State private var mode: ModeFilter = .all
+    @State private var opponentFilter: String = "All opponents"
     @State private var shotGame: String = "8ball"
     @State private var wlGame: String = "8ball"
     @State private var outcomeTarget: OutcomeTarget = .match
@@ -23,6 +24,7 @@ struct DashboardView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
+                header
                 headerFilters
                 statGrid
                 if !isPracticeMode { trendSection }
@@ -35,12 +37,10 @@ struct DashboardView: View {
                 exportImportSection
             }
             .padding(.horizontal, Layout.pagePadding)
-            .padding(.top, 4)
+            .padding(.top, 8)
             .padding(.bottom, 10)
         }
         .background(Theme.bg)
-        .navigationTitle("Pool Stats")
-        .navigationBarTitleDisplayMode(.inline)
         .fileExporter(isPresented: $showExporter, document: exportDocument, contentType: .json, defaultFilename: "pool.json") { _ in }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
             switch result {
@@ -76,8 +76,23 @@ struct DashboardView: View {
         }
     }
 
+    private var header: some View {
+        HStack {
+            Text("Dashboard")
+                .font(.title.bold())
+                .foregroundColor(Theme.text)
+            Spacer(minLength: 0)
+        }
+        .padding(.top, 4)
+        .padding(.horizontal, 2)
+    }
+
     private var filteredSessions: [Session] {
-        Analytics.filteredSessions(store.sessions, timeFilter: timeFilter, mode: mode)
+        var rows = Analytics.filteredSessions(store.sessions, timeFilter: timeFilter, mode: mode)
+        if opponentFilter != "All opponents" {
+            rows = rows.filter { $0.opponent == opponentFilter }
+        }
+        return rows
     }
 
     private var allRacks: [Rack] {
@@ -97,23 +112,33 @@ struct DashboardView: View {
     }
 
     private var headerFilters: some View {
-        HStack(spacing: 10) {
-            FilterMenuButton(title: "Time", items: TimeFilter.allCases, selection: $timeFilter) { $0.label }
-            FilterMenuButton(title: "Mode", items: ModeFilter.allCases, selection: $mode) { $0.label }
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                FilterMenuButton(title: "Time", items: TimeFilter.allCases, selection: $timeFilter) { $0.label }
+                FilterMenuButton(title: "Mode", items: ModeFilter.allCases, selection: $mode) { $0.label }
+            }
+            if !opponentOptions.isEmpty {
+                FilterMenuButton(title: "Opponent", items: opponentOptions, selection: $opponentFilter) { $0 }
+            }
         }
+    }
+
+    private var opponentOptions: [String] {
+        let names = store.sessions
+            .map(\.opponent)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        let unique = Array(NSOrderedSet(array: names)) as? [String] ?? []
+        return ["All opponents"] + unique
     }
 
     private var statGrid: some View {
         let sessionsCount = filteredSessions.count
         let racksCount = allRacks.count
-        let matchWin = matchWinPercentText()
-        let rackWin = rackWinPercentText()
 
-        return LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
+        return LazyVGrid(columns: Layout.twoColumn(), spacing: Layout.gridSpacing) {
             StatCard(label: "Sessions", value: sessionsCount == 0 ? "—" : String(sessionsCount))
             StatCard(label: "Racks", value: racksCount == 0 ? "—" : String(racksCount))
-            StatCard(label: "Match win%", value: isPracticeMode ? "—" : matchWin)
-            StatCard(label: "Rack win%", value: isPracticeMode ? "—" : rackWin)
         }
     }
 
@@ -298,23 +323,27 @@ struct DashboardView: View {
     private var insightsSection: some View {
         let insights = Analytics.insights(allRacks: allRacks, matchRacks: matchRacks)
         let layoutLabels = ["Open", "Clustered", "Problematic", "Snookered"]
+        let leak = Analytics.biggestLeakSummary(matchRacks)
         return SectionCard(title: "Break & layout insights") {
-            LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
-                ForEach(insights.breakCards, id: \.0) { item in
-                    StatCard(label: item.0, value: item.1 != nil ? "\(item.1!)%" : "—")
+            VStack(alignment: .leading, spacing: 10) {
+                MiniStatCard(label: "Biggest leak", value: leak)
+                LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
+                    ForEach(insights.breakCards, id: \.0) { item in
+                        StatCard(label: item.0, value: item.1 != nil ? "\(item.1!)%" : "—")
+                    }
                 }
-            }
-            Chart {
-                ForEach(Array(layoutLabels.enumerated()), id: \.offset) { idx, label in
-                    let v = insights.layoutRates[idx] ?? 0
-                    BarMark(
-                        x: .value("Win", v),
-                        y: .value("Layout", label)
-                    )
-                    .foregroundStyle(colorForLayout(idx))
+                Chart {
+                    ForEach(Array(layoutLabels.enumerated()), id: \.offset) { idx, label in
+                        let v = insights.layoutRates[idx] ?? 0
+                        BarMark(
+                            x: .value("Win", v),
+                            y: .value("Layout", label)
+                        )
+                        .foregroundStyle(colorForLayout(idx))
+                    }
                 }
+                .frame(height: Layout.chartHeight(Layout.chartSm, hSizeClass: hSizeClass))
             }
-            .frame(height: Layout.chartHeight(Layout.chartSm, hSizeClass: hSizeClass))
         }
     }
 
@@ -345,7 +374,7 @@ struct DashboardView: View {
     private func rackWinPercentText() -> String {
         let r = matchRacks
         if r.isEmpty { return "—" }
-        let wins = r.filter { $0.result == "won" }.count
+        let wins = r.reduce(0) { $0 + ($1.result == "won" ? 1 : 0) }
         return "\(Int(round(Double(wins) / Double(r.count) * 100)))%"
     }
 

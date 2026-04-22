@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 This repository contains `pool-stats`, a native SwiftUI iOS app for logging pool matches and practice sessions, syncing data with CloudKit, and surfacing analytics in Dashboard / Log / History.
 The app also has a custom bottom nav bar, a Me tab, and a Settings tab with theme selection.

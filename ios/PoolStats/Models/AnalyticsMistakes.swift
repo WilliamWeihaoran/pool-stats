@@ -8,7 +8,7 @@ extension Analytics {
         }
         return [
             MetricItem(label: "Miss", value: sum(\.missCount) / n),
-            MetricItem(label: "Positional", value: (sum(\.badPosition) + sum(\.planChange)) / n),
+            MetricItem(label: "Positional", value: sum(\.badPosition) / n),
             MetricItem(label: "Safety", value: sum(\.badSafety) / n),
             MetricItem(label: "Foul", value: sum(\.fouls) / n)
         ]
@@ -44,6 +44,18 @@ extension Analytics {
         }
 
         return (paired, lossText)
+    }
+
+    static func biggestLeakSummary(_ racks: [Rack]) -> String {
+        let (items, _) = wonLostItems(racks)
+        guard let leak = items.max(by: { ($0.lost - $0.won) < ($1.lost - $1.won) }) else {
+            return "Not enough data yet."
+        }
+        let diff = leak.lost - leak.won
+        guard diff > 0 else {
+            return "No clear leak yet."
+        }
+        return "\(leak.label) (+\(String(format: "%.2f", diff))/rack)"
     }
 
     static func outcomeCounts(sessions: [Session], target: OutcomeTarget) -> (wins: Int, losses: Int) {

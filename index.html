@@ -259,20 +259,12 @@ h1{font-size:19px;font-weight:500;}
       </div>
     </div>
     <div class="lcard">
-      <div class="lct">Mistakes</div>
+      <div class="lct">Unforced errors</div>
       <div class="mgrid">
-        <div class="tc" id="tc-fouls"><div class="tcl">Fouls</div><div class="tcv" id="tv-fouls">0</div></div>
+        <div class="tc" id="tc-missCount"><div class="tcl">Miss</div><div class="tcv" id="tv-missCount">0</div></div>
+        <div class="tc" id="tc-badPosition"><div class="tcl">Positional</div><div class="tcv" id="tv-badPosition">0</div></div>
         <div class="tc" id="tc-badSafety"><div class="tcl">Safety</div><div class="tcv" id="tv-badSafety">0</div></div>
-        <div class="tc" id="tc-badPosition"><div class="tcl">Position</div><div class="tcv" id="tv-badPosition">0</div></div>
-        <div class="tc" id="tc-planChange"><div class="tcl">Pattern</div><div class="tcv" id="tv-planChange">0</div></div>
-      </div>
-    </div>
-    <div class="lcard">
-      <div class="lct">Misses</div>
-      <div class="missrow">
-        <div class="mb" id="mr-missEasy"><div class="mbv" id="tv-missEasy">0</div><div class="mbl">Easy</div></div>
-        <div class="mb" id="mr-missMed"><div class="mbv" id="tv-missMed">0</div><div class="mbl">Medium</div></div>
-        <div class="mb" id="mr-missHard"><div class="mbv" id="tv-missHard">0</div><div class="mbl">Hard</div></div>
+        <div class="tc" id="tc-fouls"><div class="tcl">Foul</div><div class="tcv" id="tv-fouls">0</div></div>
       </div>
     </div>
     <div class="lcard" id="resultCard">
@@ -321,8 +313,7 @@ h1{font-size:19px;font-weight:500;}
   <div style="margin-bottom:13px;"><input class="inp" id="sumLbl" placeholder="Add a session label…"></div>
   <div class="ss2">
     <div class="sgl">Results</div><div class="skr" id="sumRes"></div>
-    <div class="sgl">Errors</div><div class="skr" id="sumErr"></div>
-    <div class="sgl">Misses</div><div class="skr" id="sumMis"></div>
+    <div class="sgl">Unforced errors</div><div class="skr" id="sumErr"></div>
     <div class="sgl">Break &amp; outcomes</div><div class="skr" id="sumBrk"></div>
   </div>
   <div class="ss2"><div style="font-size:14px;font-weight:500;color:var(--t2);margin-bottom:11px;">Rack log</div><div id="rLog"></div></div>
@@ -340,6 +331,7 @@ var S=[],cur=null,rack=null,aF='all',aM='all',sG='8ball',wG='8ball',hG='all',oT=
 var lT=null,lF=false;
 var OL={runout:'Runout',safety:'Safety',error:'Error',other:'Other'};
 var GR='#666';
+var DBK='pv7', LEGACYK='pv6';
 
 function ri(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
 function rp(a){return Math.random()<a;}
@@ -351,9 +343,8 @@ function seed(){
     for(var j=0;j<nr;j++){
       var res=isPr?null:(rp(.54)?'won':'lost'),brk=rp(.55)?'me':'opp',bb=ri(0,3),lay=lays[ri(0,3)];
       var oc=rp(.25)?'runout':rp(.3)?'error':rp(.5)?'safety':'other';
-      var m=ri(0,4),mE=ri(0,Math.min(m,2)),mM=ri(0,Math.min(m-mE,2)),mH=Math.max(0,m-mE-mM);
       var ru=oc==='runout'&&res==='won'&&rp(.6),bnr=ru&&brk==='me'&&bb>=1;
-      racks.push({result:res,breaker:brk,breakBalls:bb,layout:lay,outcome:oc,fouls:ri(0,2),badSafety:ri(0,2),badPosition:ri(0,2),planChange:ri(0,2),missEasy:mE,missMed:mM,missHard:mH,runoutFirst:ru,breakAndRun:bnr});
+      racks.push({result:res,breaker:brk,breakBalls:bb,breakFoul:rp(.05),layout:lay,outcome:oc,fouls:ri(0,2),badSafety:ri(0,2),badPosition:ri(0,2),missCount:ri(0,4),runoutFirst:ru,breakAndRun:bnr});
     }
     out.push({id:now+i*7,label:isPr?'Practice':'Sample',game:game,type:isPr?'practice':'match',ts:ts,racks:racks});
   }
@@ -361,7 +352,7 @@ function seed(){
 }
 
 function ep(r,game){
-  var m=r.missEasy+r.missMed+r.missHard;
+  var m=r.missCount||0;
   var oR=r.outcome==='runout'&&r.result==='lost';
   var sB=r.outcome==='safety';
   var ru=r.outcome==='runout'&&r.result==='won';
@@ -379,8 +370,44 @@ function ep(r,game){
   return Math.round(Math.max(1,Math.min(5,(oR&&r.breaker==='opp'?2:oR?3:4)-m*.7)));
 }
 
-function load(){try{var r=localStorage.getItem('pv6');S=r?JSON.parse(r):seed();}catch(e){S=seed();}}
-function save(){try{localStorage.setItem('pv6',JSON.stringify(S));}catch(e){}}
+function migrateRack(r){
+  var miss=(r.missCount!=null?r.missCount:((r.missEasy||0)+(r.missMed||0)+(r.missHard||0)));
+  return {
+    result:r.result!=null?r.result:null,
+    breaker:r.breaker||'me',
+    breakBalls:r.breakBalls!=null?r.breakBalls:0,
+    breakFoul:!!r.breakFoul,
+    layout:r.layout||'open',
+    outcome:r.outcome!=null?r.outcome:null,
+    fouls:r.fouls||0,
+    badSafety:r.badSafety||0,
+    badPosition:r.badPosition||0,
+    missCount:miss||0,
+    runoutFirst:!!r.runoutFirst,
+    breakAndRun:!!r.breakAndRun
+  };
+}
+function migrateSession(s){
+  return {
+    id:s.id||Date.now(),
+    label:s.label||'',
+    game:s.game||'8ball',
+    type:s.type||'match',
+    ts:s.ts||Date.now(),
+    racks:(s.racks||[]).map(migrateRack),
+    durationSeconds:s.durationSeconds
+  };
+}
+function migrateData(d){return Array.isArray(d)?d.map(migrateSession):[];}
+function load(){
+  try{
+    var raw=localStorage.getItem(DBK) || localStorage.getItem(LEGACYK);
+    S=raw?migrateData(JSON.parse(raw)):seed();
+    save();
+    if(localStorage.getItem(LEGACYK)) localStorage.removeItem(LEGACYK);
+  }catch(e){S=seed();save();}
+}
+function save(){try{localStorage.setItem(DBK,JSON.stringify(S));}catch(e){}}
 function isPrac(){return cur&&cur.type==='practice';}
 
 function showPg(id){
@@ -486,7 +513,7 @@ function startSess(g,type){
 }
 
 function resetRack(){
-  rack={result:null,breaker:'me',breakBalls:0,layout:'open',outcome:null,fouls:0,badSafety:0,badPosition:0,planChange:0,missEasy:0,missMed:0,missHard:0,runoutFirst:false,breakAndRun:false};
+  rack={result:null,breaker:'me',breakBalls:0,breakFoul:false,layout:'open',outcome:null,fouls:0,badSafety:0,badPosition:0,missCount:0,runoutFirst:false,breakAndRun:false};
   document.getElementById('rNum').textContent='#'+(cur.racks.length+1);
   var pr=isPrac(),g=cur.game==='8ball'?'8-ball':'9-ball';
   document.getElementById('rMeta').textContent=g+' '+(pr?'practice':'match')+(cur.label&&!pr?' · '+cur.label:'');
@@ -494,7 +521,7 @@ function resetRack(){
   document.getElementById('bOpp').textContent=pr?'Open':'Opp';
   document.getElementById('bbSection').style.opacity='1';
   document.getElementById('bbSection').style.pointerEvents='auto';
-  ['fouls','badSafety','badPosition','planChange','missEasy','missMed','missHard'].forEach(function(k){
+  ['fouls','badSafety','badPosition','missCount'].forEach(function(k){
     var el=document.getElementById('tv-'+k);if(el) el.textContent=0;
   });
   document.getElementById('bMe').classList.add('on');
@@ -542,7 +569,7 @@ function setLay(v){
 function updSS(){
   if(!cur) return;
   var rs=cur.racks,w=rs.filter(function(r){return r.result==='won';}).length;
-  var e=rs.reduce(function(s,r){return s+r.fouls+r.badSafety+r.badPosition+r.planChange+r.missEasy+r.missMed+r.missHard;},0);
+  var e=rs.reduce(function(s,r){return s+r.fouls+r.badSafety+r.badPosition+(r.missCount||0);},0);
   document.getElementById('sR').textContent=rs.length;
   if(isPrac()){
     var ru=rs.filter(function(r){return r.outcome==='runout';}).length;
@@ -583,8 +610,8 @@ function showSum(sess){
   var rs=sess.racks,n=rs.length||1,pr=sess.type==='practice';
   var won=rs.filter(function(r){return r.result==='won';}).length;
   var t=function(k){return rs.reduce(function(s,r){return s+(r[k]||0);},0);};
-  var tM=t('missEasy')+t('missMed')+t('missHard');
-  var tE=t('fouls')+t('badSafety')+t('badPosition')+t('planChange')+tM;
+  var tM=t('missCount');
+  var tE=t('fouls')+t('badSafety')+t('badPosition')+tM;
   var myB=rs.filter(function(r){return r.breaker==='me';}).length;
   var dryB=rs.filter(function(r){return r.breakBalls===0&&r.breaker==='me';}).length;
   var rus=rs.filter(function(r){return r.outcome==='runout'&&r.result==='won';}).length;
@@ -596,13 +623,12 @@ function showSum(sess){
   li.value=sess.label||'';
   li.onblur=function(){sess.label=li.value.trim();save();};
   document.getElementById('sumRes').innerHTML=pr?sk('Racks',rs.length)+sk('Runouts',rus)+sk('Err/rack',(tE/n).toFixed(1)):sk('Racks',rs.length)+sk('Won',won)+sk('Lost',rs.length-won)+sk('Win%',Math.round(won/n*100)+'%');
-  document.getElementById('sumErr').innerHTML=sk('Fouls',t('fouls'))+sk('Bad safety',t('badSafety'))+sk('Bad pos',t('badPosition'))+sk('Pattern',t('planChange'));
-  document.getElementById('sumMis').innerHTML=sk('Easy',t('missEasy'))+sk('Medium',t('missMed'))+sk('Hard',t('missHard'))+sk('Total',tM);
+  document.getElementById('sumErr').innerHTML=sk('Miss',t('missCount'))+sk('Positional',t('badPosition'))+sk('Safety',t('badSafety'))+sk('Foul',t('fouls'));
   document.getElementById('sumBrk').innerHTML=sk('Dry breaks',myB?dryB+'/'+myB:'—')+sk('Runouts',rus)+(pr?sk('Err/rack',(tE/n).toFixed(1)):sk('Opp runouts',oRus))+sk('B&R',bnr)+sk('Avg potted',avgP);
   document.getElementById('rLog').innerHTML=rs.map(function(r,i){
-    var e=r.fouls+r.badSafety+r.badPosition+(r.planChange||0)+r.missEasy+r.missMed+r.missHard;
+    var e=r.fouls+r.badSafety+r.badPosition+(r.missCount||0);
     var resStr=pr?'<span class="ro p">Prac</span>':(r.result==='won'?'<span class="ro w">Won</span>':'<span class="ro l">Lost</span>');
-    return '<div class="rrw"><span class="rn">'+(i+1)+'</span>'+resStr+'<span class="chip hi">'+(OL[r.outcome]||'—')+'</span><span class="chip">'+e+' err</span><span style="font-size:11px;color:#444;margin-left:auto;">'+r.missEasy+'E '+r.missMed+'M '+r.missHard+'H'+(r.breakAndRun?' · <span style="color:#fbbf24">B&R</span>':'')+'</span></div>';
+    return '<div class="rrw"><span class="rn">'+(i+1)+'</span>'+resStr+'<span class="chip hi">'+(OL[r.outcome]||'—')+'</span><span class="chip">'+e+' ue</span><span style="font-size:11px;color:#444;margin-left:auto;">Miss '+(r.missCount||0)+(r.breakAndRun?' · <span style="color:#fbbf24">B&R</span>':'')+'</span></div>';
   }).join('');
   showPg('sum');
 }
@@ -624,7 +650,7 @@ function rendH(){
     var rs=s.racks,n=rs.length||1,pr=s.type==='practice';
     var w=rs.filter(function(r){return r.result==='won';}).length;
     var bnr=rs.filter(function(r){return r.breakAndRun;}).length;
-    var e=rs.reduce(function(sum,r){return sum+r.fouls+r.badSafety+r.badPosition+(r.planChange||0)+r.missEasy+r.missMed+r.missHard;},0);
+    var e=rs.reduce(function(sum,r){return sum+r.fouls+r.badSafety+r.badPosition+(r.missCount||0);},0);
     var badge=pr?'<span class="gpr">Practice</span>':(s.game==='8ball'?'<span class="g8">8-ball</span>':'<span class="g9">9-ball</span>');
     return '<tr onclick="hClick(event,\''+s.id+'\')"><td><input type="checkbox" class="cb hcb" data-id="'+s.id+'" onclick="sp(event)" onchange="updDel()"></td><td>'+(s.label||'<span style="color:#333">—</span>')+'</td><td style="color:#555;">'+new Date(s.ts).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'})+'</td><td>'+badge+'</td><td>'+rs.length+'</td><td>'+(pr?'—':Math.round(w/n*100)+'%')+'</td><td>'+(bnr>0?'<span class="bnrtag">'+bnr+'</span>':'—')+'</td><td>'+(e/n).toFixed(1)+'</td></tr>';
   }).join('');
@@ -748,7 +774,7 @@ function bTrend(sA){
 function mAvg(racks){
   var n=racks.length||1;
   var t=function(k){return racks.reduce(function(s,r){return s+(r[k]||0);},0);};
-  return[{l:'Bad pos',v:t('badPosition')/n},{l:'Hard miss',v:t('missHard')/n},{l:'Med miss',v:t('missMed')/n},{l:'Bad safety',v:t('badSafety')/n},{l:'Easy miss',v:t('missEasy')/n},{l:'Fouls',v:t('fouls')/n},{l:'Pattern',v:t('planChange')/n}];
+  return[{l:'Miss',v:t('missCount')/n},{l:'Positional',v:t('badPosition')/n},{l:'Safety',v:t('badSafety')/n},{l:'Fouls',v:t('fouls')/n}];
 }
 function setSG(g){sG=g;document.getElementById('sB8').classList.toggle('on',g==='8ball');document.getElementById('sB9').classList.toggle('on',g==='9ball');bShot(g);}
 function setWG(g){wG=g;document.getElementById('wB8').classList.toggle('on',g==='8ball');document.getElementById('wB9').classList.toggle('on',g==='9ball');bWL(g);}
@@ -788,7 +814,7 @@ function bRadar(racks){
   var saf=racks.reduce(function(s,r){return s+r.badSafety;},0);
   var fou=racks.reduce(function(s,r){return s+r.fouls;},0);
   var tP=0,tA=0;
-  fS().forEach(function(s){s.racks.forEach(function(r){var p=ep(r,s.game);tP+=p;tA+=p+(r.missEasy+r.missMed+r.missHard);});});
+  fS().forEach(function(s){s.racks.forEach(function(r){var p=ep(r,s.game);tP+=p;tA+=p+(r.missCount||0);});});
   var pct=tA?tP/tA:.72;
   var posScore=tA>0?Math.round((1-pos/tA)*100):50;
   var r8=fS().filter(function(s){return s.game==='8ball';}).reduce(function(a,s){return a.concat(s.racks);},[]);
@@ -799,7 +825,7 @@ function bRadar(racks){
   var fScore=Math.round(Math.max(0,100*(1-Math.log(1+fou/n)/Math.log(4.5))));
   function errCV(rs){
     if(rs.length<2) return 0;
-    var errs=rs.map(function(r){return r.fouls+r.badSafety+r.badPosition+r.planChange+r.missEasy+r.missMed+r.missHard;});
+    var errs=rs.map(function(r){return r.fouls+r.badSafety+r.badPosition+(r.missCount||0);});
     var mean=errs.reduce(function(a,b){return a+b;},0)/errs.length;
     if(mean===0) return 0;
     var variance=errs.reduce(function(s,e){return s+Math.pow(e-mean,2);},0)/errs.length;
@@ -836,10 +862,10 @@ function bFargo(racks){
   var sLog=function(v,b){return v>0&&b>0?Math.log(v/b):0;};
   var rR=racks.filter(function(r){return r.outcome==='runout'&&r.result==='won';}).length/n;
   var bR=racks.filter(function(r){return r.breakAndRun;}).length/n;
-  var eM=racks.reduce(function(s,r){return s+r.missEasy;},0)/n;
-  var eR=racks.reduce(function(s,r){return s+r.fouls+r.badSafety+r.badPosition+r.missEasy+r.missMed+r.missHard;},0)/n;
+  var eM=racks.reduce(function(s,r){return s+(r.missCount||0);},0)/n;
+  var eR=racks.reduce(function(s,r){return s+r.fouls+r.badSafety+r.badPosition+(r.missCount||0);},0)/n;
   var tP=0,tA=0;
-  matchOnly().forEach(function(s){s.racks.forEach(function(r){var p=ep(r,s.game);tP+=p;tA+=p+(r.missEasy+r.missMed+r.missHard);});});
+  matchOnly().forEach(function(s){s.racks.forEach(function(r){var p=ep(r,s.game);tP+=p;tA+=p+(r.missCount||0);});});
   var pPct=tA?tP/tA:.72;
   var rI=Math.max(300,Math.min(750,500+180*sLog(Math.max(rR,.001),.13)));
   var bI=Math.max(300,Math.min(750,500+120*sLog(Math.max(bR,.001),.04)));
@@ -854,7 +880,7 @@ function bFargo(racks){
     {n:'Runout rate',im:rI,val:rR,fmt:function(v){return(v*100).toFixed(0)+'%';},w:'35%'},
     {n:'Break & run',im:bI,val:bR,fmt:function(v){return(v*100).toFixed(1)+'%';},w:'15%'},
     {n:'Potting',im:pI,val:pPct,fmt:function(v){return(v*100).toFixed(0)+'%';},w:'25%'},
-    {n:'Easy misses',im:eI,val:eM,fmt:function(v){return v.toFixed(2)+'/rack';},w:'15%'},
+    {n:'Unforced errors',im:eI,val:eM,fmt:function(v){return v.toFixed(2)+'/rack';},w:'15%'},
     {n:'Errors/rack',im:errI,val:eR,fmt:function(v){return v.toFixed(2)+'/rack';},w:'10%'}
   ];
   document.getElementById('fFactors').innerHTML=facts.map(function(f,i){
@@ -898,8 +924,7 @@ document.getElementById('modeF').addEventListener('click',function(e){
 });
 
 function initTaps(){
-  ['fouls','badSafety','badPosition','planChange'].forEach(function(k){bindTap('tc-'+k,k);});
-  ['missEasy','missMed','missHard'].forEach(function(k){bindTap('mr-'+k,k);});
+  ['missCount','badPosition','badSafety','fouls'].forEach(function(k){bindTap('tc-'+k,k);});
 }
 
 load();refreshD();initTaps();initButtons();

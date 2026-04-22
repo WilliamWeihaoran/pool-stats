@@ -188,6 +188,36 @@ struct PercentageBar: View {
     }
 }
 
+struct BufferedPaceBar: View {
+    let value: Int
+    let bufferColor: Color
+    let activeColor: Color
+    var bufferPercent: Int = 75
+    var height: CGFloat = 6
+
+    var body: some View {
+        GeometryReader { geo in
+            let total = CGFloat(min(max(value, 0), 100)) / 100.0
+            let bufferWidth = geo.size.width * CGFloat(min(max(bufferPercent, 0), 100)) / 100.0
+            let totalWidth = geo.size.width * total
+            let activeWidth = max(0, totalWidth - bufferWidth)
+
+            ZStack(alignment: .leading) {
+                Rectangle().fill(Theme.border).frame(height: height)
+                Rectangle()
+                    .fill(bufferColor)
+                    .frame(width: min(totalWidth, bufferWidth), height: height)
+                Rectangle()
+                    .fill(activeColor)
+                    .frame(width: activeWidth, height: height)
+                    .offset(x: min(totalWidth, bufferWidth))
+            }
+            .cornerRadius(height / 2)
+        }
+        .frame(height: height)
+    }
+}
+
 struct RingChart: View {
     let wins: Int
     let losses: Int
@@ -228,6 +258,10 @@ enum Layout {
     static func columns(hSizeClass: UserInterfaceSizeClass?) -> [GridItem] {
         let count = hSizeClass == .regular ? 3 : 2
         return Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: count)
+    }
+
+    static func fourColumn() -> [GridItem] {
+        Array(repeating: GridItem(.flexible(), spacing: gridSpacing), count: 4)
     }
 
     static let chartSm: CGFloat = 180
@@ -425,5 +459,121 @@ struct RadarChart: View {
         }
         .frame(maxWidth: .infinity)
         .frame(height: 220)
+    }
+}
+
+struct AppTabBar: View {
+    @Binding var selection: AppTab
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Rectangle()
+                .fill(Theme.border)
+                .frame(height: 0.5)
+
+            HStack(spacing: 0) {
+                tabButton(.dashboard)
+                tabButton(.goals)
+                logButton
+                tabButton(.history)
+                tabButton(.settings)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 4)
+            .padding(.top, 2)
+            .padding(.bottom, 0)
+            .background(Theme.panel)
+        }
+        .frame(maxWidth: .infinity)
+        .background(Theme.panel)
+    }
+
+    @ViewBuilder
+    private func tabButton(_ tab: AppTab) -> some View {
+        Button {
+            selection = tab
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: tab.icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(selection == tab ? Theme.purple : Theme.text2)
+                Text(tab.label)
+                    .font(.caption2.weight(.medium))
+                    .foregroundColor(Theme.text2)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 46, alignment: .bottom)
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(tab.label)
+    }
+
+    private var logButton: some View {
+        Button {
+            selection = .log
+        } label: {
+            Image(systemName: AppTab.log.icon)
+                .font(.system(size: 18, weight: .bold))
+                .frame(width: 42, height: 42)
+                .foregroundColor(selection == .log ? Theme.bg : Theme.text2)
+                .background(selection == .log ? Theme.purple : Theme.panel2)
+                .clipShape(Circle())
+                .overlay(Circle().stroke(selection == .log ? Theme.purple.opacity(0.5) : Theme.border, lineWidth: 1))
+            .frame(maxWidth: .infinity)
+            .frame(height: 46, alignment: .center)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Log")
+    }
+}
+
+struct DiscreteRatingSlider: View {
+    @Binding var value: Int
+    let range: ClosedRange<Int>
+    let activeColor: Color
+    let trackColor: Color = Theme.border
+
+    var body: some View {
+        GeometryReader { geo in
+            let minValue = range.lowerBound
+            let maxValue = range.upperBound
+            let count = max(maxValue - minValue, 1)
+            let progress = CGFloat(value - minValue) / CGFloat(count)
+            let width = max(0, geo.size.width - 22)
+            let x = width * progress
+
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(trackColor)
+                    .frame(height: 8)
+                Capsule()
+                    .fill(activeColor)
+                    .frame(width: x + 11, height: 8)
+                Circle()
+                    .fill(activeColor)
+                    .frame(width: 22, height: 22)
+                    .overlay(Circle().stroke(Theme.bg, lineWidth: 2))
+                    .offset(x: x)
+                    .shadow(color: activeColor.opacity(0.25), radius: 4, x: 0, y: 2)
+            }
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { gesture in
+                        value = Self.value(for: gesture.location.x, width: width, range: range)
+                    }
+            )
+        }
+        .frame(height: 22)
+    }
+
+    private static func value(for x: CGFloat, width: CGFloat, range: ClosedRange<Int>) -> Int {
+        let minValue = range.lowerBound
+        let maxValue = range.upperBound
+        let count = max(maxValue - minValue, 1)
+        let clamped = min(max(x, 0), max(width, 1))
+        let raw = Int(round((clamped / max(width, 1)) * CGFloat(count))) + minValue
+        return min(max(raw, minValue), maxValue)
     }
 }

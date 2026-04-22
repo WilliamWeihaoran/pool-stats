@@ -26,6 +26,7 @@ struct SampleData {
         var out: [Session] = []
         let now = Date()
         let layouts = ["open", "clustered", "problematic", "snookered"]
+        let opponents = ["Alex", "Brian", "Chris", "Drew", "Evan", "Frank", "Gary", "Hank"]
 
         for i in 0..<count {
             let game = rng.chance(0.6) ? "8ball" : "9ball"
@@ -33,6 +34,7 @@ struct SampleData {
             let daysAgo = rng.nextInt(0, 364)
             let ts = now.addingTimeInterval(TimeInterval(-daysAgo * 86_400))
             let racksCount = rng.nextInt(3, 8)
+            let opponent = isPr ? "" : opponents[rng.nextInt(0, opponents.count - 1)]
 
             var racks: [Rack] = []
             for j in 0..<racksCount {
@@ -47,10 +49,7 @@ struct SampleData {
                 else if rng.chance(0.5) { oc = "safety" }
                 else { oc = "other" }
 
-                let m = rng.nextInt(0, 4)
-                let mE = rng.nextInt(0, min(m, 2))
-                let mM = rng.nextInt(0, min(m - mE, 2))
-                let mH = max(0, m - mE - mM)
+                let missCount = rng.nextInt(0, 5)
 
                 let ru = oc == "runout" && res == "won" && rng.chance(0.6)
                 let bnr = ru && brk == "me" && bb >= 1
@@ -66,10 +65,7 @@ struct SampleData {
                     fouls: rng.nextInt(0, 2),
                     badSafety: rng.nextInt(0, 2),
                     badPosition: rng.nextInt(0, 2),
-                    planChange: rng.nextInt(0, 2),
-                    missEasy: mE,
-                    missMed: mM,
-                    missHard: mH,
+                    missCount: missCount,
                     runoutFirst: ru,
                     breakAndRun: bnr
                 )
@@ -82,11 +78,13 @@ struct SampleData {
             let sess = Session(
                 id: Int64(now.timeIntervalSince1970 * 1000) + Int64(i * 7),
                 label: label,
+                opponent: opponent,
                 game: game,
                 type: isPr ? "practice" : "match",
                 ts: ts,
                 racks: racks,
-                durationSeconds: durationSeconds
+                durationSeconds: durationSeconds,
+                performanceRating: isPr ? nil : rng.nextInt(4, 10)
             )
             out.append(sess)
         }

@@ -32,7 +32,7 @@ struct LogView: View {
                 }
             )
             .presentationDetents([.height(220)])
-            .presentationDragIndicator(.visible)
+            .presentationDragIndicator(.hidden)
         }
         .sheet(item: Binding(
             get: { logStore.lastEndedSession },
@@ -87,6 +87,7 @@ private struct EndSessionConfirmationSheet: View {
             .frame(maxWidth: .infinity)
         }
         .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Theme.bg)
     }
 }

@@ -12,17 +12,13 @@ struct Rack: Identifiable, Codable, Hashable {
     var fouls: Int
     var badSafety: Int
     var badPosition: Int
-    var planChange: Int
-    var missEasy: Int
-    var missMed: Int
-    var missHard: Int
+    var missCount: Int
     var runoutFirst: Bool
     var breakAndRun: Bool
 
     var converted: Bool { outcome == "runout" }
     var isNoRunout: Bool { outcome == "noRunout" }
-    var missCount: Int { missEasy + missMed + missHard }
-    var positionalCount: Int { badPosition + planChange }
+    var positionalCount: Int { badPosition }
     var safetyCount: Int { badSafety }
     var foulCount: Int { fouls }
     var unforcedErrorCount: Int { foulCount + safetyCount + positionalCount + missCount }
@@ -39,10 +35,7 @@ struct Rack: Identifiable, Codable, Hashable {
         fouls: Int = 0,
         badSafety: Int = 0,
         badPosition: Int = 0,
-        planChange: Int = 0,
-        missEasy: Int = 0,
-        missMed: Int = 0,
-        missHard: Int = 0,
+        missCount: Int = 0,
         runoutFirst: Bool = false,
         breakAndRun: Bool = false
     ) {
@@ -57,10 +50,7 @@ struct Rack: Identifiable, Codable, Hashable {
         self.fouls = fouls
         self.badSafety = badSafety
         self.badPosition = badPosition
-        self.planChange = planChange
-        self.missEasy = missEasy
-        self.missMed = missMed
-        self.missHard = missHard
+        self.missCount = missCount
         self.runoutFirst = runoutFirst
         self.breakAndRun = breakAndRun
     }

@@ -23,6 +23,22 @@ enum AppFormatters {
         shortDateFormatter.string(from: date)
     }
 
+    private static let dueDateFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "en_US_POSIX")
+        df.calendar = Calendar(identifier: .gregorian)
+        df.dateFormat = "yyyy-MM-dd"
+        return df
+    }()
+
+    static func dueDateInput(_ date: Date) -> String {
+        dueDateFormatter.string(from: date)
+    }
+
+    static func parseDueDateInput(_ text: String) -> Date? {
+        dueDateFormatter.date(from: text.trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
     static func duration(seconds: Int) -> String {
         let hrs = seconds / 3600
         let mins = (seconds % 3600) / 60

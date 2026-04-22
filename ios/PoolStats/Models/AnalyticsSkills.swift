@@ -28,7 +28,7 @@ extension Analytics {
 
         func errCV(_ racks: [Rack]) -> Double {
             guard racks.count >= 2 else { return 0 }
-            let errs = racks.map { $0.fouls + $0.badSafety + $0.badPosition + $0.planChange + $0.missCount }
+            let errs = racks.map { $0.fouls + $0.badSafety + $0.badPosition + $0.missCount }
             let mean = Double(errs.reduce(0, +)) / Double(errs.count)
             if mean == 0 { return 0 }
             let variance = errs.reduce(0.0) { $0 + pow(Double($1) - mean, 2) } / Double(errs.count)

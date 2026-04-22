@@ -1,42 +1,56 @@
 import SwiftUI
 
 struct LogStartView: View {
+    @EnvironmentObject private var historyStore: DataStore
     @EnvironmentObject private var store: SessionLogStore
     @Binding var label: String
     @State private var sessionDate: Date = Date()
     @State private var sessionType: String = "match"
     @State private var game: String = "8ball"
+    @State private var opponent: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            hero
+            header
             detailsCard
             sessionTypeCard
             gameCard
             startButton
-            guidance
         }
         .padding(4)
     }
 
-    private var hero: some View {
-        VStack(alignment: .leading, spacing: 8) {
+    private var header: some View {
+        HStack {
             Text("Log a session")
-                .font(.title2.bold())
+                .font(.title.bold())
                 .foregroundColor(Theme.text)
+            Spacer(minLength: 0)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            LinearGradient(colors: [Theme.panel2, Theme.panel], startPoint: .topLeading, endPoint: .bottomTrailing)
-        )
-        .cornerRadius(18)
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border, lineWidth: 0.5))
+        .padding(.horizontal, 2)
+        .padding(.top, 2)
     }
 
     private var detailsCard: some View {
         LogSectionCard(title: "Session details") {
             VStack(alignment: .leading, spacing: 12) {
+                TextField(opponentFieldPlaceholder, text: $opponent)
+                    .textFieldStyle(.roundedBorder)
+
+                if !opponentSuggestions.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(opponentSuggestions, id: \.self) { name in
+                                Button(name) {
+                                    opponent = name
+                                }
+                                .buttonStyle(.bordered)
+                                .tint(Theme.blue)
+                            }
+                        }
+                    }
+                }
+
                 TextField(labelFieldPlaceholder, text: $label)
                     .textFieldStyle(.roundedBorder)
 
@@ -101,6 +115,7 @@ struct LogStartView: View {
                 game: game,
                 type: sessionType,
                 label: trimmedLabel,
+                opponent: trimmedOpponent,
                 date: sessionDate
             )
         } label: {
@@ -131,22 +146,12 @@ struct LogStartView: View {
         .buttonStyle(.plain)
     }
 
-    private var guidance: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "info.circle.fill")
-                .foregroundColor(Theme.muted)
-            Text("When you hit Start, the app switches to rack logging. If you choose a past date, timers are turned off so you can backfill old sessions cleanly.")
-                .font(.caption)
-                .foregroundColor(Theme.text2)
-        }
-        .padding(14)
-        .background(Theme.panel.opacity(0.75))
-        .cornerRadius(14)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 0.5))
+    private var labelFieldPlaceholder: String {
+        sessionType == "practice" ? "Practice note (optional)" : "Session note (optional)"
     }
 
-    private var labelFieldPlaceholder: String {
-        sessionType == "practice" ? "Practice note (optional)" : "Opponent / location (optional)"
+    private var opponentFieldPlaceholder: String {
+        sessionType == "practice" ? "Practice partner (optional)" : "Opponent (optional)"
     }
 
     private var trimmedLabel: String {
@@ -156,11 +161,24 @@ struct LogStartView: View {
     private var summaryText: String {
         let mode = sessionType == "practice" ? "Practice" : "Match"
         let gameText = game == "8ball" ? "8-ball" : "9-ball"
-        return "\(mode) · \(gameText) · \(dateSummary)"
+        let segments = [mode, gameText, trimmedOpponent.isEmpty ? nil : "vs \(trimmedOpponent)", dateSummary]
+        return segments.compactMap { $0 }.joined(separator: " · ")
     }
 
     private var dateSummary: String {
         AppFormatters.shortDate(sessionDate)
+    }
+
+    private var trimmedOpponent: String {
+        opponent.trimmingCharacters(in: .whitespaces)
+    }
+
+    private var opponentSuggestions: [String] {
+        let names = historyStore.sessions
+            .map(\.opponent)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        return Array(NSOrderedSet(array: names)) as? [String] ?? []
     }
 }
 

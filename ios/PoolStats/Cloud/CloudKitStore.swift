@@ -18,8 +18,10 @@ final class CloudKitStore {
         static let label = "label"
         static let game = "game"
         static let type = "type"
+        static let opponent = "opponent"
         static let ts = "ts"
         static let durationSeconds = "durationSeconds"
+        static let performanceRating = "performanceRating"
 
         static let sessionRef = "sessionRef"
         static let index = "index"
@@ -32,10 +34,7 @@ final class CloudKitStore {
         static let fouls = "fouls"
         static let badSafety = "badSafety"
         static let badPosition = "badPosition"
-        static let planChange = "planChange"
-        static let missEasy = "missEasy"
-        static let missMed = "missMed"
-        static let missHard = "missHard"
+        static let missCount = "missCount"
         static let runoutFirst = "runoutFirst"
         static let breakAndRun = "breakAndRun"
     }
@@ -145,8 +144,10 @@ final class CloudKitStore {
                 op = CKQueryOperation(query: query)
             }
             var batch: [CKRecord] = []
-            op.recordFetchedBlock = { record in
-                batch.append(record)
+            op.recordMatchedBlock = { _, result in
+                if case .success(let record) = result {
+                    batch.append(record)
+                }
             }
             op.queryResultBlock = { result in
                 switch result {
@@ -165,11 +166,15 @@ final class CloudKitStore {
         let record = CKRecord(recordType: RecordKeys.session, recordID: recordID)
         record[RecordKeys.sessionId] = NSNumber(value: session.id)
         record[RecordKeys.label] = session.label
+        record[RecordKeys.opponent] = session.opponent
         record[RecordKeys.game] = session.game
         record[RecordKeys.type] = session.type
         record[RecordKeys.ts] = session.ts
         if let durationSeconds = session.durationSeconds {
             record[RecordKeys.durationSeconds] = durationSeconds
+        }
+        if let performanceRating = session.performanceRating {
+            record[RecordKeys.performanceRating] = performanceRating
         }
         return record
     }
@@ -188,10 +193,7 @@ final class CloudKitStore {
         record[RecordKeys.fouls] = rack.fouls
         record[RecordKeys.badSafety] = rack.badSafety
         record[RecordKeys.badPosition] = rack.badPosition
-        record[RecordKeys.planChange] = rack.planChange
-        record[RecordKeys.missEasy] = rack.missEasy
-        record[RecordKeys.missMed] = rack.missMed
-        record[RecordKeys.missHard] = rack.missHard
+        record[RecordKeys.missCount] = rack.missCount
         record[RecordKeys.runoutFirst] = rack.runoutFirst
         record[RecordKeys.breakAndRun] = rack.breakAndRun
         return record
@@ -200,11 +202,13 @@ final class CloudKitStore {
     private func sessionFromRecord(_ record: CKRecord, racks: [Rack]) -> Session {
         let id = (record[RecordKeys.sessionId] as? NSNumber)?.int64Value ?? Int64(record.recordID.recordName) ?? 0
         let label = record[RecordKeys.label] as? String ?? ""
+        let opponent = record[RecordKeys.opponent] as? String ?? ""
         let game = record[RecordKeys.game] as? String ?? "8ball"
         let type = record[RecordKeys.type] as? String ?? "match"
         let ts = record[RecordKeys.ts] as? Date ?? Date()
         let duration = record[RecordKeys.durationSeconds] as? Int
-        return Session(id: id, label: label, game: game, type: type, ts: ts, racks: racks, durationSeconds: duration)
+        let rating = record[RecordKeys.performanceRating] as? Int
+        return Session(id: id, label: label, opponent: opponent, game: game, type: type, ts: ts, racks: racks, durationSeconds: duration, performanceRating: rating)
     }
 
     private func rackFromRecord(_ record: CKRecord) -> Rack? {
@@ -219,10 +223,11 @@ final class CloudKitStore {
         let fouls = record[RecordKeys.fouls] as? Int ?? 0
         let badSafety = record[RecordKeys.badSafety] as? Int ?? 0
         let badPosition = record[RecordKeys.badPosition] as? Int ?? 0
-        let planChange = record[RecordKeys.planChange] as? Int ?? 0
-        let missEasy = record[RecordKeys.missEasy] as? Int ?? 0
-        let missMed = record[RecordKeys.missMed] as? Int ?? 0
-        let missHard = record[RecordKeys.missHard] as? Int ?? 0
+        let missCount = record[RecordKeys.missCount] as? Int ?? (
+            (record["missEasy"] as? Int ?? 0) +
+            (record["missMed"] as? Int ?? 0) +
+            (record["missHard"] as? Int ?? 0)
+        )
         let runoutFirst = record[RecordKeys.runoutFirst] as? Bool ?? false
         let breakAndRun = record[RecordKeys.breakAndRun] as? Bool ?? false
 
@@ -238,10 +243,7 @@ final class CloudKitStore {
             fouls: fouls,
             badSafety: badSafety,
             badPosition: badPosition,
-            planChange: planChange,
-            missEasy: missEasy,
-            missMed: missMed,
-            missHard: missHard,
+            missCount: missCount,
             runoutFirst: runoutFirst,
             breakAndRun: breakAndRun
         )

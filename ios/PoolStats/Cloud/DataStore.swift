@@ -100,6 +100,31 @@ final class DataStore: ObservableObject {
         }
     }
 
+    func updateSessionMeta(sessionID: Int64, label: String? = nil, opponent: String? = nil, performanceRating: Int? = nil) async {
+        guard var sess = sessions.first(where: { $0.id == sessionID }) else { return }
+        if let label { sess.label = label }
+        if let opponent { sess.opponent = opponent }
+        if let performanceRating { sess.performanceRating = performanceRating }
+        do {
+            try await service.updateSessionMeta(sess)
+            if let idx = sessions.firstIndex(where: { $0.id == sessionID }) {
+                sessions[idx] = sess
+            } else {
+                sessions.append(sess)
+            }
+            saveLocal()
+            syncStatus = .synced
+            lastError = nil
+        } catch {
+            lastError = error.localizedDescription
+            syncStatus = .localOnly("Updated locally. iCloud sync failed.")
+            if let idx = sessions.firstIndex(where: { $0.id == sessionID }) {
+                sessions[idx] = sess
+                saveLocal()
+            }
+        }
+    }
+
     func deleteSessions(ids: [Int64]) async {
         do {
             try await service.deleteSessions(ids)
@@ -205,11 +230,11 @@ final class SessionLogStore: ObservableObject {
     @Published var sessionStart: Date?
     @Published var rackStart: Date?
 
-    func startSession(game: String, type: String, label: String, date: Date) {
+    func startSession(game: String, type: String, label: String, opponent: String, date: Date) {
         let finalLabel = type == "practice" ? "Practice" : label
         let cal = Calendar.current
         let sessionDate = cal.startOfDay(for: date)
-        currentSession = Session(label: finalLabel, game: game, type: type, ts: sessionDate)
+        currentSession = Session(label: finalLabel, opponent: opponent, game: game, type: type, ts: sessionDate)
         sessionStart = cal.isDateInToday(date) ? Date() : nil
         resetRack()
     }

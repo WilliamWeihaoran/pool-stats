@@ -3,6 +3,7 @@ import SwiftUI
 struct HistoryView: View {
     @EnvironmentObject private var store: DataStore
     @State private var filter: GameFilter = .all
+    @State private var opponentFilter: String = "All opponents"
     @State private var searchText: String = ""
     @State private var selection = Set<Int64>()
     @State private var isSelecting: Bool = false
@@ -48,6 +49,9 @@ struct HistoryView: View {
                                                 badge(text: "Practice", color: Theme.muted)
                                             } else if session.isDraw {
                                                 badge(text: "Draw", color: Theme.muted)
+                                            }
+                                            if !session.opponent.isEmpty {
+                                                badge(text: session.opponent, color: Theme.blue)
                                             }
                                         }
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -218,6 +222,29 @@ struct HistoryView: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
             }
 
+            if !opponentOptions.isEmpty {
+                Menu {
+                    ForEach(opponentOptions, id: \.self) { name in
+                        Button(name) { opponentFilter = name }
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Opponent")
+                        Text(opponentFilter)
+                            .foregroundColor(Theme.text)
+                        Image(systemName: "chevron.down")
+                            .font(.caption2.weight(.semibold))
+                    }
+                    .font(.caption.weight(.medium))
+                    .foregroundColor(Theme.text2)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 7)
+                    .background(Theme.panel)
+                    .cornerRadius(10)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
+                }
+            }
+
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 14)
@@ -225,6 +252,9 @@ struct HistoryView: View {
 
     private var filteredSessions: [Session] {
         var rows = store.sessions.sorted { $0.ts > $1.ts }
+        if opponentFilter != "All opponents" {
+            rows = rows.filter { $0.opponent == opponentFilter }
+        }
         switch filter {
         case .practice:
             rows = rows.filter { $0.type == "practice" }
@@ -239,6 +269,15 @@ struct HistoryView: View {
             rows = rows.filter { $0.label.lowercased().contains(searchText.lowercased()) }
         }
         return rows
+    }
+
+    private var opponentOptions: [String] {
+        let names = store.sessions
+            .map(\.opponent)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        let unique = Array(NSOrderedSet(array: names)) as? [String] ?? []
+        return ["All opponents"] + unique
     }
 
     private var syncTitle: String {

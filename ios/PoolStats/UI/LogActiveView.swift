@@ -140,9 +140,9 @@ private struct ErrorSection: View {
         VStack(alignment: .leading, spacing: 10) {
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 2), spacing: 8) {
                 ErrorCounterTile(label: "Miss", value: rack.missCount, color: Theme.teal) {
-                    store.updateRack { $0.missEasy += 1 }
+                    store.updateRack { $0.missCount += 1 }
                 } decrement: {
-                    store.updateRack { $0.missEasy = max(0, $0.missEasy - 1) }
+                    store.updateRack { $0.missCount = max(0, $0.missCount - 1) }
                 }
 
                 ErrorCounterTile(label: "Positional", value: rack.positionalCount, color: Theme.amber) {
@@ -234,7 +234,7 @@ private struct ActionRow: View {
             .cornerRadius(10)
             .disabled(!canSave(rack: rack, isPractice: isPractice))
 
-            Button("End session") {
+            Button("Save & exit") {
                 showEndConfirm = true
             }
             .buttonStyle(.borderedProminent)
@@ -262,8 +262,8 @@ private struct LogTimerRow: View {
             let now = Date()
             let sessionElapsed = elapsedSince(store.sessionStart, now: now)
             let rackElapsed = elapsedSince(store.rackStart, now: now)
-            let totalRacks = max(session.racks.count, 1)
-            let avgPerRack = sessionElapsed / Double(totalRacks)
+            let avgPerRack = session.bufferedAverageRackSeconds(totalSeconds: sessionElapsed)
+            let pacePct = session.bufferedPacePercent(totalSeconds: sessionElapsed)
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 10) {
@@ -273,7 +273,7 @@ private struct LogTimerRow: View {
                     Spacer()
                     scoreCard(wins: session.wins, losses: session.losses)
                 }
-                avgRackBar(seconds: avgPerRack)
+                avgRackBar(pacePct: pacePct)
             }
         }
     }
@@ -299,14 +299,19 @@ private struct LogTimerRow: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 0.5))
     }
 
-    private func avgRackBar(seconds: TimeInterval) -> some View {
-        let target: Double = 60
-        let pct = Int(min(100, max(0, seconds / target * 100)))
-        return HStack(spacing: 8) {
-            Text("Avg pace")
-                .font(.caption2)
-                .foregroundColor(Theme.muted)
-            PercentageBar(value: pct, color: Theme.teal, height: 5)
+    private func avgRackBar(pacePct: Int) -> some View {
+        let bufferPct = session.bufferedPaceBufferPercent()
+        return VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Text("Avg pace")
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+                Spacer(minLength: 0)
+                Text("includes 45s setup buffer")
+                    .font(.caption2)
+                    .foregroundColor(Theme.amber)
+            }
+            BufferedPaceBar(value: pacePct, bufferColor: Theme.amber, activeColor: Theme.green, bufferPercent: bufferPct, height: 5)
         }
     }
 

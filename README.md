@@ -1,6 +1,6 @@
 # pool-stats
 
-Pool Stats is a native iOS app for logging pool sessions and turning them into actionable stats. It is built in SwiftUI and uses CloudKit plus a local JSON cache for persistence.
+Pool Stats is a native iOS app for logging pool sessions and turning them into actionable stats. It is built in SwiftUI and uses CloudKit plus a local JSON cache for persistence. The app now includes a custom bottom nav, a dedicated Me tab, and a Settings page with theme choices.
 
 ---
 
@@ -29,15 +29,17 @@ That gives you enough detail to improve your game without forcing you to record 
 - Unforced errors are logged as a small set of categories rather than by shot difficulty
 - Backdated sessions are supported
 - Session and rack timers are tracked for current sessions
+- Session summary includes a drag-to-rate performance control
 
 **Dashboard analytics**
 - Win rate over time
 - Outcome rings for match and rack results
 - Fargo estimate
 - Skill radar: Potting, Position, Safety, Fouls, Consistency
-- Mistake / unforced-error breakdowns
+- Unforced-error breakdowns
 - Break and layout insights
 - Conversion rate based on open-layout racks only
+- Biggest leak card and opponent-aware filtering
 
 **History**
 - Clean session list with date, duration, and outcome styling
@@ -46,6 +48,12 @@ That gives you enough detail to improve your game without forcing you to record 
 - Sync status indicator for local cache vs. iCloud
 - Import / export JSON
 - Built-in sample data can be restored
+
+**Navigation / Settings**
+- Custom bottom navigation bar
+- Dashboard, Log, History, Me, and Settings tabs
+- Four theme presets: two dark, two light
+- Settings page for appearance and sync-related actions
 
 **Storage**
 - Primary sync is CloudKit private database under the app’s iCloud container
@@ -60,8 +68,13 @@ Open `ios/PoolStats/PoolStats.xcodeproj` in Xcode, select a simulator or device,
 - **Dashboard** — stats and charts
 - **Log** — start a new session
 - **History** — browse and manage past sessions
+- **Me** — personal summary and performance snapshot
+- **Settings** — theme selection and app actions
 
 To move data between devices or keep a backup, use the JSON export/import flow.
+
+Future idea:
+- Sign in with Apple is a later enhancement we may add if the app grows beyond iCloud-only identity and sync.
 
 ---
 
