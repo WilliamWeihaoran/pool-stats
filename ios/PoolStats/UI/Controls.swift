@@ -31,7 +31,10 @@ struct ChoiceButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
             Text(label)
                 .font(.callout)
                 .foregroundColor(isOn ? color : Theme.text2)
@@ -41,6 +44,7 @@ struct ChoiceButton: View {
                 .cornerRadius(10)
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(isOn ? color : Theme.border, lineWidth: 1))
         }
+        .buttonStyle(PressScaleStyle())
     }
 }
 
@@ -51,7 +55,10 @@ struct SmallToggleButton: View {
     let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
             Text(label)
                 .font(.caption2)
                 .foregroundColor(isOn ? color : Theme.text2)
@@ -61,6 +68,7 @@ struct SmallToggleButton: View {
                 .cornerRadius(9)
                 .overlay(RoundedRectangle(cornerRadius: 9).stroke(isOn ? color : Theme.border, lineWidth: 1))
         }
+        .buttonStyle(PressScaleStyle())
     }
 }
 
@@ -70,6 +78,8 @@ struct ErrorCounterTile: View {
     let color: Color
     let increment: () -> Void
     let decrement: () -> Void
+
+    @State private var valueScale: CGFloat = 1.0
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -85,14 +95,39 @@ struct ErrorCounterTile: View {
             Text("\(value)")
                 .font(.title2)
                 .foregroundColor(Theme.text)
+                .scaleEffect(valueScale)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(Theme.panel2)
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.75))
-        .onTapGesture(perform: increment)
-        .onLongPressGesture(minimumDuration: 0.5, perform: decrement)
+        .onTapGesture {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            increment()
+        }
+        .onLongPressGesture(minimumDuration: 0.5) {
+            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            decrement()
+        }
+        .onChange(of: value) { _ in
+            withAnimation(.spring(response: 0.18, dampingFraction: 0.45)) {
+                valueScale = 1.28
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.spring(response: 0.22, dampingFraction: 0.65)) {
+                    valueScale = 1.0
+                }
+            }
+        }
+    }
+}
+
+private struct PressScaleStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.93 : 1.0)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 

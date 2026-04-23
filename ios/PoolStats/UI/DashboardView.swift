@@ -4,11 +4,9 @@ import UniformTypeIdentifiers
 
 struct DashboardView: View {
     @EnvironmentObject private var store: DataStore
-    @EnvironmentObject private var opponentStore: OpponentStore
     @EnvironmentObject private var profileStore: PlayerProfileStore
     @State private var timeFilter: TimeFilter = .all
     @State private var mode: ModeFilter = .all
-    @State private var opponentFilter: String = "All opponents"
     @State private var activePickerID: String? = nil
     @State private var shotGame: String = "8ball"
     @State private var wlGame: String = "8ball"
@@ -20,6 +18,7 @@ struct DashboardView: View {
     @State private var pendingImportCount: Int = 0
     @State private var showImportConfirm: Bool = false
     @State private var showImportError: Bool = false
+    @State private var showFargoInfo: Bool = false
 
     @Environment(\.horizontalSizeClass) private var hSizeClass
     private let shotColors: [Color] = [Theme.red, Theme.red, Theme.amber, Theme.blue, Theme.teal, Theme.purple, Theme.green]
@@ -31,12 +30,13 @@ struct DashboardView: View {
                     header
                     headerFilters
                     statGrid
+                    activitySection
                     if !isPracticeMode { trendSection }
                     mistakesSection
+                    errorTrendSection
                     if !isPracticeMode { wlSection }
                     if !isPracticeMode { outcomesSection }
                     skillSection
-                    if !isPracticeMode { fargoSection }
                     insightsSection
                     exportImportSection
                 }
@@ -80,8 +80,10 @@ struct DashboardView: View {
         .alert("Import failed.", isPresented: $showImportError) {
             Button("OK", role: .cancel) { }
         }
-        .task {
-            opponentStore.sync(with: store.sessions)
+        .alert("Fargo Estimate", isPresented: $showFargoInfo) {
+            Button("Got it", role: .cancel) { }
+        } message: {
+            Text("Fargo is a skill rating system for pool players. This visual blends your baseline Fargo with tracked match performance, then scores five areas: potting, position, pattern, runout, and overall.")
         }
     }
 
@@ -99,12 +101,6 @@ struct DashboardView: View {
                                selection: $mode,
                                label: { $0.label },
                                onDismiss: { activePickerID = nil })
-        } else if activePickerID == "dashboard.opponent" {
-            OverlayPickerPanel(title: "Opponent",
-                               items: opponentOptions,
-                               selection: $opponentFilter,
-                               label: { $0 },
-                               onDismiss: { activePickerID = nil })
         }
     }
 
@@ -120,11 +116,7 @@ struct DashboardView: View {
     }
 
     private var filteredSessions: [Session] {
-        var rows = Analytics.filteredSessions(store.sessions, timeFilter: timeFilter, mode: mode)
-        if opponentFilter != "All opponents" {
-            rows = rows.filter { opponentStore.matches($0.opponent, selected: opponentFilter) }
-        }
-        return rows
+        Analytics.filteredSessions(store.sessions, timeFilter: timeFilter, mode: mode)
     }
 
     private var allRacks: [Rack] {
@@ -144,31 +136,18 @@ struct DashboardView: View {
     }
 
     private var headerFilters: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 8) {
-                InlinePickerCard(id: "dashboard.time",
-                                 title: "Time",
-                                 items: TimeFilter.allCases,
-                                 selection: $timeFilter,
-                                 activeID: $activePickerID) { $0.label }
-                InlinePickerCard(id: "dashboard.mode",
-                                 title: "Mode",
-                                 items: ModeFilter.allCases,
-                                 selection: $mode,
-                                 activeID: $activePickerID) { $0.label }
-            }
-            if !opponentOptions.isEmpty {
-                InlinePickerCard(id: "dashboard.opponent",
-                                 title: "Opponent",
-                                 items: opponentOptions,
-                                 selection: $opponentFilter,
-                                 activeID: $activePickerID) { $0 }
-            }
+        HStack(spacing: 8) {
+            InlinePickerCard(id: "dashboard.time",
+                             title: "Time",
+                             items: TimeFilter.allCases,
+                             selection: $timeFilter,
+                             activeID: $activePickerID) { $0.label }
+            InlinePickerCard(id: "dashboard.mode",
+                             title: "Mode",
+                             items: ModeFilter.allCases,
+                             selection: $mode,
+                             activeID: $activePickerID) { $0.label }
         }
-    }
-
-    private var opponentOptions: [String] {
-        opponentStore.availableNames(from: store.sessions)
     }
 
     private var statGrid: some View {
@@ -304,13 +283,39 @@ struct DashboardView: View {
     }
 
     private var skillSection: some View {
-        let scores = Analytics.radarScores(allSessions: filteredSessions, filteredRacks: allRacks, mode: mode)
-        let labels = ["Potting", "Position", "Safety", "Fouls", "Consistency"]
+        let fargo = Analytics.fargoResult(matchSessions: matchSessions)
+        let labels = fargo.factors.map(\.name)
+        let scores = fargo.factors.map(\.scoreValue)
         let colors: [Color] = [Theme.purple, Theme.teal, Theme.green, Theme.red, Theme.blue]
+        let baseline = profileStore.profile.clampedBaseline
+        let performanceCenter = fargo.estimatedScore
+        let confidence = min(max(Double(matchRacks.count) / 200.0, 0), 1)
+        let blended = Int(round(Double(baseline) * (1 - confidence) + Double(performanceCenter) * confidence))
+        let blendedRange = "\(blended - 25)–\(blended + 25)"
         return SectionCard(title: "Skill breakdown") {
             VStack(spacing: 16) {
                 RadarChart(labels: labels, values: scores, color: Theme.purple)
                     .frame(height: Layout.chartHeight(Layout.chartRadar, hSizeClass: hSizeClass))
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text("Fargo estimate")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(Theme.text2)
+                        Button {
+                            showFargoInfo = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.caption)
+                                .foregroundColor(Theme.muted)
+                        }
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
+                    Text(blendedRange)
+                        .font(.title2.weight(.semibold))
+                        .foregroundColor(Theme.purple)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 VStack(spacing: 14) {
                     ForEach(Array(labels.enumerated()), id: \.offset) { idx, label in
                         VStack(alignment: .leading, spacing: 6) {
@@ -325,42 +330,6 @@ struct DashboardView: View {
                             }
                             PercentageBar(value: scores[idx], color: colors[idx], height: 8)
                         }
-                    }
-                }
-            }
-        }
-    }
-
-    private var fargoSection: some View {
-        let fargo = Analytics.fargoResult(matchSessions: matchSessions)
-        let baseline = profileStore.profile.clampedBaseline
-        let performanceCenter = fargo.estimatedScore
-        let confidence = min(max(Double(matchRacks.count) / 200.0, 0), 1)
-        let blended = Int(round(Double(baseline) * (1 - confidence) + Double(performanceCenter) * confidence))
-        let blendedRange = "\(blended - 25)–\(blended + 25)"
-        return SectionCard(title: "Fargo estimate") {
-            Text(blendedRange)
-                .font(.largeTitle)
-                .foregroundColor(Theme.purple)
-            Text("Uses baseline + tracked performance")
-                .font(.caption2)
-                .foregroundColor(Theme.muted)
-            VStack(spacing: 8) {
-                ForEach(fargo.factors) { f in
-                    HStack {
-                        Text(f.name)
-                            .font(.caption)
-                            .foregroundColor(Theme.text2)
-                        Text(f.valueText)
-                            .font(.caption2)
-                            .foregroundColor(Theme.muted)
-                        Spacer()
-                        Text(f.weightText)
-                            .font(.caption2)
-                            .foregroundColor(Theme.muted)
-                        Text("\(f.contribution >= 0 ? "+" : "")\(f.contribution)")
-                            .font(.caption)
-                            .foregroundColor(f.contribution >= 3 ? Theme.teal : (f.contribution <= -3 ? Theme.red : Theme.muted))
                     }
                 }
             }
@@ -391,6 +360,79 @@ struct DashboardView: View {
                 }
                 .frame(height: Layout.chartHeight(Layout.chartSm, hSizeClass: hSizeClass))
             }
+        }
+    }
+
+    private var activityActiveDays: Int {
+        let cal = Calendar.current
+        let weekday = cal.component(.weekday, from: Date())
+        let daysToSunday = (weekday - cal.firstWeekday + 7) % 7
+        let sunday = cal.date(byAdding: .day, value: -daysToSunday, to: Date())!
+        let start = cal.startOfDay(for: cal.date(byAdding: .day, value: -17 * 7, to: sunday)!)
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return Set(store.sessions.compactMap { s -> String? in
+            guard cal.startOfDay(for: s.ts) >= start else { return nil }
+            return fmt.string(from: s.ts)
+        }).count
+    }
+
+    private var activitySection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Training activity")
+                    .font(.subheadline)
+                    .foregroundColor(Theme.text2)
+                Spacer(minLength: 0)
+                Text("\(activityActiveDays) active days")
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+            }
+            ActivityHeatmapView(sessions: store.sessions)
+        }
+        .padding(14)
+        .background(Theme.panel)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+    }
+
+    private var errorTrendSection: some View {
+        SectionCard(title: "Error composition trend") {
+            ErrorTrendChart(data: errorStackData, chartHeight: Layout.chartHeight(Layout.chartMd, hSizeClass: hSizeClass))
+        }
+    }
+
+    private var errorStackData: [ErrorStackPoint] {
+        let sorted = filteredSessions.sorted { $0.ts < $1.ts }
+        guard sorted.count >= 3 else { return [] }
+        let recent = Array(sorted.suffix(30))
+
+        func perRack(_ kp: KeyPath<Rack, Int>, _ s: Session) -> Double {
+            guard !s.racks.isEmpty else { return 0 }
+            return Double(s.racks.reduce(0) { $0 + $1[keyPath: kp] }) / Double(s.racks.count)
+        }
+
+        func rolling(_ vals: [Double]) -> [Double] {
+            vals.enumerated().map { i, _ in
+                let start = max(0, i - 4)
+                let slice = vals[start...i]
+                return slice.reduce(0, +) / Double(slice.count)
+            }
+        }
+
+        let miss = rolling(recent.map { perRack(\.missCount, $0) })
+        let pos  = rolling(recent.map { perRack(\.positionalCount, $0) })
+        let saf  = rolling(recent.map { perRack(\.safetyCount, $0) })
+        let foul = rolling(recent.map { perRack(\.foulCount, $0) })
+
+        return recent.enumerated().flatMap { i, session in
+            let m = miss[i]; let p = pos[i]; let s = saf[i]; let f = foul[i]
+            return [
+                ErrorStackPoint(id: "\(session.id)-m", sessionIndex: i, bottom: 0,         top: m,             type: "Miss"),
+                ErrorStackPoint(id: "\(session.id)-p", sessionIndex: i, bottom: m,         top: m + p,         type: "Positional"),
+                ErrorStackPoint(id: "\(session.id)-s", sessionIndex: i, bottom: m + p,     top: m + p + s,     type: "Safety"),
+                ErrorStackPoint(id: "\(session.id)-f", sessionIndex: i, bottom: m + p + s, top: m + p + s + f, type: "Foul")
+            ]
         }
     }
 
@@ -455,4 +497,197 @@ private struct DashboardKPI: View {
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
     }
+}
+
+private struct ErrorStackPoint: Identifiable {
+    let id: String
+    let sessionIndex: Int
+    let bottom: Double
+    let top: Double
+    let type: String
+}
+
+private struct ErrorTrendChart: View {
+    let data: [ErrorStackPoint]
+    let chartHeight: CGFloat
+
+    var body: some View {
+        if data.isEmpty {
+            Text("Need 3+ sessions to show trend")
+                .font(.caption)
+                .foregroundColor(Theme.muted)
+        } else {
+            chartBody
+            Text("Errors per rack · 5-session rolling avg")
+                .font(.caption2)
+                .foregroundColor(Theme.muted)
+        }
+    }
+
+    private var chartBody: some View {
+        Chart(data) { point in
+            AreaMark(
+                x: .value("Session", point.sessionIndex),
+                yStart: .value("Bottom", point.bottom),
+                yEnd: .value("Top", point.top)
+            )
+            .foregroundStyle(by: .value("Error", point.type))
+            .interpolationMethod(.monotone)
+        }
+        .chartForegroundStyleScale(
+            domain: ["Miss", "Positional", "Safety", "Foul"],
+            range: [Theme.red, Theme.amber, Theme.teal, Theme.purple]
+        )
+        .chartXAxis {
+            AxisMarks(values: .automatic(desiredCount: 4)) { v in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let idx = v.as(Int.self) {
+                        Text("S\(idx + 1)").font(.caption2)
+                    }
+                }
+            }
+        }
+        .chartYAxis {
+            AxisMarks(position: .leading, values: .automatic(desiredCount: 3)) { v in
+                AxisGridLine()
+                AxisValueLabel {
+                    if let val = v.as(Double.self) {
+                        Text(String(format: "%.1f", val)).font(.caption2)
+                    }
+                }
+            }
+        }
+        .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
+        .frame(height: chartHeight)
+    }
+}
+
+private struct ActivityHeatmapView: View {
+    let sessions: [Session]
+
+    private let cellSpacing: CGFloat = 2
+    private let weeks = 18
+    private let days = 7
+
+    // Card content width = screen width − page padding (14×2) − card padding (14×2)
+    // 18pt reserved on left for "week" label (14pt) + HStack gap (4pt)
+    private var cellSize: CGFloat {
+        let cardWidth = UIScreen.main.bounds.width - 56
+        return max(8, (cardWidth - 18 + cellSpacing) / CGFloat(weeks) - cellSpacing)
+    }
+
+    private var gridHeight: CGFloat {
+        CGFloat(days) * (cellSize + cellSpacing) - cellSpacing
+    }
+
+    private var byDate: [String: Int] {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        var d: [String: Int] = [:]
+        for s in sessions {
+            let key = fmt.string(from: s.ts)
+            d[key, default: 0] += 1
+        }
+        return d
+    }
+
+    private var startDate: Date {
+        let now = Date()
+        let cal = Calendar.current
+        let weekday = cal.component(.weekday, from: now)
+        let daysToSunday = (weekday - cal.firstWeekday + 7) % 7
+        let sunday = cal.date(byAdding: .day, value: -daysToSunday, to: now)!
+        return cal.startOfDay(for: cal.date(byAdding: .day, value: -(weeks - 1) * 7, to: sunday)!)
+    }
+
+    private func date(week: Int, day: Int) -> Date {
+        Calendar.current.date(byAdding: .day, value: week * 7 + day, to: startDate)!
+    }
+
+    private func dateKey(_ d: Date) -> String {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "yyyy-MM-dd"
+        return fmt.string(from: d)
+    }
+
+    private func cellColor(count: Int) -> Color {
+        switch count {
+        case 0: return Theme.panel2
+        case 1: return Theme.purple.opacity(0.35)
+        case 2: return Theme.purple.opacity(0.6)
+        default: return Theme.purple
+        }
+    }
+
+    private var monthLabels: [(text: String, col: Int)] {
+        let cal = Calendar.current
+        let fmt = DateFormatter()
+        fmt.dateFormat = "MMM"
+        var labels: [(String, Int)] = []
+        var lastMonth = -1
+        for w in 0..<weeks {
+            let d = date(week: w, day: 0)
+            let m = cal.component(.month, from: d)
+            if m != lastMonth {
+                labels.append((fmt.string(from: d), w))
+                lastMonth = m
+            }
+        }
+        return labels
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            monthRow
+            HStack(alignment: .top, spacing: 4) {
+                weekLabel
+                grid
+            }
+        }
+    }
+
+    private var monthRow: some View {
+        HStack(spacing: 0) {
+            Color.clear.frame(width: 18)
+            ZStack(alignment: .leading) {
+                Color.clear.frame(height: 14)
+                ForEach(monthLabels, id: \.col) { item in
+                    Text(item.text)
+                        .font(.system(size: 9))
+                        .foregroundColor(Theme.muted)
+                        .offset(x: CGFloat(item.col) * (cellSize + cellSpacing))
+                }
+            }
+        }
+    }
+
+    private var weekLabel: some View {
+        ZStack {
+            Color.clear.frame(width: 14, height: gridHeight)
+            Text("week")
+                .font(.system(size: 8))
+                .foregroundColor(Theme.muted)
+                .rotationEffect(.degrees(-90))
+                .fixedSize()
+        }
+    }
+
+    private var grid: some View {
+        HStack(spacing: cellSpacing) {
+            ForEach(0..<weeks, id: \.self) { w in
+                VStack(spacing: cellSpacing) {
+                    ForEach(0..<days, id: \.self) { d in
+                        let dt = date(week: w, day: d)
+                        let count = byDate[dateKey(dt), default: 0]
+                        let isFuture = dt > Date()
+                        RoundedRectangle(cornerRadius: 2)
+                            .fill(isFuture ? Color.clear : cellColor(count: count))
+                            .frame(width: cellSize, height: cellSize)
+                    }
+                }
+            }
+        }
+    }
+
 }

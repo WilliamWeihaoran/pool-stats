@@ -11,21 +11,31 @@ enum SkillLevel: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .novice: return "Novice"
-        case .beginner: return "Beginner"
+        case .novice: return "Beginner"
+        case .beginner: return "Developing"
         case .intermediate: return "Intermediate"
         case .advanced: return "Advanced"
         case .pro: return "Pro"
         }
     }
 
+    var fargoRange: String {
+        switch self {
+        case .novice: return "100–300"
+        case .beginner: return "300–450"
+        case .intermediate: return "450–575"
+        case .advanced: return "575–700"
+        case .pro: return "700+"
+        }
+    }
+
     var defaultFargo: Int {
         switch self {
-        case .novice: return 100
-        case .beginner: return 200
-        case .intermediate: return 400
-        case .advanced: return 600
-        case .pro: return 700
+        case .novice: return 200
+        case .beginner: return 375
+        case .intermediate: return 500
+        case .advanced: return 625
+        case .pro: return 750
         }
     }
 }
@@ -42,10 +52,10 @@ enum DedicationLevel: Int, Codable, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .justForFun: return "Just for fun"
-        case .maybe: return "Maybe"
-        case .neutral: return "Neutral"
-        case .yes: return "Yes"
-        case .veryMuch: return "Very much"
+        case .maybe: return "Light commitment"
+        case .neutral: return "Balanced commitment"
+        case .yes: return "High commitment"
+        case .veryMuch: return "Tournament mode"
         }
     }
 }
@@ -78,6 +88,22 @@ enum FrequencyBand: String, Codable, CaseIterable, Identifiable {
         case .oneToTwo: return "1–2 / week"
         case .threeToFour: return "3–4 / week"
         case .fivePlus: return "5+ / week"
+        }
+    }
+
+    var frequency: String {
+        switch self {
+        case .oneToTwo: return "1–2"
+        case .threeToFour: return "3–4"
+        case .fivePlus: return "5+"
+        }
+    }
+
+    var sublabel: String {
+        switch self {
+        case .oneToTwo: return "Casual"
+        case .threeToFour: return "Regular"
+        case .fivePlus: return "Dedicated"
         }
     }
 }

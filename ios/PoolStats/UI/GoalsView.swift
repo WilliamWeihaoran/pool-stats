@@ -3,7 +3,6 @@ import SwiftUI
 struct GoalsView: View {
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var goalsStore: GoalsStore
-    @Environment(\.horizontalSizeClass) private var hSizeClass
     @State private var editorDraft: GoalDraft?
     @State private var showArchived = false
     @State private var actionGoal: Goal?
@@ -115,7 +114,7 @@ struct GoalsView: View {
     private var overviewSection: some View {
         let active = activeGoals
         let complete = active.filter { isComplete($0) }.count
-        return LazyVGrid(columns: Layout.columns(hSizeClass: hSizeClass), spacing: Layout.gridSpacing) {
+        return HStack(spacing: Layout.gridSpacing) {
             StatCard(label: "Active", value: "\(active.count)")
             StatCard(label: "Complete", value: "\(complete)")
             StatCard(label: "Archived", value: "\(archivedGoals.count)")

@@ -23,6 +23,7 @@ struct TrendSeries {
 struct FargoFactor: Identifiable {
     let id = UUID()
     let name: String
+    let scoreValue: Int
     let valueText: String
     let weightText: String
     let contribution: Int

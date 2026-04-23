@@ -10,6 +10,8 @@ Native SwiftUI iOS app for logging pool matches and practice sessions, syncing t
 - Drill-in Settings sections for `Me`, `Stats`, `Recent form`, `Appearance`, `Data`, and `About`
 - First-run onboarding + legacy one-time personalize prompt
 - Optional Sign in with Apple account linking in `Settings → Me → Account`
+- Training activity heatmap (18-week calendar, fills card width, active-day count in card header) and error composition stacked area chart on Dashboard
+- Haptic + press-scale feedback on all logging controls (`ChoiceButton`, `SmallToggleButton`, `ErrorCounterTile`)
 
 ## Open in Xcode
 1. Open `ios/PoolStats/PoolStats.xcodeproj` in Xcode.
@@ -31,5 +33,14 @@ Native SwiftUI iOS app for logging pool matches and practice sessions, syncing t
 - Dashboard Fargo estimate is blended:
   - baseline Fargo + performance estimate
   - weighted by confidence from tracked match racks
+  - displayed inside the combined Skill + Fargo card
+  - includes an in-card info helper explaining Fargo and the app formula
+  - performance estimate factors:
+    - Potting (25%)
+    - Positional (20%)
+    - Runout rate (20%)
+    - Pattern play (20%)
+    - Overall game (15%)
+  - radar labels use: Potting, Position, Pattern, Runout, Overall
 - Starter goals are generated from profile inputs and marked as `starterGenerated`.
 - Regenerating starter goals only replaces `starterGenerated` goals and does not overwrite user-created goals.

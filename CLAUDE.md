@@ -46,6 +46,7 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
 - `Rack.unforcedErrorCount` is the dashboard-facing aggregate for miss / positional / safety / foul errors.
 - `Session.performanceRating` is a 1-10 user rating set with a drag control on the summary screen.
 - `Session.opponent` stores the tracked opponent name when available.
+- `Session.displayLabel` falls back to game+mode text when `label` is empty (for example: `8 ball match`).
 - `Goal` includes `starterGenerated` to distinguish app-generated starter goals from user-authored goals.
 - `PlayerProfile` stores onboarding/profile preferences:
   - `hasCompletedOnboarding`
@@ -71,6 +72,31 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
 - The save gate requires the key rack fields to be set before a rack can be saved.
 - The session summary is shared by both History and the post-session view.
 - Session summary timing shows raw time and adjusted time with a 45-second rack buffer.
+- Active rack timer behavior:
+  - first 45 seconds are setup buffer (amber timer/progress)
+  - then active rack time starts at 0 and progress switches to green
+
+## Dashboard Visuals
+
+In addition to the existing charts, the Dashboard now includes:
+
+- **Combined Skill + Fargo card**: skill radar and Fargo estimate live in one section. Radar uses the Fargo factor categories (`Potting`, `Position`, `Pattern`, `Runout`, `Overall`) from the current weighted model.
+- **Fargo info helper**: an info (`i`) button next to `Fargo estimate` explains what Fargo is and how the app computes the visual.
+- **Training activity heatmap** (`activitySection`): GitHub-style 18-week × 7-day calendar using all sessions (not filter-scoped). Cells are color-coded by session count (0 = panel, 1 = dim purple, 2 = mid purple, 3+ = full purple). Implemented as `ActivityHeatmapView` in `DashboardView.swift`.
+  - Active-day count is shown in the top-right of the card header on the same line as the title — not inside the heatmap itself.
+  - Left column shows a sideways "week" label (rotated -90°) instead of M/W/F day labels. No legend row.
+  - Cell size is computed dynamically from `UIScreen.main.bounds.width - 56` (page + card padding) so the grid fills the full card width on every device.
+  - Do NOT use `GeometryReader` + `@State` for width measurement here — it causes an infinite layout loop that freezes the entire app. The `UIScreen.main.bounds.width` approach is intentional.
+- **Error composition trend** (`errorTrendSection`): Stacked area chart (`AreaMark(x:yStart:yEnd:)`) for the last 30 filtered sessions, with manually computed cumulative bounds per error type and a 5-session rolling average. Implemented via `ErrorTrendChart` + `ErrorStackPoint` private structs in `DashboardView.swift`. Extracted to a sub-view to avoid Swift type-checker timeouts on complex `Chart` bodies.
+
+## Logging Page Feedback
+
+All interactive controls on the logging page have haptic and animation feedback:
+
+- `ChoiceButton` and `SmallToggleButton`: press scales to 93% via `PressScaleStyle` `ButtonStyle`; fires a light impact haptic on every tap.
+- `ErrorCounterTile`: medium impact on tap (increment), rigid impact on long-press (decrement). The value number does a spring-bounce pop (scale 1.0 → 1.28 → 1.0) using `onChange(of: value)`.
+- Save rack: fires `UINotificationFeedbackGenerator().notificationOccurred(.success)` on a successful save.
+- Save & exit: fires a medium impact haptic on press.
 
 ## Stats Rules
 
@@ -86,6 +112,15 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
   - baseline from `PlayerProfile.baselineFargo`
   - performance center from analytics (`FargoResult.estimatedScore`)
   - confidence ramps by tracked match racks (`count / 200`, clamped `0...1`)
+- Fargo performance center now uses these weighted factors:
+  - Potting: 25%
+  - Positional: 20%
+  - Runout rate: 20%
+  - Pattern play: 20%
+  - Overall game: 15%
+- Runout-rate denominator follows the app rule:
+  - base denominator is runnable/open layouts
+  - a runout from non-open layout adds +1 to both numerator and denominator
 
 ## Session Timing
 

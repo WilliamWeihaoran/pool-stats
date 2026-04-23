@@ -33,19 +33,26 @@ That gives you enough detail to improve your game without forcing you to record 
 - Session and rack timers are tracked for current sessions
 - Session summary includes a drag-to-rate performance control
 - Session summary also shows raw time and adjusted time with a 45-second rack buffer
+- All logging controls have haptic and press-scale feedback
 
 **Dashboard analytics**
 - Win rate over time
 - Outcome rings for match and rack results
-- Fargo estimate
-- Skill radar: Potting, Position, Safety, Fouls, Consistency
+- Combined skill + Fargo visual (single card)
+- Fargo estimate (baseline + performance blend)
+- Fargo performance factors: Potting (25%), Positional (20%), Runout rate (20%), Pattern play (20%), Overall game (15%)
+- Skill radar categories: Potting, Position, Pattern, Runout, Overall
+- Info helper on Fargo estimate for a quick explanation of Fargo and the in-app calculation
 - Unforced-error breakdowns
 - Break and layout insights
 - Conversion rate based on open-layout racks only
 - Biggest leak card and opponent-aware filtering
+- Training activity heatmap (18-week GitHub-style calendar, fills card width, active-day count in header)
+- Error composition trend (stacked area chart, 5-session rolling average)
 
 **History**
 - Clean session list with date, duration, and outcome styling
+- Empty session names now fall back to game+mode labels (for example: `8 ball match`)
 - Select mode for deleting sessions
 - Practice sessions and match draws are visually distinguished
 - Sync status indicator for local cache vs. iCloud
@@ -82,9 +89,6 @@ Open `ios/PoolStats/PoolStats.xcodeproj` in Xcode, select a simulator or device,
 - **Settings** — personal summary, appearance, sync, and app actions
 
 To move data between devices or keep a backup, use the JSON export/import flow.
-
-Future idea:
-- Sign in with Apple is a later enhancement we may add if the app grows beyond iCloud-only identity and sync.
 
 ---
 

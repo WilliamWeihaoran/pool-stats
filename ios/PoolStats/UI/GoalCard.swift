@@ -57,7 +57,7 @@ struct GoalCard: View {
                             .foregroundColor(Theme.muted)
                             .lineLimit(1)
                         Spacer(minLength: 0)
-                        Text(goal.sessionScope.label)
+                        Text(goal.sessionScope.shortLabel.lowercased())
                             .font(.caption2.weight(.semibold))
                             .foregroundColor(scopeColor)
                             .padding(.horizontal, 8)

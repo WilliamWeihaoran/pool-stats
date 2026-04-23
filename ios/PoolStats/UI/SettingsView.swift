@@ -2,6 +2,7 @@ import SwiftUI
 
 enum SettingsSection: String, CaseIterable, Hashable {
     case me
+    case account
     case opponents
     case stats
     case recentForm
@@ -12,6 +13,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     var title: String {
         switch self {
         case .me: return "Me"
+        case .account: return "Account"
         case .opponents: return "Opponents"
         case .stats: return "Stats"
         case .recentForm: return "Recent form"
@@ -24,6 +26,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     var subtitle: String {
         switch self {
         case .me: return "Your profile, best opponent, and biggest leak"
+        case .account: return "iCloud sync and Sign in with Apple"
         case .opponents: return "Add, edit, favorite, and compare opponents"
         case .stats: return "Session totals and performance snapshots"
         case .recentForm: return "A quick look at how the last 10 sessions went"
@@ -36,6 +39,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     var icon: String {
         switch self {
         case .me: return "person.crop.circle.fill"
+        case .account: return "lock.icloud.fill"
         case .opponents: return "person.2.fill"
         case .stats: return "chart.bar.fill"
         case .recentForm: return "waveform.path.ecg"
@@ -47,6 +51,8 @@ enum SettingsSection: String, CaseIterable, Hashable {
 }
 
 struct SettingsView: View {
+    private let tabBarClearance: CGFloat = 74
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -56,7 +62,7 @@ struct SettingsView: View {
                 }
                 .padding(.horizontal, Layout.pagePadding)
                 .padding(.top, 0)
-                .padding(.bottom, 12)
+                .padding(.bottom, 12 + tabBarClearance)
             }
             .background(Theme.bg)
             .toolbar(.hidden, for: .navigationBar)
@@ -100,7 +106,7 @@ struct SettingsView: View {
 
     private var settingGroups: [SettingsGroup] {
         [
-            SettingsGroup(title: "Player", sections: [.me, .stats, .recentForm]),
+            SettingsGroup(title: "Player", sections: [.me, .account, .stats, .recentForm]),
             SettingsGroup(title: "People", sections: [.opponents]),
             SettingsGroup(title: "App", sections: [.appearance, .data, .about])
         ]
@@ -153,6 +159,7 @@ private struct SettingsSectionRow: View {
     private var iconColor: Color {
         switch section {
         case .me: return Theme.purple
+        case .account: return Theme.teal
         case .opponents: return Theme.teal
         case .stats, .recentForm: return Theme.blue
         case .appearance: return Theme.amber

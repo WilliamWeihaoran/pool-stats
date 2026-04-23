@@ -39,6 +39,13 @@ struct Session: Identifiable, Codable, Hashable {
     var isDraw: Bool { !isPractice && wins == losses && wins > 0 }
     var gameLabel: String { game == "8ball" ? "8-ball" : "9-ball" }
     var typeLabel: String { isPractice ? "Practice" : "Match" }
+    var displayLabel: String {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+        let gameName = game == "8ball" ? "8 ball" : "9 ball"
+        let modeName = isPractice ? "practice" : "match"
+        return "\(gameName) \(modeName)"
+    }
 }
 
 extension Session {

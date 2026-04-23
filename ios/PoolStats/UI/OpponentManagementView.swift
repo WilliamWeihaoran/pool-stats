@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 
 struct OpponentManagementView: View {
     @EnvironmentObject private var store: DataStore
@@ -129,6 +130,11 @@ struct OpponentManagementView: View {
         Group {
             if let profile = selectedOpponent {
                 let h2h = opponentStore.headToHead(for: profile.displayName, sessions: store.sessions)
+                let opponentMatchSessions = store.sessions.filter {
+                    $0.type == "match" && opponentStore.matches($0.opponent, selected: profile.displayName)
+                }
+                let opponentMatchRacks = Analytics.matchRacks(opponentMatchSessions)
+                let opponentMistakes = Analytics.mistakesPerRack(opponentMatchRacks)
                 SectionCard(title: "Head to head") {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
@@ -163,6 +169,50 @@ struct OpponentManagementView: View {
                                 .font(.caption.weight(.medium))
                                 .foregroundColor(Theme.text)
                         }
+
+                        Divider()
+                            .overlay(Theme.border)
+
+                        HStack(spacing: 14) {
+                            RingChart(wins: h2h.sessionWins, losses: h2h.sessionLosses)
+                                .frame(maxWidth: 140)
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Session outcomes")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(Theme.text2)
+                                Text("Wins (\(h2h.sessionWins))")
+                                    .font(.caption)
+                                    .foregroundColor(Theme.teal)
+                                Text("Losses (\(h2h.sessionLosses))")
+                                    .font(.caption)
+                                    .foregroundColor(Theme.red)
+                            }
+                            Spacer(minLength: 0)
+                        }
+
+                        if opponentMatchRacks.isEmpty {
+                            Text("Not enough rack data for error visuals yet.")
+                                .font(.caption)
+                                .foregroundColor(Theme.muted)
+                        } else {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Unforced errors per rack")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(Theme.text2)
+                                Chart {
+                                    ForEach(Array(opponentMistakes.enumerated()), id: \.offset) { idx, item in
+                                        BarMark(
+                                            x: .value("Type", item.label),
+                                            y: .value("Per Rack", item.value)
+                                        )
+                                        .cornerRadius(4)
+                                        .foregroundStyle(errorColor(for: idx))
+                                    }
+                                }
+                                .frame(height: 140)
+                            }
+                        }
                     }
                 }
             } else {
@@ -173,6 +223,11 @@ struct OpponentManagementView: View {
                 }
             }
         }
+    }
+
+    private func errorColor(for index: Int) -> Color {
+        let colors: [Color] = [Theme.red, Theme.amber, Theme.blue, Theme.teal]
+        return colors[index % colors.count]
     }
 }
 

@@ -45,7 +45,7 @@ struct HistoryView: View {
                                         }
                                         VStack(alignment: .leading, spacing: 4) {
                                             HStack(spacing: 8) {
-                                                Text(session.label.isEmpty ? "—" : session.label)
+                                                Text(session.displayLabel)
                                                     .font(.headline)
                                                     .foregroundColor(Theme.text)
                                                     .lineLimit(1)
@@ -186,7 +186,7 @@ struct HistoryView: View {
     }
 
     private var filterBar: some View {
-        VStack(spacing: 8) {
+        HStack(spacing: 8) {
             InlinePickerCard(id: "history.game",
                              title: "Game",
                              items: [GameFilter.all, .practice, .eightBall, .nineBall],

@@ -220,6 +220,7 @@ private struct ActionRow: View {
         HStack(spacing: 10) {
             Button("Save rack") {
                 if store.saveRack() {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
                     showSaveToast = true
                     Task {
                         try? await Task.sleep(nanoseconds: 1_000_000_000)
@@ -235,6 +236,7 @@ private struct ActionRow: View {
             .disabled(!canSave(rack: rack, isPractice: isPractice))
 
             Button("Save & exit") {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showEndConfirm = true
             }
             .buttonStyle(.borderedProminent)
@@ -261,19 +263,29 @@ private struct LogTimerRow: View {
         TimelineView(.periodic(from: Date(), by: 1)) { _ in
             let now = Date()
             let sessionElapsed = elapsedSince(store.sessionStart, now: now)
-            let rackElapsed = elapsedSince(store.rackStart, now: now)
+            let rawRackElapsed = elapsedSince(store.rackStart, now: now)
+            let bufferSeconds = Session.rackSetupBufferSeconds
+            let inBuffer = rawRackElapsed < bufferSeconds
+            let rackElapsed = max(0, rawRackElapsed - bufferSeconds)
             let avgPerRack = session.bufferedAverageRackSeconds(totalSeconds: sessionElapsed)
-            let pacePct = session.bufferedPacePercent(totalSeconds: sessionElapsed)
+            let rackProgress: Double = {
+                if inBuffer {
+                    return min(rawRackElapsed / max(bufferSeconds, 1), 1)
+                }
+                let targetActiveRackSeconds: TimeInterval = 60
+                return min(rackElapsed / targetActiveRackSeconds, 1)
+            }()
+            let rackTimerColor = inBuffer ? Theme.amber : Theme.green
 
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 10) {
                     timeChip(label: "Session", value: AppFormatters.elapsed(sessionElapsed))
-                    timeChip(label: "Rack", value: AppFormatters.elapsed(rackElapsed))
+                    timeChip(label: "Rack", value: AppFormatters.elapsed(rackElapsed), valueColor: rackTimerColor)
                     timeChip(label: "Avg/rack", value: AppFormatters.elapsed(avgPerRack))
                     Spacer()
                     scoreCard(wins: session.wins, losses: session.losses)
                 }
-                avgRackBar(pacePct: pacePct)
+                rackProgressBar(progress: rackProgress, inBuffer: inBuffer)
             }
         }
     }
@@ -283,14 +295,14 @@ private struct LogTimerRow: View {
         return max(0, now.timeIntervalSince(start))
     }
 
-    private func timeChip(label: String, value: String) -> some View {
+    private func timeChip(label: String, value: String, valueColor: Color = Theme.text) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label)
                 .font(.caption2)
                 .foregroundColor(Theme.muted)
             Text(value)
                 .font(.caption)
-                .foregroundColor(Theme.text)
+                .foregroundColor(valueColor)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
@@ -299,19 +311,31 @@ private struct LogTimerRow: View {
         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 0.5))
     }
 
-    private func avgRackBar(pacePct: Int) -> some View {
-        let bufferPct = session.bufferedPaceBufferPercent()
+    private func rackProgressBar(progress: Double, inBuffer: Bool) -> some View {
+        let fill = min(max(progress, 0), 1)
+        let barColor = inBuffer ? Theme.amber : Theme.green
         return VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
-                Text("Avg pace")
+                Text(inBuffer ? "Rack setup buffer (45s)" : "Rack timer")
                     .font(.caption2)
                     .foregroundColor(Theme.muted)
                 Spacer(minLength: 0)
-                Text("includes 45s setup buffer")
+                Text(inBuffer ? "buffering" : "live")
                     .font(.caption2)
-                    .foregroundColor(Theme.amber)
+                    .foregroundColor(barColor)
             }
-            BufferedPaceBar(value: pacePct, bufferColor: Theme.amber, activeColor: Theme.green, bufferPercent: bufferPct, height: 5)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Rectangle()
+                        .fill(Theme.border)
+                        .frame(height: 5)
+                    Rectangle()
+                        .fill(barColor)
+                        .frame(width: geo.size.width * fill, height: 5)
+                }
+                .cornerRadius(2.5)
+            }
+            .frame(height: 5)
         }
     }
 
