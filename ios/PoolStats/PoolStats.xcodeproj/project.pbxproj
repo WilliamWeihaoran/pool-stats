@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		02CE4AB1E4B451F9A23571A1 /* PoolStatsWatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */; };
+		02CE4AB1E4B451F9A23571A1 /* PoolStatsWatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		0D52DE4A7A4FA4F6299D14EA /* PoolStatsWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03E32D9A1C7D5795E26164D /* PoolStatsWatchApp.swift */; };
 		361A8B865609ADA31C805909 /* PoolStatsWatchExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 6796882EB3A1DC2039DB20C0 /* PoolStatsWatchExtension.appex */; };
 		40576368ACA893DFB77B1E88 /* WatchConnectivityClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304A8C77D82733F0C7CB230C /* WatchConnectivityClient.swift */; };
@@ -63,6 +63,7 @@
 		AA1000010000000000000035 /* DataSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000035 /* DataSettingsView.swift */; };
 		AA1000010000000000000036 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000036 /* AppDelegate.swift */; };
 		AA1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
+		WA1000010000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
 		B48C585D837953CA58D88B53 /* WatchQueueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09DDE2033C526CE78DAEBC92 /* WatchQueueStore.swift */; };
 		BF105516C3EA12DAF5066C2C /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9E92BF268E25DB78D0CA99 /* Foundation.framework */; };
 		D6781C13732D22A412AD7F22 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9E92BF268E25DB78D0CA99 /* Foundation.framework */; };
@@ -88,6 +89,22 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		EMBED001000000000000WATCH /* Embed Watch App */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputFileListPaths = ();
+			inputPaths = ();
+			name = "Embed Watch App";
+			outputFileListPaths = ();
+			outputPaths = ();
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nWATCH_APP_NAME=\"PoolStatsWatchApp.app\"\nWATCH_DIR=\"$(dirname \"$BUILT_PRODUCTS_DIR\")/Release-watchos\"\nWATCH_APP=\"${WATCH_DIR}/${WATCH_APP_NAME}\"\nif [ ! -d \"$WATCH_APP\" ]; then\n  echo \"warning: Watch app not found at $WATCH_APP\"\n  exit 0\nfi\nDEST=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Watch\"\nmkdir -p \"$DEST\"\nrsync -a --delete \"${WATCH_APP}/\" \"${DEST}/${WATCH_APP_NAME}/\"\necho \"Embedded ${WATCH_APP_NAME} into ${DEST}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		D628F696F7319A460A1D35F7 /* Embed App Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -103,8 +120,8 @@
 		F4EEAB0F2E13EB719CFD15CA /* Embed Watch Content */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 16;
+			dstPath = "Watch";
+			dstSubfolderSpec = 14;
 			files = (
 				02CE4AB1E4B451F9A23571A1 /* PoolStatsWatchApp.app in Embed Watch Content */,
 			);
@@ -116,8 +133,6 @@
 /* Begin PBXFileReference section */
 		09DDE2033C526CE78DAEBC92 /* WatchQueueStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchQueueStore.swift; sourceTree = "<group>"; };
 		20DB8CB67DEEF7C32E13365F /* WatchSyncModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSyncModels.swift; sourceTree = "<group>"; };
-		FE8402DE8B5F3F7DAE0C3001 /* WatchRuntimeSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchRuntimeSession.swift; sourceTree = "<group>"; };
-		FEA604F08D7C6B9CE2F1501B /* WatchSessionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionStore.swift; sourceTree = "<group>"; };
 		304A8C77D82733F0C7CB230C /* WatchConnectivityClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnectivityClient.swift; sourceTree = "<group>"; };
 		5A41B497ECE1C81D983FA4AA /* WatchApp-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "WatchApp-Info.plist"; sourceTree = "<group>"; };
 		664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PoolStatsWatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -141,7 +156,7 @@
 		AA200001000000000000000F /* SummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000010 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AA2000010000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
+		AA2000010000000000000012 /* Resources/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
 		AA2000010000000000000013 /* PoolStats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = PoolStats.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA2000010000000000000014 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		AA2000010000000000000015 /* LogStartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStartView.swift; sourceTree = "<group>"; };
@@ -180,6 +195,8 @@
 		AA2000010000000000000036 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "WatchExtension-Info.plist"; sourceTree = "<group>"; };
 		FC9E92BF268E25DB78D0CA99 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		FE8402DE8B5F3F7DAE0C3001 /* WatchRuntimeSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchRuntimeSession.swift; sourceTree = "<group>"; };
+		FEA604F08D7C6B9CE2F1501B /* WatchSessionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -221,7 +238,6 @@
 				5A41B497ECE1C81D983FA4AA /* WatchApp-Info.plist */,
 				B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */,
 			);
-			name = Watch;
 			path = Watch;
 			sourceTree = "<group>";
 		};
@@ -237,7 +253,7 @@
 			isa = PBXGroup;
 			children = (
 				886D45192F89469F00338AC1 /* PoolStats.entitlements */,
-				AA4000010000000000000002 /*  */,
+				AA4000010000000000000002,
 				AA2000010000000000000013 /* PoolStats.app */,
 				664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */,
 				86F38CDB3C596F2CD2F91064 /* Frameworks */,
@@ -245,7 +261,7 @@
 			);
 			sourceTree = "<group>";
 		};
-		AA4000010000000000000002 /*  */ = {
+		AA4000010000000000000002 = {
 			isa = PBXGroup;
 			children = (
 				AA2000010000000000000001 /* PoolStatsApp.swift */,
@@ -254,7 +270,7 @@
 				AA4000010000000000000004 /* Models */,
 				AA4000010000000000000005 /* UI */,
 				AA4000010000000000000006 /* Resources */,
-				AA2000010000000000000012 /* Info.plist */,
+				AA2000010000000000000012 /* Resources/Info.plist */,
 				2F588EC825C4C4E826362F45 /* Watch */,
 			);
 			sourceTree = "<group>";
@@ -391,7 +407,7 @@
 				AA3000020000000000000001 /* Sources */,
 				AA3000010000000000000001 /* Frameworks */,
 				AA3000030000000000000001 /* Resources */,
-				F4EEAB0F2E13EB719CFD15CA /* Embed Watch Content */,
+				EMBED001000000000000WATCH /* Embed Watch App */,
 			);
 			buildRules = (
 			);
@@ -443,6 +459,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				WA1000010000000000000001 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -565,7 +582,9 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
 				MARKETING_VERSION = 1.0;
@@ -587,7 +606,8 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
 				MARKETING_VERSION = 1.0;
@@ -609,14 +629,15 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.poolstats.appi.watchkitapp;
 				PRODUCT_NAME = PoolStatsWatchApp;
 				SDKROOT = watchos;
-				SKIP_INSTALL = NO;
+				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchsimulator watchos";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
@@ -634,7 +655,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -664,11 +685,12 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Resources/Info.plist;
+				INSTALL_PATH = "$(LOCAL_APPS_DIR)";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -678,6 +700,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.poolstats.appi;
 				PRODUCT_NAME = PoolStats;
 				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -714,14 +737,15 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
+				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.poolstats.appi.watchkitapp;
 				PRODUCT_NAME = PoolStatsWatchApp;
 				SDKROOT = watchos;
-				SKIP_INSTALL = NO;
+				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchsimulator watchos";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;

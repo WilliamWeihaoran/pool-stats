@@ -60,11 +60,13 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
 
     func endSession(sessionUUID: String?, rating: Int) {
         sessionStore?.clear()
+        snapshot = snapshot.map { WatchSessionSnapshot(active: nil, availableOpponents: $0.availableOpponents, acknowledgedAtMs: $0.acknowledgedAtMs, message: nil) }
         send(WatchSyncEnvelope(action: .endSessionWithRating, sessionUUID: sessionUUID, end: WatchEndSessionPayload(rating: rating), sentAtMs: nowMs()))
     }
 
     func discardSession(sessionUUID: String?) {
         sessionStore?.clear()
+        snapshot = snapshot.map { WatchSessionSnapshot(active: nil, availableOpponents: $0.availableOpponents, acknowledgedAtMs: $0.acknowledgedAtMs, message: nil) }
         send(WatchSyncEnvelope(action: .discardSession, sessionUUID: sessionUUID, sentAtMs: nowMs()))
     }
 

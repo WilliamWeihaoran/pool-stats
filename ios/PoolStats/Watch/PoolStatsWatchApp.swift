@@ -29,6 +29,7 @@ private struct WatchRootView: View {
     @State private var game: String = "8ball"
     @State private var type: String = "match"
     @State private var opponent: String = "Other"
+    @State private var finishedSession: WatchSession?
 
     private var effectiveActive: ActiveSessionSnapshot? {
         client.snapshot?.active ?? sessionStore.activeSnapshot
@@ -37,8 +38,22 @@ private struct WatchRootView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if let active = effectiveActive {
-                    WatchActiveSessionView(active: active)
+                if let finished = finishedSession {
+                    WatchSessionFinishView(
+                        session: finished,
+                        onSave: { rating in
+                            client.endSession(sessionUUID: finished.sessionUUID, rating: rating)
+                            finishedSession = nil
+                        },
+                        onDiscard: {
+                            client.discardSession(sessionUUID: finished.sessionUUID)
+                            finishedSession = nil
+                        }
+                    )
+                } else if let active = effectiveActive {
+                    WatchActiveSessionView(active: active, onRequestFinish: { session in
+                        finishedSession = session
+                    })
                 } else {
                     WatchSessionStartView(game: $game, type: $type, opponent: $opponent)
                 }
@@ -77,41 +92,40 @@ private struct WatchSessionStartView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                cycleRow("Mode", value: $type, options: typeOptions) {
-                    modeBadge
-                }
-                cycleRow("Game", value: $game, options: gameOptions) {
-                    gameBadge
-                }
-                cycleRow("Opponent", value: $opponent, options: opponents.map { ($0, $0) }) {
-                    Text(opponent)
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(.teal)
-                }
-                Button {
-                    guard canStart else { return }
-                    client.startSession(game: game, type: type, opponent: opponent)
-                } label: {
-                    Text("Start Session")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
-                        .background(
-                            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                                .fill(canStart ? Color(red: 0.37, green: 0.92, blue: 0.83) : Color(white: 0.34))
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(!canStart)
+        VStack(spacing: 8) {
+            HStack {
+                Text("Quick Log")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                Spacer()
             }
-            .padding(.horizontal, 6)
-            .padding(.bottom, 8)
+            cycleRow("Mode", value: $type, options: typeOptions) { modeBadge }
+            cycleRow("Game", value: $game, options: gameOptions) { gameBadge }
+            cycleRow("Opponent", value: $opponent, options: opponents.map { ($0, $0) }) {
+                Text(opponent).font(.footnote.weight(.medium)).foregroundStyle(.teal)
+            }
+            Button {
+                guard canStart else { return }
+                client.startSession(game: game, type: type, opponent: opponent)
+            } label: {
+                Text("Start Session")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(canStart ? Color(red: 0.37, green: 0.92, blue: 0.83) : Color(white: 0.34))
+                    )
+                    .contentShape(RoundedRectangle(cornerRadius: 18))
+            }
+            .buttonStyle(.plain)
+            .disabled(!canStart)
         }
-        .scrollIndicators(.hidden)
-        .navigationTitle("Quick Log")
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("")
     }
 
     @ViewBuilder
@@ -121,18 +135,14 @@ private struct WatchSessionStartView: View {
             value.wrappedValue = options[(idx + 1) % options.count].0
         } label: {
             HStack {
-                Text(label)
-                    .font(.footnote)
-                    .foregroundStyle(.primary)
+                Text(label).font(.footnote).foregroundStyle(.primary)
                 Spacer()
                 accessory()
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
-            .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .fill(cardBackground)
-            )
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(cardBackground))
+            .contentShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(.plain)
     }
@@ -144,23 +154,36 @@ private struct WatchSessionStartView: View {
     }
 
     private var gameBadge: some View {
-        HStack(spacing: 6) {
-            ballBadge(number: game == "8ball" ? "8" : "9")
-            Text(game == "8ball" ? "8-ball" : "9-ball")
-                .font(.footnote.weight(.medium))
-                .foregroundStyle(.teal)
-        }
+        game == "8ball" ? AnyView(eightBall) : AnyView(nineBall)
     }
 
-    private func ballBadge(number: String) -> some View {
+    private var eightBall: some View {
         ZStack {
+            Circle().fill(Color.black)
             Circle()
                 .fill(Color.white)
-                .frame(width: 20, height: 20)
-            Text(number)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(.black)
+                .frame(width: 11)
+                .overlay(Text("8").font(.system(size: 7, weight: .black)).foregroundStyle(.black))
         }
+        .frame(width: 22, height: 22)
+    }
+
+    private var nineBall: some View {
+        ZStack {
+            Circle().fill(Color(red: 0.98, green: 0.82, blue: 0.12))
+            GeometryReader { geo in
+                Rectangle()
+                    .fill(Color.white)
+                    .frame(height: geo.size.height * 0.38)
+                    .position(x: geo.size.width / 2, y: geo.size.height / 2)
+            }
+            .clipShape(Circle())
+            Circle()
+                .fill(Color.white)
+                .frame(width: 11)
+                .overlay(Text("9").font(.system(size: 7, weight: .black)).foregroundStyle(.black))
+        }
+        .frame(width: 22, height: 22)
     }
 }
 
@@ -170,11 +193,11 @@ private struct WatchActiveSessionView: View {
     @EnvironmentObject private var client: WatchConnectivityClient
 
     let active: ActiveSessionSnapshot
+    let onRequestFinish: (WatchSession) -> Void
 
     @State private var section: LogSection = .breakSection
     @State private var selectedBreaker: String?
     @State private var selectedBreakBalls: Int = 0
-    @State private var breakBallsControl: Double = 0
     @State private var breakFoul: Bool = false
     @State private var selectedLayout: String?
     @State private var missCount: Int = 0
@@ -182,24 +205,46 @@ private struct WatchActiveSessionView: View {
     @State private var safetyCount: Int = 0
     @State private var foulCount: Int = 0
     @State private var showEndRackSheet: Bool = false
-    @State private var showFinishSheet: Bool = false
+    @State private var pendingFinishAfterRackSave: Bool = false
+    @State private var scoreFlash: ScoreFlash?
 
     private var rack: WatchRack? { active.rack }
     private var isPractice: Bool { active.session.type == "practice" }
     private var sessionUUID: String { active.session.sessionUUID }
+    private struct ScoreFlash: Equatable {
+        let wins: Int
+        let losses: Int
+    }
+
 
     var body: some View {
-        TabView(selection: $section) {
-            breakView.tag(LogSection.breakSection)
-            layoutView.tag(LogSection.layout)
-            errorsView.tag(LogSection.errors)
-        }
-        .tabViewStyle(.page(indexDisplayMode: .automatic))
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: section)
-        .onAppear { hydrateFromRack() }
-        .onChange(of: rack?.rackUUID) { _, _ in
-            hydrateFromRack()
-            section = .breakSection
+        ZStack {
+            TabView(selection: $section) {
+                breakView.tag(LogSection.breakSection)
+                layoutView.tag(LogSection.layout)
+                errorsView.tag(LogSection.errors)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .automatic))
+            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: section)
+            .onAppear {
+                hydrateFromRack()
+            }
+            .onChange(of: showEndRackSheet) { _, showing in
+                if !showing && pendingFinishAfterRackSave {
+                    pendingFinishAfterRackSave = false
+                    onRequestFinish(active.session)
+                }
+            }
+            .onChange(of: rack?.rackUUID) { _, _ in
+                hydrateFromRack()
+                section = .breakSection
+            }
+
+            if let scoreFlash {
+                scoreFlashOverlay(scoreFlash)
+                    .transition(.opacity)
+                    .zIndex(10)
+            }
         }
         .fullScreenCover(isPresented: $showEndRackSheet) {
             EndRackSheet(
@@ -208,25 +253,13 @@ private struct WatchActiveSessionView: View {
                 breakQualityBalls: selectedBreakBalls,
                 onSaveRack: { result, runout, breakAndRun in
                     sendResultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
+                    showNextRackFlash(for: result)
                     client.saveRack(sessionUUID: sessionUUID)
                 },
                 onSaveAndExit: { result, runout, breakAndRun in
                     sendResultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
+                    pendingFinishAfterRackSave = true
                     client.saveRack(sessionUUID: sessionUUID)
-                    showFinishSheet = true
-                }
-            )
-        }
-        .sheet(isPresented: $showFinishSheet) {
-            WatchSessionFinishView(
-                session: active.session,
-                onSave: { rating in
-                    client.endSession(sessionUUID: sessionUUID, rating: rating)
-                    showFinishSheet = false
-                },
-                onDiscard: {
-                    client.discardSession(sessionUUID: sessionUUID)
-                    showFinishSheet = false
                 }
             )
         }
@@ -235,16 +268,16 @@ private struct WatchActiveSessionView: View {
     // MARK: Section views
 
     private var breakView: some View {
-        HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 7) {
-                HStack {
-                    Text("Break")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.88))
-                    Spacer()
-                }
-
-                VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Break")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.9))
+                Spacer()
+            }
+            HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
+                VStack(spacing: 7) {
                     chipButton("Me", selected: selectedBreaker == "me", color: .green) {
                         selectedBreaker = "me"
                         client.patch(.init(breaker: "me"), sessionUUID: sessionUUID)
@@ -254,13 +287,16 @@ private struct WatchActiveSessionView: View {
                         client.patch(.init(breaker: "opp"), sessionUUID: sessionUUID)
                     }
                 }
+
+                Spacer(minLength: 8)
+
                 Button {
                     breakFoul.toggle()
                     client.patch(.init(breakFoul: breakFoul), sessionUUID: sessionUUID)
                 } label: {
                     Text("Foul")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(breakFoul ? Color.black.opacity(0.82) : Self.breakColor(for: 0))
+                        .foregroundStyle(breakFoul ? Color.black.opacity(0.82) : Self.breakColor(for: 0).opacity(0.72))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 8)
                         .background(
@@ -269,32 +305,35 @@ private struct WatchActiveSessionView: View {
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(Self.breakColor(for: 0).opacity(breakFoul ? 0.98 : 0.32), lineWidth: 1)
+                                .stroke(Self.breakColor(for: 0).opacity(breakFoul ? 0.98 : 0.26), lineWidth: 1)
                         )
                 }
                 .buttonStyle(.plain)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
-            VStack(spacing: 8) {
-                ballsSlider
+            ballsSlider
+                .frame(width: 62)
             }
-            .frame(width: 62)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, 6)
-        .padding(.top, 0)
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle("")
     }
 
     private var ballsSlider: some View {
         let currentColor = Self.breakColor(for: selectedBreakBalls)
-        let labels = ["0", "1", "2", "3+"]
+        let labels: [(Int, String)] = [(3, "3+"), (2, "2"), (1, "1"), (0, "0")]
 
         return GeometryReader { geo in
             let trackHeight = max(110.0, geo.size.height - 8)
             let knobSize = 30.0
-            let stepHeight = (trackHeight - knobSize) / 3.0
-            let knobY = (3.0 - Double(selectedBreakBalls)) * stepHeight
+            let usableHeight = max(trackHeight - knobSize, 1)
+            let stepHeight = usableHeight / 3.0
+            let knobY = -Double(selectedBreakBalls) * stepHeight
+            let fillHeight = (Double(selectedBreakBalls) / 3.0 * usableHeight) + knobSize / 2 + 4
 
             ZStack(alignment: .top) {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -306,8 +345,7 @@ private struct WatchActiveSessionView: View {
 
                 HStack(alignment: .top, spacing: 7) {
                     VStack(spacing: 0) {
-                        ForEach(Array(labels.enumerated()), id: \.offset) { index, label in
-                            let sliderValue = index
+                        ForEach(labels, id: \.0) { sliderValue, label in
                             Text(label)
                                 .font(.caption2.weight(sliderValue == selectedBreakBalls ? .bold : .semibold))
                                 .foregroundStyle(sliderValue == selectedBreakBalls ? Self.breakColor(for: sliderValue).opacity(0.98) : Color.white.opacity(0.28))
@@ -315,7 +353,7 @@ private struct WatchActiveSessionView: View {
                         }
                     }
 
-                    ZStack(alignment: .top) {
+                    ZStack(alignment: .bottom) {
                         Capsule()
                             .fill(Color.white.opacity(0.08))
                             .frame(width: 12)
@@ -329,8 +367,8 @@ private struct WatchActiveSessionView: View {
                                     endPoint: .top
                                 )
                             )
-                            .frame(width: 12, height: knobY + knobSize / 2 + 4)
-                            .padding(.top, 4)
+                            .frame(width: 12, height: fillHeight)
+                            .padding(.bottom, 4)
 
                         Circle()
                             .fill(currentColor)
@@ -344,34 +382,15 @@ private struct WatchActiveSessionView: View {
                 .padding(.vertical, 6)
             }
             .contentShape(Rectangle())
-            .focusable(section == .breakSection)
-            .digitalCrownRotation(
-                $breakBallsControl,
-                from: 0,
-                through: 3,
-                by: 1,
-                sensitivity: .low,
-                isContinuous: false,
-                isHapticFeedbackEnabled: false
-            )
-            .onChange(of: breakBallsControl) { _, value in
-                let newValue = max(0, min(3, Int(value.rounded())))
-                guard newValue != selectedBreakBalls else { return }
-                withAnimation(.spring(response: 0.24, dampingFraction: 0.74)) {
-                    selectedBreakBalls = newValue
-                }
-                client.patch(.init(breakBalls: newValue), sessionUUID: sessionUUID)
-            }
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
-                        let y = min(max(value.location.y - knobSize / 2, 0), trackHeight - knobSize)
-                        let normalized = 3.0 - (y / max(trackHeight - knobSize, 1) * 3.0)
+                        let y = min(max(value.location.y - knobSize / 2, 0), usableHeight)
+                        let normalized = 3.0 - (y / usableHeight * 3.0)
                         let newValue = max(0, min(3, Int(normalized.rounded())))
                         guard newValue != selectedBreakBalls else { return }
                         withAnimation(.spring(response: 0.22, dampingFraction: 0.76)) {
                             selectedBreakBalls = newValue
-                            breakBallsControl = Double(newValue)
                         }
                         client.patch(.init(breakBalls: newValue), sessionUUID: sessionUUID)
                     }
@@ -390,24 +409,22 @@ private struct WatchActiveSessionView: View {
     }
 
     private var layoutView: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text("Layout")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.white.opacity(0.9))
                 Spacer()
             }
-
-            VStack(spacing: 8) {
+            VStack(spacing: 6) {
                 layoutChip("Open", key: "open", color: Color(red: 0.20, green: 0.86, blue: 0.37))
                 layoutChip("Clustered", key: "clustered", color: Color(red: 0.78, green: 0.62, blue: 0.10))
                 layoutChip("Problem", key: "problematic", color: Color(red: 0.73, green: 0.35, blue: 0.38))
                 layoutChip("Snookered", key: "snookered", color: Color(red: 0.66, green: 0.50, blue: 0.98))
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, 6)
-        .padding(.top, 0)
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle("")
     }
@@ -417,59 +434,128 @@ private struct WatchActiveSessionView: View {
     private static let safetyColor   = Color(red: 0.38, green: 0.65, blue: 0.98)
     private static let foulColor     = Color(red: 0.97, green: 0.44, blue: 0.44)
 
+    @ViewBuilder
+    private func scoreFlashOverlay(_ flash: ScoreFlash) -> some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            VStack(spacing: 4) {
+                Text("Score")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .textCase(.uppercase)
+                    .kerning(1.2)
+
+                HStack(alignment: .center, spacing: 0) {
+                    VStack(spacing: 2) {
+                        Text("\(flash.wins)")
+                            .font(.system(size: 64, weight: .black, design: .rounded).monospacedDigit())
+                            .foregroundStyle(Color(red: 0.37, green: 0.92, blue: 0.83))
+                        Text("Me")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(Color(red: 0.37, green: 0.92, blue: 0.83).opacity(0.7))
+                    }
+                    .frame(maxWidth: .infinity)
+
+                    Text("–")
+                        .font(.system(size: 32, weight: .light))
+                        .foregroundStyle(.white.opacity(0.3))
+
+                    VStack(spacing: 2) {
+                        Text("\(flash.losses)")
+                            .font(.system(size: 64, weight: .black, design: .rounded).monospacedDigit())
+                            .foregroundStyle(Color(red: 0.97, green: 0.44, blue: 0.44))
+                        Text("Opp")
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(Color(red: 0.97, green: 0.44, blue: 0.44).opacity(0.7))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+
+                Text("Tap to continue")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.28))
+                    .padding(.top, 4)
+            }
+            .padding(.horizontal, 12)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.easeOut(duration: 0.18)) {
+                scoreFlash = nil
+            }
+        }
+    }
+
+    private func showNextRackFlash(for result: String?) {
+        let addedWin = result == "won" ? 1 : 0
+        let addedLoss = result == "lost" ? 1 : 0
+        let flash = ScoreFlash(wins: active.session.wins + addedWin, losses: active.session.losses + addedLoss)
+        withAnimation(.easeIn(duration: 0.15)) {
+            scoreFlash = flash
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            withAnimation(.easeOut(duration: 0.3)) {
+                if scoreFlash == flash {
+                    scoreFlash = nil
+                }
+            }
+        }
+    }
+
     private var errorsView: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
                 Text("Errors")
-                    .font(.subheadline.weight(.semibold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(.white)
                 Spacer()
             }
 
-            HStack(spacing: 7) {
-                errorTile("Miss", count: missCount, color: Self.missColor) { d in
-                    missCount = max(0, missCount + d)
-                    client.patch(.init(missCount: missCount), sessionUUID: sessionUUID)
+            VStack(spacing: 6) {
+                HStack(spacing: 6) {
+                    errorTile("Miss", count: missCount, color: Self.missColor) { d in
+                        missCount = max(0, missCount + d)
+                        client.patch(.init(missCount: missCount), sessionUUID: sessionUUID)
+                    }
+                    errorTile("Position", count: positionalCount, color: Self.positionColor) { d in
+                        positionalCount = max(0, positionalCount + d)
+                        client.patch(.init(badPosition: positionalCount), sessionUUID: sessionUUID)
+                    }
                 }
-                errorTile("Position", count: positionalCount, color: Self.positionColor) { d in
-                    positionalCount = max(0, positionalCount + d)
-                    client.patch(.init(badPosition: positionalCount), sessionUUID: sessionUUID)
-                }
-            }
-            HStack(spacing: 7) {
-                errorTile("Safety", count: safetyCount, color: Self.safetyColor) { d in
-                    safetyCount = max(0, safetyCount + d)
-                    client.patch(.init(badSafety: safetyCount), sessionUUID: sessionUUID)
-                }
-                errorTile("Foul", count: foulCount, color: Self.foulColor) { d in
-                    foulCount = max(0, foulCount + d)
-                    client.patch(.init(fouls: foulCount), sessionUUID: sessionUUID)
-                }
-            }
 
-            Spacer(minLength: 2)
+                HStack(spacing: 6) {
+                    errorTile("Safety", count: safetyCount, color: Self.safetyColor) { d in
+                        safetyCount = max(0, safetyCount + d)
+                        client.patch(.init(badSafety: safetyCount), sessionUUID: sessionUUID)
+                    }
+                    errorTile("Foul", count: foulCount, color: Self.foulColor) { d in
+                        foulCount = max(0, foulCount + d)
+                        client.patch(.init(fouls: foulCount), sessionUUID: sessionUUID)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
             Button {
                 showEndRackSheet = true
             } label: {
                 Text("End Rack")
-                    .font(.callout.weight(.semibold))
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 28)
+                    .frame(height: 24)
                     .background(
                         Capsule(style: .continuous)
                             .fill(Color(red: 0.97, green: 0.44, blue: 0.44))
                     )
             }
             .buttonStyle(.plain)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 2)
+            .padding(.bottom, 2)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(.horizontal, 6)
-        .padding(.top, 2)
-        .padding(.bottom, 4)
+        .padding(.top, 0)
         .navigationBarTitleDisplayMode(.inline)
         .navigationTitle("")
     }
@@ -489,7 +575,6 @@ private struct WatchActiveSessionView: View {
         guard let rack else { return }
         selectedBreaker = ["me", "opp"].contains(rack.breaker) ? rack.breaker : nil
         selectedBreakBalls = rack.breakBalls >= 0 ? min(max(rack.breakBalls, 0), 3) : 0
-        breakBallsControl = Double(selectedBreakBalls)
         breakFoul = rack.breakFoul
         let fresh = rack.breaker == "none" && rack.breakBalls < 0 && rack.result == nil
             && rack.fouls == 0 && rack.badSafety == 0 && rack.badPosition == 0 && rack.missCount == 0
@@ -511,9 +596,9 @@ private struct WatchActiveSessionView: View {
     @ViewBuilder
     private func errorTile(_ title: String, count: Int, color: Color, change: @escaping (Int) -> Void) -> some View {
         let active = count > 0
-        VStack(spacing: 2) {
+        VStack(spacing: 1) {
             Text("\(count)")
-                .font(.title2.weight(.bold).monospacedDigit())
+                .font(.title3.weight(.bold).monospacedDigit())
                 .foregroundStyle(active ? color : .secondary)
                 .contentTransition(.numericText())
             Text(title)
@@ -522,16 +607,19 @@ private struct WatchActiveSessionView: View {
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
+        .frame(height: 52)
         .background(RoundedRectangle(cornerRadius: 10).fill(active ? color.opacity(0.15) : Color(white: 0.1)))
         .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(active ? color.opacity(0.5) : Color(white: 0.18), lineWidth: 1))
         .contentShape(RoundedRectangle(cornerRadius: 10))
+        .highPriorityGesture(
+            LongPressGesture(minimumDuration: 0.5)
+                .onEnded { _ in
+                    guard count > 0 else { return }
+                    change(-1)
+                }
+        )
         .onTapGesture {
             change(1)
-        }
-        .onLongPressGesture(minimumDuration: 0.5) {
-            guard count > 0 else { return }
-            change(-1)
         }
         .animation(.spring(response: 0.28, dampingFraction: 0.6), value: count)
     }
@@ -545,7 +633,7 @@ private struct WatchActiveSessionView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 6)
                 .background(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
                         .fill(selected ? color : color.opacity(0.12))
@@ -576,7 +664,7 @@ private struct WatchActiveSessionView: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.9)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 7)
                 .background(
                     RoundedRectangle(cornerRadius: 15, style: .continuous)
                         .fill(selected ? color : color.opacity(0.14))
@@ -616,7 +704,7 @@ private struct EndRackSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 7) {
                     if !isPractice {
                         HStack(spacing: 7) {
                             resultButton("Won", selected: selectedResult == "won", color: .green) {
@@ -636,7 +724,7 @@ private struct EndRackSheet: View {
                     }
 
                     VStack(spacing: 7) {
-                        actionButton("Save Rack", color: .teal, prominent: true, disabled: !canSave) {
+                        actionButton("Next Rack", color: .teal, prominent: true, disabled: !canSave) {
                             onSaveRack(selectedResult, runoutFirst, breakAndRun)
                             dismiss()
                         }
@@ -677,20 +765,15 @@ private struct EndRackSheet: View {
             }
         } label: {
             HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Runout")
-                        .font(.caption.weight(.semibold))
-                    Text("at first visit")
-                        .font(.caption2)
-                        .foregroundStyle(runoutEnabled ? Color.secondary.opacity(0.8) : Color.secondary.opacity(0.45))
-                }
+                Text("Runout")
+                    .font(.caption.weight(.semibold))
                 Spacer()
                 Image(systemName: runoutFirst ? "checkmark.circle.fill" : "circle")
                     .font(.title3.weight(.semibold))
             }
             .foregroundStyle(runoutEnabled ? (runoutFirst ? Color.black.opacity(0.82) : Color.yellow.opacity(0.95)) : Color.secondary.opacity(0.55))
             .padding(.horizontal, 11)
-            .padding(.vertical, 9)
+            .padding(.vertical, 6)
             .background(
                 RoundedRectangle(cornerRadius: 15, style: .continuous)
                     .fill(runoutFirst ? Color.yellow : Color.white.opacity(0.04))
@@ -712,13 +795,13 @@ private struct EndRackSheet: View {
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(selected ? Color.black.opacity(0.84) : .white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 11)
+                .padding(.vertical, 7)
                 .background(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(selected ? color : Color.white.opacity(0.06))
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .stroke(selected ? color.opacity(0.95) : Color.white.opacity(0.09), lineWidth: 1)
                 )
                 .scaleEffect(selected ? 1.03 : 1)
@@ -734,7 +817,7 @@ private struct EndRackSheet: View {
                 .font(prominent ? .headline.weight(.semibold) : .subheadline.weight(.semibold))
                 .foregroundStyle(prominent || disabled ? .white : color)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, prominent ? 11 : 9)
+                .padding(.vertical, prominent ? 8 : 6)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(
@@ -760,125 +843,41 @@ private struct WatchSessionFinishView: View {
     let onSave: (Int) -> Void
     let onDiscard: () -> Void
 
-    @Environment(\.dismiss) private var dismiss
     @State private var rating: Double = 7
-    @FocusState private var ratingFocused: Bool
+    @State private var dragStartX: CGFloat = 0
+    @State private var dragStartRating: Double = 7
+
+    // MARK: Computed stats
 
     private var totalRacks: Int { session.racks.count }
-    private let cardBackground = Color(red: 0.09, green: 0.11, blue: 0.17)
 
     private var durationText: String {
         guard let d = session.durationSeconds, d > 0 else { return "--" }
-        return "\(d / 60)m"
+        let m = d / 60
+        return m > 0 ? "\(m)m" : "<1m"
     }
 
     private var winRateText: String? {
         let total = session.wins + session.losses
-        guard total > 0, session.type != "practice" else { return nil }
+        guard total > 0, !session.isPractice else { return nil }
         return "\(Int(round(Double(session.wins) / Double(total) * 100)))%"
     }
 
     private var runoutRateText: String? {
-        guard session.wins > 0 else { return nil }
+        guard session.wins > 0, !session.isPractice else { return nil }
         let runouts = session.racks.filter { $0.outcome == "runout" }.count
         return "\(Int(round(Double(runouts) / Double(session.wins) * 100)))%"
     }
 
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Summary")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.top, 2)
-
-                    VStack(spacing: 7) {
-                        HStack(spacing: 7) {
-                            summaryCard("Score", "\(session.wins):\(session.losses)", color: .green)
-                            summaryCard("Racks", "\(totalRacks)", color: .blue)
-                        }
-
-                        HStack(spacing: 7) {
-                            summaryCard("Duration", durationText, color: .orange)
-                            if let wr = winRateText {
-                                summaryCard("Win rate", wr, color: .mint)
-                            } else {
-                                summaryCard("Win rate", "--", color: .mint)
-                            }
-                        }
-
-                        HStack(spacing: 7) {
-                            summaryCard("Runout", runoutRateText ?? "--", color: .yellow)
-                            summaryCard("Rating", "\(Int(rating))/10", color: ratingColor)
-                        }
-                    }
-
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text("Performance")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(ratingColor)
-
-                        Slider(value: $rating, in: 1...10, step: 1)
-                            .tint(ratingColor)
-                    }
-                    .padding(10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(cardBackground)
-                    )
-                    .focusable(true)
-                    .focused($ratingFocused)
-                    .digitalCrownRotation(
-                        $rating,
-                        from: 1,
-                        through: 10,
-                        by: 1,
-                        sensitivity: .medium,
-                        isContinuous: false,
-                        isHapticFeedbackEnabled: true
-                    )
-
-                    VStack(spacing: 7) {
-                        Button("Save Session") { onSave(Int(rating)) }
-                            .buttonStyle(.borderedProminent)
-                        Button("Discard", role: .destructive) { onDiscard() }
-                            .buttonStyle(.bordered)
-                        Button("Cancel", role: .cancel) { dismiss() }
-                            .buttonStyle(.bordered)
-                    }
-                }
-                .padding(.horizontal, 6)
-                .padding(.bottom, 8)
-            }
-            .scrollIndicators(.hidden)
-            .navigationTitle("Finish")
-            .onAppear { ratingFocused = true }
-        }
+    private var avgBreakBalls: String {
+        let valid = session.racks.filter { $0.breakBalls >= 0 }
+        guard !valid.isEmpty else { return "--" }
+        let avg = Double(valid.map(\.breakBalls).reduce(0, +)) / Double(valid.count)
+        return String(format: "%.1f", avg)
     }
 
-    @ViewBuilder
-    private func summaryCard(_ label: String, _ value: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(label)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-
-            Text(value)
-                .font(.headline.weight(.bold).monospacedDigit())
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(cardBackground)
-        )
+    private var totalErrors: Int {
+        session.racks.reduce(0) { $0 + $1.missCount + $1.badPosition + $1.badSafety + $1.fouls }
     }
 
     private var ratingColor: Color {
@@ -887,6 +886,120 @@ private struct WatchSessionFinishView: View {
         case 4...6: .orange
         case 7...8: .yellow
         default: .green
+        }
     }
+
+    // MARK: Body
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 8) {
+                // Inline title + score header
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Summary")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.9))
+                    Spacer()
+                    if !session.isPractice {
+                        HStack(spacing: 4) {
+                            Text("\(session.wins)")
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(.green)
+                            Text("–")
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(.white.opacity(0.4))
+                            Text("\(session.losses)")
+                                .font(.title3.weight(.bold))
+                                .foregroundStyle(.red)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                // Stats tiles
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 5) {
+                    summaryTile("Duration", durationText, color: .white)
+                    if let wr = winRateText { summaryTile("Win Rate", wr, color: .green) }
+                    summaryTile("Avg Break", avgBreakBalls, color: Color(red: 0.98, green: 0.75, blue: 0.25))
+                    summaryTile("Errors", "\(totalErrors)", color: totalErrors > 0 ? .orange : Color.white.opacity(0.5))
+                }
+
+                // Drag rating control
+                VStack(spacing: 6) {
+                    HStack {
+                        Text("Rating")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.8))
+                        Spacer()
+                        Text("\(Int(rating))/10")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(ratingColor)
+                            .contentTransition(.numericText())
+                            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: rating)
+                    }
+                    GeometryReader { geo in
+                        let barWidth = geo.size.width
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color.white.opacity(0.12))
+                                .frame(height: 20)
+                            Capsule()
+                                .fill(ratingColor.opacity(0.85))
+                                .frame(width: max(0, barWidth * (rating - 1) / 9.0), height: 20)
+                            Text("\(Int(rating))")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.white)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    let pct = max(0, min(1, value.location.x / barWidth))
+                                    let newRating = (pct * 9.0 + 1).rounded()
+                                    let clamped = max(1, min(10, newRating))
+                                    if clamped != rating {
+                                        rating = clamped
+                                        WKInterfaceDevice.current().play(.click)
+                                    }
+                                }
+                        )
+                    }
+                    .frame(height: 20)
+                }
+
+                // Actions
+                HStack(spacing: 6) {
+                    Button("Save") { onSave(Int(rating)) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.teal)
+                        .frame(maxWidth: .infinity)
+                    Button("Discard") { onDiscard() }
+                        .buttonStyle(.bordered)
+                        .tint(.red)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+        }
+        .navigationBarBackButtonHidden(true)
+    }
+
+    @ViewBuilder
+    private func summaryTile(_ label: String, _ value: String, color: Color) -> some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.callout.weight(.bold).monospacedDigit())
+                .foregroundStyle(color)
+                .lineLimit(1)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.white.opacity(0.48))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.white.opacity(0.07)))
     }
 }
