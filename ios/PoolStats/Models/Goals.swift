@@ -116,9 +116,15 @@ struct PlayerProfile: Codable, Equatable {
     var dedication: DedicationLevel = .neutral
     var primaryGame: PrimaryGame = .eightBall
     var weeklyFrequencyBand: FrequencyBand = .oneToTwo
+    var nickname: String = ""
 
     var clampedBaseline: Int {
         min(max(baselineFargo, 0), 850)
+    }
+
+    var displayName: String {
+        let trimmed = nickname.trimmingCharacters(in: .whitespaces)
+        return trimmed.isEmpty ? "Me" : trimmed
     }
 }
 

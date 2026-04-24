@@ -272,7 +272,11 @@ struct LogStartView: View {
     }
 
     private var opponentSuggestions: [String] {
-        opponentStore.availableNames(from: historyStore.sessions).filter { $0 != "All opponents" }
+        var names = opponentStore.availableNames(from: historyStore.sessions).filter { $0 != "All opponents" }
+        if names.contains(where: { $0.caseInsensitiveCompare("Other") == .orderedSame }) == false {
+            names.append("Other")
+        }
+        return names
     }
 
     private var filteredOpponentSuggestions: [String] {
@@ -297,6 +301,7 @@ struct LogStartView: View {
     private var canCreateOpponent: Bool {
         let candidate = trimmedOpponentForLookup
         guard !candidate.isEmpty else { return false }
+        if candidate.caseInsensitiveCompare("Other") == .orderedSame { return false }
         return opponentSuggestions.contains(where: {
             $0.caseInsensitiveCompare(candidate) == .orderedSame
         }) == false

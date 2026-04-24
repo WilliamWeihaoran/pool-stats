@@ -9,9 +9,30 @@ struct MeSettingsView: View {
 
     @State private var baselineFargoText: String = ""
     @State private var pendingDedication: DedicationLevel?
+    @State private var nicknameText: String = ""
 
     var body: some View {
         VStack(spacing: 12) {
+            // Nickname
+            SectionCard(title: "Nickname") {
+                VStack(alignment: .leading, spacing: 6) {
+                    TextField("e.g. Haoran", text: $nicknameText)
+                        .font(.subheadline)
+                        .foregroundColor(Theme.text)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Theme.panel2)
+                        .cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 0.5))
+                        .onChange(of: nicknameText) { value in
+                            profileStore.updateProfile { $0.nickname = value }
+                        }
+                    Text("Shown above your score in the lite scoreboard. Defaults to \"Me\".")
+                        .font(.caption2)
+                        .foregroundColor(Theme.muted)
+                }
+            }
+
             // Skill level
             SectionCard(title: "Skill level") {
                 VStack(spacing: 0) {
@@ -203,6 +224,7 @@ struct MeSettingsView: View {
         }
         .task {
             baselineFargoText = "\(profileStore.profile.clampedBaseline)"
+            nicknameText = profileStore.profile.nickname
         }
         .alert("Regenerate starter goals?", isPresented: Binding(
             get: { pendingDedication != nil },

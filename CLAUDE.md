@@ -56,6 +56,59 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
   - `dedication`
   - `primaryGame`
   - `weeklyFrequencyBand`
+  - `nickname` — optional display name shown in the Lite scoreboard; `displayName` computed property trims whitespace and falls back to `"Me"`
+
+## Lite Scoreboard (Landscape Mode)
+
+`LogView` has a dedicated Lite scoreboard that activates in landscape orientation or via a tap-to-Lite gesture. The scoreboard is implemented as `LandscapeScoreboardView` inside `LogActiveView.swift`.
+
+### Lite mode activation state machine
+
+Three booleans in `LogView` control whether Lite mode is shown:
+
+| State | Effect |
+|---|---|
+| `forceLiteScoreboard` | User tapped "tap to Lite"; forces Lite on regardless of orientation |
+| `suppressAutoLite` | User explicitly exited Lite while in landscape; blocks auto-Lite until next portrait round-trip |
+| `isLandscape` | Derived from `GeometryReader` size comparison; triggers auto-Lite |
+
+Priority: `forceLite` > `suppressAutoLite` > `isLandscape`.
+
+When the device returns to portrait, both `forceLiteScoreboard` and `suppressAutoLite` are cleared.
+
+### `LogLiteModeKey` PreferenceKey
+
+`LogView` publishes `showLite` up to `RootView` via a `PreferenceKey`. `RootView` consumes it to hide the tab bar during Lite mode without storing presentation state in the data layer.
+
+### Orientation management
+
+`AppDelegate.orientationLock` is a `UIInterfaceOrientationMask` that defaults to `.allButUpsideDown`. `LogView.enterLite()` calls `requestOrientation(.landscape)` which:
+1. Sets `AppDelegate.orientationLock = .allButUpsideDown`
+2. Calls `scene.windows.first?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()`
+3. Calls `scene.requestGeometryUpdate(.iOS(interfaceOrientations: mask))`
+
+Both steps are required — `requestGeometryUpdate` alone does not trigger a full SwiftUI layout update.
+
+`Info.plist` must list `UIInterfaceOrientationLandscapeLeft` and `UIInterfaceOrientationLandscapeRight` under `UISupportedInterfaceOrientations`; omitting these blocks rotation at OS level regardless of runtime code.
+
+### `LandscapeScoreboardView` layout
+
+Three-column `HStack`:
+- **Layout column** (92 pt fixed width): 4 layout choice buttons stacked with `maxHeight: .infinity`
+- **Center column** (`maxWidth: .infinity`): player name (breaker selector) above 280 pt `.black` score number; opponent below
+- **Errors column** (92 pt fixed width): 4 error counters stacked with `maxHeight: .infinity`
+
+Name boxes always show a border and background to signal they are tappable (breaker selector). The active breaker's box uses a colored accent.
+
+### Gesture interactions
+
+- **Tap score** → saves the current rack (adds 1 to that player's score), clears layout/error state, fires a spring pulse animation (`scaleEffect` 1.18)
+- **Long press score (0.55 s)** → subtracts 1 from score and restores previous rack data; animated progress ring (245 pt `Circle`, `.trim(from:to:)`) fills linearly during hold and drains with `easeOut` if released early
+- **Tap name** → sets that player as the breaker for the current rack
+
+### Custom menu
+
+A small dot at top-center toggles a custom overlay menu (not `Menu {}`). The overlay is a `ZStack` with a dimmed backdrop and a 240 pt wide panel containing: Undo last rack, Exit Lite view (always present), Save & exit.
 
 ## Logging Flow
 
@@ -88,6 +141,45 @@ In addition to the existing charts, the Dashboard now includes:
   - Cell size is computed dynamically from `UIScreen.main.bounds.width - 56` (page + card padding) so the grid fills the full card width on every device.
   - Do NOT use `GeometryReader` + `@State` for width measurement here — it causes an infinite layout loop that freezes the entire app. The `UIScreen.main.bounds.width` approach is intentional.
 - **Error composition trend** (`errorTrendSection`): Stacked area chart (`AreaMark(x:yStart:yEnd:)`) for the last 30 filtered sessions, with manually computed cumulative bounds per error type and a 5-session rolling average. Implemented via `ErrorTrendChart` + `ErrorStackPoint` private structs in `DashboardView.swift`. Extracted to a sub-view to avoid Swift type-checker timeouts on complex `Chart` bodies.
+
+## Watch App Architecture
+
+The `PoolStatsWatchExtension` target lives under `ios/PoolStats/Watch/`. Key files:
+
+| File | Role |
+|---|---|
+| `PoolStatsWatchApp.swift` | `@main` App entry + entire watch UI (start screen, active session, sheets) |
+| `WatchConnectivityClient.swift` | WCSession layer; queues outbound messages; handles incoming phone snapshots |
+| `WatchSessionStore.swift` | Local offline session state persisted to UserDefaults |
+| `WatchRuntimeSession.swift` | `WKExtendedRuntimeSession` wrapper; auto-restarts on `willExpire` |
+
+### UI sections
+
+Three `LogSection` cases drive the active session flow, auto-advancing on selection:
+- `.breakSection` — breaker (Me/Opp) + quality (Good/Ok/Bad) chips, colored at 30 % when unselected
+- `.layout` — 2×2 grid: Open/Clustered/Problem/Snookered each with a semantic color
+- `.errors` — 2×2 error tile grid; tap = +1, long-press = −1; colors match phone: Miss=teal, Position=amber, Safety=blue, Foul=red
+
+Auto-advance: both Break and Layout wait ~280–300 ms after the completing tap (so the selection is visibly highlighted) before spring-transitioning to the next section.
+
+### Sync / offline model
+
+- `WatchSessionStore` is the local source of truth. All action methods (patch, saveRack, etc.) update local state first, then send to phone.
+- `WatchConnectivityClient.send()` guards on `activationState == .activated` before sending; otherwise enqueues.
+- `flushQueueIfPossible` strips `rackUUID` from queued envelopes so the phone's `matchesActiveRack(nil)` check accepts them regardless of locally-generated UUID.
+- Phone-side `WatchSyncStore.handle(.startSession)` deduplicates by `sessionUUID` to prevent queue replay from restarting an already-active session.
+- Phone snapshot arriving via `handleIncomingSnapshot` is authoritative — `sessionStore?.applyRemote(active)` overwrites local watch state.
+
+### Keep-alive
+
+`WatchRuntimeSession` wraps `WKExtendedRuntimeSession`. `start()` / `stop()` are no-ops on simulator (`#if targetEnvironment(simulator)`). `extendedRuntimeSessionWillExpire` creates a new session immediately before the old one expires. `WKBackgroundModes: [workout-processing]` must be present in `WatchExtension-Info.plist`.
+
+### Watch UI rules
+
+- Navigation title carries the section name ("Break" / "Layout" / "Errors"); no separate in-content label row.
+- Error tile grid is 2×2; never use a `List` for error counts on watch.
+- Unselected chips show the chip's semantic color at 30 % opacity — never flat gray.
+- "End Rack" button is always full-width at the bottom of the Errors section.
 
 ## Logging Page Feedback
 

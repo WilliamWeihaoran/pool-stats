@@ -2,6 +2,7 @@ import Foundation
 
 struct SessionJSON: Codable {
     var id: Int64
+    var sessionUUID: String?
     var label: String
     var opponent: String
     var game: String
@@ -13,6 +14,7 @@ struct SessionJSON: Codable {
 }
 
 struct RackJSON: Codable {
+    var rackUUID: String?
     var result: String?
     var breaker: String
     var breakBalls: Int
@@ -117,6 +119,7 @@ struct JSONTransfer {
         let payload = sessions.map { s in
             SessionJSON(
                 id: s.id,
+                sessionUUID: s.sessionUUID,
                 label: s.label,
                 opponent: s.opponent,
                 game: s.game,
@@ -124,6 +127,7 @@ struct JSONTransfer {
                 ts: Int64(s.ts.timeIntervalSince1970 * 1000),
                 racks: s.racks.map { r in
                     RackJSON(
+                        rackUUID: r.rackUUID,
                         result: r.result,
                         breaker: r.breaker,
                         breakBalls: r.breakBalls,
@@ -153,6 +157,7 @@ struct JSONTransfer {
             return payload.map { s in
                 let racks = s.racks.enumerated().map { idx, r in
                     Rack(
+                        rackUUID: r.rackUUID ?? UUID().uuidString,
                         index: idx + 1,
                         result: r.result,
                         breaker: r.breaker,
@@ -170,6 +175,7 @@ struct JSONTransfer {
                 }
                 return Session(
                     id: s.id,
+                    sessionUUID: s.sessionUUID ?? "session-\(s.id)",
                     label: s.label,
                     opponent: s.opponent,
                     game: s.game,
@@ -186,6 +192,7 @@ struct JSONTransfer {
         return web.map { s in
             let racks = s.racks.enumerated().map { idx, r in
                 Rack(
+                    rackUUID: UUID().uuidString,
                     index: idx + 1,
                     result: r.result,
                     breaker: r.breaker ?? "me",
@@ -204,6 +211,7 @@ struct JSONTransfer {
             let ts = s.ts.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
             return Session(
                 id: s.id,
+                sessionUUID: "session-\(s.id)",
                 label: s.label ?? "",
                 opponent: s.opponent ?? "",
                 game: s.game ?? "8ball",

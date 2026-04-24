@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct PoolStatsApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var store = DataStore()
     @StateObject private var logStore = SessionLogStore()
@@ -10,6 +11,7 @@ struct PoolStatsApp: App {
     @StateObject private var opponentStore = OpponentStore()
     @StateObject private var authStore = AuthStore()
     @StateObject private var profileStore = PlayerProfileStore()
+    @StateObject private var watchSyncStore = WatchSyncStore()
 
     var body: some Scene {
         WindowGroup {
@@ -21,6 +23,10 @@ struct PoolStatsApp: App {
                 .environmentObject(opponentStore)
                 .environmentObject(authStore)
                 .environmentObject(profileStore)
+                .environmentObject(watchSyncStore)
+                .task {
+                    watchSyncStore.bind(dataStore: store, logStore: logStore, opponentStore: opponentStore)
+                }
                 .onChange(of: scenePhase) { newPhase in
                     guard newPhase == .active else { return }
                     Task { await authStore.refreshCredentialState() }

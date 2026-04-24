@@ -10,7 +10,6 @@ struct DashboardView: View {
     @State private var activePickerID: String? = nil
     @State private var shotGame: String = "8ball"
     @State private var wlGame: String = "8ball"
-    @State private var outcomeTarget: OutcomeTarget = .match
     @State private var showExporter: Bool = false
     @State private var showImporter: Bool = false
     @State private var exportDocument = JSONDocument(data: Data())
@@ -261,24 +260,13 @@ struct DashboardView: View {
     }
 
     private var outcomesSection: some View {
-        let counts = Analytics.outcomeCounts(sessions: filteredSessions, target: outcomeTarget)
+        let match = Analytics.outcomeCounts(sessions: filteredSessions, target: .match)
+        let rack = Analytics.outcomeCounts(sessions: filteredSessions, target: .rack)
         return SectionCard(title: "Outcomes") {
-            HStack(spacing: 6) {
-                PillButton(label: "Match", isOn: outcomeTarget == .match) { outcomeTarget = .match }
-                PillButton(label: "Rack", isOn: outcomeTarget == .rack) { outcomeTarget = .rack }
-            }
-            HStack(spacing: 16) {
-                RingChart(wins: counts.wins, losses: counts.losses)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Wins (\(counts.wins))")
-                        .font(.caption)
-                        .foregroundColor(Theme.teal)
-                    Text("Losses (\(counts.losses))")
-                        .font(.caption)
-                        .foregroundColor(Theme.red)
-                }
-                Spacer()
-            }
+            DoubleRingChart(
+                outerWins: match.wins, outerTotal: match.wins + match.losses,
+                innerWins: rack.wins, innerTotal: rack.wins + rack.losses
+            )
         }
     }
 
@@ -571,10 +559,10 @@ private struct ActivityHeatmapView: View {
     private let days = 7
 
     // Card content width = screen width − page padding (14×2) − card padding (14×2)
-    // 18pt reserved on left for "week" label (14pt) + HStack gap (4pt)
+    // 22pt reserved on left for "week" label (18pt) + HStack gap (4pt)
     private var cellSize: CGFloat {
         let cardWidth = UIScreen.main.bounds.width - 56
-        return max(8, (cardWidth - 18 + cellSpacing) / CGFloat(weeks) - cellSpacing)
+        return max(8, (cardWidth - 22 + cellSpacing) / CGFloat(weeks) - cellSpacing)
     }
 
     private var gridHeight: CGFloat {
@@ -664,9 +652,9 @@ private struct ActivityHeatmapView: View {
 
     private var weekLabel: some View {
         ZStack {
-            Color.clear.frame(width: 14, height: gridHeight)
+            Color.clear.frame(width: 18, height: gridHeight)
             Text("week")
-                .font(.system(size: 8))
+                .font(.system(size: 11))
                 .foregroundColor(Theme.muted)
                 .rotationEffect(.degrees(-90))
                 .fixedSize()

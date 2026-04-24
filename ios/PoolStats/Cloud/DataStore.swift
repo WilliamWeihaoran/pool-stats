@@ -1,4 +1,6 @@
 import Foundation
+import Combine
+import WatchConnectivity
 
 @MainActor
 final class DataStore: ObservableObject {
@@ -258,5 +260,246 @@ final class DataStore: ObservableObject {
 
     private func markSyncFailure(_ reason: String) {
         lastSyncFailureReason = reason
+    }
+}
+
+// MARK: - Watch sync (phone side)
+
+enum WatchSyncAction: String, Codable {
+    case startSession = "start_session"
+    case attachActiveSession = "attach_active_session"
+    case rackPatch = "rack_patch"
+    case saveRack = "save_rack"
+    case undoLastRack = "undo_last_rack"
+    case discardSession = "discard_session"
+    case endSessionWithRating = "end_session_with_rating"
+    case sessionSnapshot = "session_snapshot"
+    case ack = "ack"
+}
+
+struct WatchSessionStartPayload: Codable, Hashable {
+    var game: String
+    var type: String
+    var opponent: String
+    var timestampMs: Int64?
+}
+
+struct WatchEndSessionPayload: Codable, Hashable {
+    var rating: Int
+}
+
+struct WatchSyncEnvelope: Codable, Hashable {
+    var version: Int = 1
+    var action: WatchSyncAction
+    var sessionUUID: String?
+    var rackUUID: String?
+    var patch: WatchRackPatch?
+    var start: WatchSessionStartPayload?
+    var end: WatchEndSessionPayload?
+    var sentAtMs: Int64
+}
+
+struct WatchSessionSnapshot: Codable, Hashable {
+    var active: ActiveSessionSnapshot?
+    var availableOpponents: [String]
+    var acknowledgedAtMs: Int64
+    var message: String?
+}
+
+@MainActor
+final class WatchSyncStore: NSObject, ObservableObject {
+    @Published private(set) var isReachable: Bool = false
+
+    private weak var dataStore: DataStore?
+    private weak var logStore: SessionLogStore?
+    private weak var opponentStore: OpponentStore?
+    private var cancellables: Set<AnyCancellable> = []
+
+    func bind(dataStore: DataStore, logStore: SessionLogStore, opponentStore: OpponentStore) {
+        self.dataStore = dataStore
+        self.logStore = logStore
+        self.opponentStore = opponentStore
+        activateSessionIfNeeded()
+
+        logStore.$currentSession
+            .combineLatest(logStore.$currentRack)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _, _ in
+                self?.pushSnapshot(message: nil)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func activateSessionIfNeeded() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        session.delegate = self
+        session.activate()
+        isReachable = session.isReachable
+    }
+
+    private func nowMs() -> Int64 {
+        Int64(Date().timeIntervalSince1970 * 1000)
+    }
+
+    private func availableOpponents() -> [String] {
+        guard let dataStore, let opponentStore else { return ["Other"] }
+        var names = opponentStore.availableNames(from: dataStore.sessions).filter { $0 != "All opponents" }
+        if names.contains(where: { $0.caseInsensitiveCompare("Other") == .orderedSame }) == false {
+            names.append("Other")
+        }
+        return names
+    }
+
+    private func makeSnapshot(message: String?) -> WatchSessionSnapshot {
+        WatchSessionSnapshot(
+            active: logStore?.activeSnapshot,
+            availableOpponents: availableOpponents(),
+            acknowledgedAtMs: nowMs(),
+            message: message
+        )
+    }
+
+    private func payload(for snapshot: WatchSessionSnapshot) -> [String: Any]? {
+        guard let data = try? JSONEncoder().encode(snapshot),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return obj
+    }
+
+    private func envelope(from message: [String: Any]) -> WatchSyncEnvelope? {
+        guard let data = try? JSONSerialization.data(withJSONObject: message),
+              let env = try? JSONDecoder().decode(WatchSyncEnvelope.self, from: data) else { return nil }
+        return env
+    }
+
+    private func pushSnapshot(message: String?) {
+        guard WCSession.isSupported() else { return }
+        let snapshot = makeSnapshot(message: message)
+        guard let payload = payload(for: snapshot) else { return }
+        let session = WCSession.default
+        if session.isReachable {
+            session.sendMessage(
+                ["action": WatchSyncAction.sessionSnapshot.rawValue, "snapshot": payload],
+                replyHandler: nil,
+                errorHandler: nil
+            )
+        } else {
+            try? session.updateApplicationContext(
+                ["action": WatchSyncAction.sessionSnapshot.rawValue, "snapshot": payload]
+            )
+        }
+    }
+
+    private func handle(_ env: WatchSyncEnvelope) {
+        guard let logStore else { return }
+        switch env.action {
+        case .attachActiveSession:
+            pushSnapshot(message: "attached")
+
+        case .startSession:
+            guard let start = env.start else { return }
+            // Dedup: if this session is already active (queue replay), don't restart it.
+            if let uuid = env.sessionUUID, logStore.matchesActiveSession(uuid) {
+                pushSnapshot(message: "already_active")
+                return
+            }
+            let date = start.timestampMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
+            logStore.startSession(
+                game: start.game,
+                type: start.type,
+                label: "",
+                opponent: start.opponent,
+                date: date,
+                sessionUUID: env.sessionUUID
+            )
+            pushSnapshot(message: "session_started")
+
+        case .rackPatch:
+            guard let patch = env.patch else { return }
+            guard logStore.matchesActiveSession(env.sessionUUID), logStore.matchesActiveRack(env.rackUUID) else {
+                pushSnapshot(message: "stale_patch_ignored")
+                return
+            }
+            logStore.applyRemotePatch(patch)
+            pushSnapshot(message: "rack_patched")
+
+        case .saveRack:
+            guard logStore.matchesActiveSession(env.sessionUUID), logStore.matchesActiveRack(env.rackUUID) else {
+                pushSnapshot(message: "stale_save_ignored")
+                return
+            }
+            _ = logStore.saveRackFromRemote()
+            pushSnapshot(message: "rack_saved")
+
+        case .undoLastRack:
+            guard logStore.matchesActiveSession(env.sessionUUID) else {
+                pushSnapshot(message: "stale_undo_ignored")
+                return
+            }
+            _ = logStore.undoLastRackFromRemote()
+            pushSnapshot(message: "rack_undone")
+
+        case .discardSession:
+            guard logStore.matchesActiveSession(env.sessionUUID) else {
+                pushSnapshot(message: "stale_discard_ignored")
+                return
+            }
+            logStore.discardSession()
+            pushSnapshot(message: "session_discarded")
+
+        case .endSessionWithRating:
+            guard let end = env.end, let dataStore else { return }
+            guard logStore.matchesActiveSession(env.sessionUUID) else {
+                pushSnapshot(message: "stale_end_ignored")
+                return
+            }
+            Task {
+                await logStore.endSessionFromRemote(rating: end.rating, savingTo: dataStore)
+                await MainActor.run {
+                    self.pushSnapshot(message: "session_ended")
+                }
+            }
+
+        case .sessionSnapshot, .ack:
+            break
+        }
+    }
+}
+
+extension WatchSyncStore: WCSessionDelegate {
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: (any Error)?) {
+        Task { @MainActor in
+            self.isReachable = session.isReachable
+            self.pushSnapshot(message: nil)
+        }
+    }
+
+    nonisolated func sessionDidBecomeInactive(_ session: WCSession) {}
+    nonisolated func sessionDidDeactivate(_ session: WCSession) {
+        session.activate()
+    }
+
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        Task { @MainActor in
+            self.isReachable = session.isReachable
+            if session.isReachable { self.pushSnapshot(message: nil) }
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String : Any]) {
+        Task { @MainActor in
+            guard let env = self.envelope(from: message) else { return }
+            self.handle(env)
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String : Any]) {
+        Task { @MainActor in
+            if let action = applicationContext["action"] as? String, action == WatchSyncAction.sessionSnapshot.rawValue {
+                return
+            }
+            guard let env = self.envelope(from: applicationContext) else { return }
+            self.handle(env)
+        }
     }
 }

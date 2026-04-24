@@ -35,6 +35,17 @@ That gives you enough detail to improve your game without forcing you to record 
 - Session summary also shows raw time and adjusted time with a 45-second rack buffer
 - All logging controls have haptic and press-scale feedback
 
+**Lite scoreboard (landscape mode)**
+- Rotate to landscape (or tap the score area) to switch to the Lite scoreboard
+- Giant score numbers fill most of the screen — tap a score to record a rack win for that player
+- Long-press a score to undo the last rack; a progress ring fills during the hold and drains on early release
+- Tap a player name to mark them as the breaker for the current rack
+- Left column tracks table layout; right column tracks errors for the current rack
+- Custom dot-menu at the top center: Undo, Exit Lite, Save & exit
+- Tab bar hides in Lite mode to maximise screen space
+- Exiting Lite while in landscape doesn't force portrait; Lite re-enables only after a portrait → landscape round-trip
+- Player nickname is configurable in Settings → Me so your name shows above your score
+
 **Dashboard analytics**
 - Win rate over time
 - Outcome rings for match and rack results
@@ -64,6 +75,7 @@ That gives you enough detail to improve your game without forcing you to record 
 - Dashboard, Log, History, Goals, and Settings tabs
 - Four theme presets: two dark, two light
 - Settings is split into drill-in sections for Me, Stats, Recent form, Appearance, Data, and About
+- Me section includes a Nickname field used in the Lite scoreboard
 
 **Goals**
 - Custom goal cards with completion, archive, edit, delete, and reset actions

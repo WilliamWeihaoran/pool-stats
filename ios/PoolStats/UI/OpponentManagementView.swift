@@ -1,5 +1,4 @@
 import SwiftUI
-import Charts
 
 struct OpponentManagementView: View {
     @EnvironmentObject private var store: DataStore
@@ -134,7 +133,6 @@ struct OpponentManagementView: View {
                     $0.type == "match" && opponentStore.matches($0.opponent, selected: profile.displayName)
                 }
                 let opponentMatchRacks = Analytics.matchRacks(opponentMatchSessions)
-                let opponentMistakes = Analytics.mistakesPerRack(opponentMatchRacks)
                 SectionCard(title: "Head to head") {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
@@ -191,26 +189,29 @@ struct OpponentManagementView: View {
                             Spacer(minLength: 0)
                         }
 
-                        if opponentMatchRacks.isEmpty {
-                            Text("Not enough rack data for error visuals yet.")
-                                .font(.caption)
-                                .foregroundColor(Theme.muted)
-                        } else {
+                        // Session W/L history
+                        let sortedSessions = opponentMatchSessions.sorted { $0.ts < $1.ts }
+                        if !sortedSessions.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Unforced errors per rack")
+                                Text("Session history")
                                     .font(.caption.weight(.semibold))
                                     .foregroundColor(Theme.text2)
-                                Chart {
-                                    ForEach(Array(opponentMistakes.enumerated()), id: \.offset) { idx, item in
-                                        BarMark(
-                                            x: .value("Type", item.label),
-                                            y: .value("Per Rack", item.value)
-                                        )
-                                        .cornerRadius(4)
-                                        .foregroundStyle(errorColor(for: idx))
-                                    }
-                                }
-                                .frame(height: 140)
+                                SessionHistoryStrip(sessions: sortedSessions)
+                            }
+                        }
+
+                        // Break advantage
+                        if !opponentMatchRacks.isEmpty {
+                            let myBreakRacks = opponentMatchRacks.filter { $0.breaker == "me" }
+                            let oppBreakRacks = opponentMatchRacks.filter { $0.breaker == "opp" }
+                            let myBreakWins = myBreakRacks.filter { $0.result == "won" }.count
+                            let oppBreakWins = oppBreakRacks.filter { $0.result == "won" }.count
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Break advantage")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(Theme.text2)
+                                BreakAdvantageRow(label: "You broke", wins: myBreakWins, total: myBreakRacks.count)
+                                BreakAdvantageRow(label: "Opp broke", wins: oppBreakWins, total: oppBreakRacks.count)
                             }
                         }
                     }
@@ -225,9 +226,88 @@ struct OpponentManagementView: View {
         }
     }
 
-    private func errorColor(for index: Int) -> Color {
-        let colors: [Color] = [Theme.red, Theme.amber, Theme.blue, Theme.teal]
-        return colors[index % colors.count]
+}
+
+private struct SessionHistoryStrip: View {
+    let sessions: [Session]
+
+    private var streak: (label: String, color: Color) {
+        var count = 0
+        let reversed = sessions.reversed()
+        guard let first = reversed.first else { return ("—", Theme.muted) }
+        let firstWon = first.wins > first.racks.count / 2
+        for s in reversed {
+            let won = s.wins > s.racks.count / 2
+            if won == firstWon { count += 1 } else { break }
+        }
+        return firstWon
+            ? ("W\(count)", Theme.green)
+            : ("L\(count)", Theme.red)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 5) {
+                    ForEach(Array(sessions.enumerated()), id: \.offset) { _, session in
+                        let won = session.wins > session.racks.count / 2
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(won ? Theme.green : Theme.red)
+                            .frame(width: 18, height: 28)
+                    }
+                }
+            }
+            HStack(spacing: 6) {
+                Text("Streak")
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+                Text(streak.label)
+                    .font(.caption2.weight(.bold))
+                    .foregroundColor(streak.color)
+                Spacer()
+                HStack(spacing: 4) {
+                    RoundedRectangle(cornerRadius: 2).fill(Theme.green).frame(width: 10, height: 10)
+                    Text("W")
+                        .font(.caption2)
+                        .foregroundColor(Theme.muted)
+                    RoundedRectangle(cornerRadius: 2).fill(Theme.red).frame(width: 10, height: 10)
+                    Text("L")
+                        .font(.caption2)
+                        .foregroundColor(Theme.muted)
+                }
+            }
+        }
+    }
+}
+
+private struct BreakAdvantageRow: View {
+    let label: String
+    let wins: Int
+    let total: Int
+
+    private var pct: Double { total > 0 ? Double(wins) / Double(total) : 0 }
+    private var pctText: String { total > 0 ? "\(Int(round(pct * 100)))%" : "—" }
+    private var fractionText: String { total > 0 ? "\(wins)/\(total)" : "no data" }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .foregroundColor(Theme.text2)
+                Spacer()
+                Text(fractionText)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundColor(Theme.muted)
+                Text(pctText)
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundColor(total > 0 ? (pct >= 0.5 ? Theme.green : Theme.red) : Theme.muted)
+                    .frame(width: 36, alignment: .trailing)
+            }
+            if total > 0 {
+                PercentageBar(value: Int(round(pct * 100)), color: pct >= 0.5 ? Theme.green : Theme.red, height: 6)
+            }
+        }
     }
 }
 

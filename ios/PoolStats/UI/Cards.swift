@@ -316,3 +316,61 @@ struct RingChart: View {
         .frame(height: 120)
     }
 }
+
+struct DoubleRingChart: View {
+    let outerWins: Int
+    let outerTotal: Int
+    let innerWins: Int
+    let innerTotal: Int
+
+    var body: some View {
+        HStack(spacing: 0) {
+            OutcomeRing(wins: innerWins, total: innerTotal, label: "Rack")
+            OutcomeRing(wins: outerWins, total: outerTotal, label: "Match")
+        }
+    }
+}
+
+private struct OutcomeRing: View {
+    let wins: Int
+    let total: Int
+    let label: String
+
+    private var frac: Double { Double(wins) / Double(max(total, 1)) }
+    private var pct: Int { Int(round(frac * 100)) }
+    private var hasData: Bool { total > 0 }
+
+    var body: some View {
+        VStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .stroke(Theme.panel2, lineWidth: 14)
+                    .overlay(Circle().stroke(Theme.border, lineWidth: 0.5))
+                if hasData {
+                    Circle()
+                        .trim(from: 0, to: frac)
+                        .stroke(Theme.green, style: StrokeStyle(lineWidth: 14, lineCap: .butt))
+                        .rotationEffect(.degrees(-90))
+                    Circle()
+                        .trim(from: frac, to: 1)
+                        .stroke(Theme.red.opacity(0.5), style: StrokeStyle(lineWidth: 14, lineCap: .butt))
+                        .rotationEffect(.degrees(-90))
+                }
+                VStack(spacing: 1) {
+                    Text(hasData ? "\(pct)%" : "—")
+                        .font(.title3.weight(.bold).monospacedDigit())
+                        .foregroundColor(hasData ? (pct >= 50 ? Theme.green : Theme.red) : Theme.muted)
+                    Text(hasData ? "\(wins)/\(total)" : "no data")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundColor(Theme.muted)
+                }
+            }
+            .frame(width: 110, height: 110)
+
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(Theme.text2)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}

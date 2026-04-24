@@ -3,7 +3,6 @@ import SwiftUI
 struct HistoryView: View {
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
-    @State private var filter: GameFilter = .all
     @State private var opponentFilter: String = "All opponents"
     @State private var searchText: String = ""
     @State private var selection = Set<Int64>()
@@ -70,12 +69,12 @@ struct HistoryView: View {
                                         .foregroundColor(Theme.text2.opacity(0.88))
                                     }
                                     .padding(.vertical, 4)
-                                    .padding(.leading, 10)
+                                    .padding(.leading, 13)
                                     .padding(.trailing, 12)
                                     .overlay(alignment: .leading) {
                                         Rectangle()
-                                            .fill(session.resultAccentColor.opacity(0.55))
-                                            .frame(width: 3)
+                                            .fill(session.resultAccentColor)
+                                            .frame(width: 5)
                                             .cornerRadius(2)
                                     }
                                 }
@@ -115,13 +114,7 @@ struct HistoryView: View {
 
     @ViewBuilder
     private var pickerOverlay: some View {
-        if activePickerID == "history.game" {
-            OverlayPickerPanel(title: "Game",
-                               items: [GameFilter.all, .practice, .eightBall, .nineBall],
-                               selection: $filter,
-                               label: { $0.label },
-                               onDismiss: { activePickerID = nil })
-        } else if activePickerID == "history.opponent" {
+        if activePickerID == "history.opponent" {
             OverlayPickerPanel(title: "Opponent",
                                items: opponentOptions,
                                selection: $opponentFilter,
@@ -187,12 +180,6 @@ struct HistoryView: View {
 
     private var filterBar: some View {
         HStack(spacing: 8) {
-            InlinePickerCard(id: "history.game",
-                             title: "Game",
-                             items: [GameFilter.all, .practice, .eightBall, .nineBall],
-                             selection: $filter,
-                             activeID: $activePickerID) { $0.label }
-
             if !opponentOptions.isEmpty {
                 InlinePickerCard(id: "history.opponent",
                                  title: "Opponent",
@@ -253,16 +240,6 @@ struct HistoryView: View {
         var rows = store.sessions.sorted { $0.ts > $1.ts }
         if opponentFilter != "All opponents" {
             rows = rows.filter { opponentStore.matches($0.opponent, selected: opponentFilter) }
-        }
-        switch filter {
-        case .practice:
-            rows = rows.filter { $0.type == "practice" }
-        case .eightBall:
-            rows = rows.filter { $0.game == "8ball" && $0.type != "practice" }
-        case .nineBall:
-            rows = rows.filter { $0.game == "9ball" && $0.type != "practice" }
-        case .all:
-            break
         }
         if !searchText.isEmpty {
             rows = rows.filter { $0.label.lowercased().contains(searchText.lowercased()) }

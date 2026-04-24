@@ -2,6 +2,7 @@ import Foundation
 
 struct Session: Identifiable, Codable, Hashable {
     var id: Int64
+    var sessionUUID: String
     var label: String
     var opponent: String
     var game: String
@@ -13,6 +14,7 @@ struct Session: Identifiable, Codable, Hashable {
 
     init(
         id: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
+        sessionUUID: String = UUID().uuidString,
         label: String = "",
         opponent: String = "",
         game: String,
@@ -23,6 +25,7 @@ struct Session: Identifiable, Codable, Hashable {
         performanceRating: Int? = nil
     ) {
         self.id = id
+        self.sessionUUID = sessionUUID
         self.label = label
         self.opponent = opponent
         self.game = game
@@ -31,6 +34,47 @@ struct Session: Identifiable, Codable, Hashable {
         self.racks = racks
         self.durationSeconds = durationSeconds
         self.performanceRating = performanceRating
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case sessionUUID
+        case label
+        case opponent
+        case game
+        case type
+        case ts
+        case racks
+        case durationSeconds
+        case performanceRating
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int64.self, forKey: .id)
+        sessionUUID = try c.decodeIfPresent(String.self, forKey: .sessionUUID) ?? "session-\(id)"
+        label = try c.decode(String.self, forKey: .label)
+        opponent = try c.decode(String.self, forKey: .opponent)
+        game = try c.decode(String.self, forKey: .game)
+        type = try c.decode(String.self, forKey: .type)
+        ts = try c.decode(Date.self, forKey: .ts)
+        racks = try c.decode([Rack].self, forKey: .racks)
+        durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
+        performanceRating = try c.decodeIfPresent(Int.self, forKey: .performanceRating)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(sessionUUID, forKey: .sessionUUID)
+        try c.encode(label, forKey: .label)
+        try c.encode(opponent, forKey: .opponent)
+        try c.encode(game, forKey: .game)
+        try c.encode(type, forKey: .type)
+        try c.encode(ts, forKey: .ts)
+        try c.encode(racks, forKey: .racks)
+        try c.encodeIfPresent(durationSeconds, forKey: .durationSeconds)
+        try c.encodeIfPresent(performanceRating, forKey: .performanceRating)
     }
 
     var isPractice: Bool { type == "practice" }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum AppTab: String, CaseIterable, Hashable {
     case dashboard, log, history, goals, settings
@@ -27,76 +28,84 @@ enum AppTab: String, CaseIterable, Hashable {
 struct RootView: View {
     @EnvironmentObject private var themeStore: ThemeStore
     @EnvironmentObject private var store: DataStore
+    @EnvironmentObject private var logStore: SessionLogStore
     @EnvironmentObject private var goalsStore: GoalsStore
     @EnvironmentObject private var profileStore: PlayerProfileStore
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @State private var selectedTab: AppTab = .dashboard
     @State private var showOnboarding = false
     @State private var showLegacyPrompt = false
     @State private var onboardingEvaluated = false
+    @State private var isInLiteMode: Bool = false
 
     var body: some View {
-        ZStack {
-            currentContent
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        GeometryReader { geo in
+            ZStack {
+                currentContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
 
-            if showLegacyPrompt {
-                OnboardingLegacyPrompt(
-                    onPersonalize: {
-                        profileStore.markLegacyPromptSeen()
-                        showLegacyPrompt = false
-                        showOnboarding = true
-                    },
-                    onNotNow: {
-                        profileStore.markLegacyPromptSeen()
-                        showLegacyPrompt = false
-                    }
-                )
-                .zIndex(15)
-            }
-
-            if showOnboarding {
-                OnboardingFlow(
-                    initialProfile: profileStore.profile,
-                    onSkip: {
-                        profileStore.skipOnboarding()
-                        showOnboarding = false
-                    },
-                    onComplete: { profile, createStarter in
-                        profileStore.completeOnboarding(profile)
-                        if createStarter {
-                            let starter = goalsStore.starterGoals(from: profile)
-                            goalsStore.applyStarterGoals(starter, replaceExistingStarter: false)
+                if showLegacyPrompt {
+                    OnboardingLegacyPrompt(
+                        onPersonalize: {
+                            profileStore.markLegacyPromptSeen()
+                            showLegacyPrompt = false
+                            showOnboarding = true
+                        },
+                        onNotNow: {
+                            profileStore.markLegacyPromptSeen()
+                            showLegacyPrompt = false
                         }
-                        showOnboarding = false
-                    }
-                )
-                .zIndex(20)
+                    )
+                    .zIndex(15)
+                }
+
+                if showOnboarding {
+                    OnboardingFlow(
+                        initialProfile: profileStore.profile,
+                        onSkip: {
+                            profileStore.skipOnboarding()
+                            showOnboarding = false
+                        },
+                        onComplete: { profile, createStarter in
+                            profileStore.completeOnboarding(profile)
+                            if createStarter {
+                                let starter = goalsStore.starterGoals(from: profile)
+                                goalsStore.applyStarterGoals(starter, replaceExistingStarter: false)
+                            }
+                            showOnboarding = false
+                        }
+                    )
+                    .zIndex(20)
+                }
             }
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !showOnboarding {
-                AppTabBar(selection: $selectedTab)
-                    .id("tabbar-\(themeStore.selectedTheme.rawValue)")
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if !showOnboarding && !isInLiteMode && !shouldHideTabBar(size: geo.size) {
+                    AppTabBar(selection: $selectedTab)
+                        .id("tabbar-\(themeStore.selectedTheme.rawValue)")
+                }
             }
-        }
-        .id("root-theme-\(themeStore.selectedTheme.rawValue)")
-        .background(Theme.bg.ignoresSafeArea())
-        .preferredColorScheme(themeStore.selectedTheme.scheme)
-        .task {
-            evaluateOnboardingIfNeeded()
-        }
-        .onChange(of: store.isLoading) { _ in
-            evaluateOnboardingIfNeeded()
-        }
-        .onChange(of: store.sessions.count) { _ in
-            evaluateOnboardingIfNeeded()
-        }
-        .onChange(of: goalsStore.goals.count) { _ in
-            evaluateOnboardingIfNeeded()
-        }
-        .onChange(of: profileStore.rerunToken) { _ in
-            showLegacyPrompt = false
-            showOnboarding = true
+            .onPreferenceChange(LogLiteModeKey.self) { value in
+                isInLiteMode = value
+            }
+            .id("root-theme-\(themeStore.selectedTheme.rawValue)")
+            .background(Theme.bg.ignoresSafeArea())
+            .preferredColorScheme(themeStore.selectedTheme.scheme)
+            .task {
+                evaluateOnboardingIfNeeded()
+            }
+            .onChange(of: store.isLoading) { _ in
+                evaluateOnboardingIfNeeded()
+            }
+            .onChange(of: store.sessions.count) { _ in
+                evaluateOnboardingIfNeeded()
+            }
+            .onChange(of: goalsStore.goals.count) { _ in
+                evaluateOnboardingIfNeeded()
+            }
+            .onChange(of: profileStore.rerunToken) { _ in
+                showLegacyPrompt = false
+                showOnboarding = true
+            }
         }
     }
 
@@ -139,5 +148,11 @@ struct RootView: View {
 
         onboardingEvaluated = true
         showOnboarding = true
+    }
+
+    private func shouldHideTabBar(size: CGSize) -> Bool {
+        let isLandscape = size.width > size.height || verticalSizeClass == .compact
+        let isActiveLogSession = selectedTab == .log && logStore.currentSession != nil
+        return isLandscape && isActiveLogSession
     }
 }

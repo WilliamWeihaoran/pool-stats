@@ -7,12 +7,27 @@ final class SessionLogStore: ObservableObject {
     @Published var lastEndedSession: Session?
     @Published var sessionStart: Date?
     @Published var rackStart: Date?
+    @Published var externalUpdateNotice: String?
 
-    func startSession(game: String, type: String, label: String, opponent: String, date: Date) {
+    func startSession(
+        game: String,
+        type: String,
+        label: String,
+        opponent: String,
+        date: Date,
+        sessionUUID: String? = nil
+    ) {
         let finalLabel = type == "practice" ? "Practice" : label
         let cal = Calendar.current
         let sessionDate = cal.startOfDay(for: date)
-        currentSession = Session(label: finalLabel, opponent: opponent, game: game, type: type, ts: sessionDate)
+        currentSession = Session(
+            sessionUUID: sessionUUID ?? UUID().uuidString,
+            label: finalLabel,
+            opponent: opponent,
+            game: game,
+            type: type,
+            ts: sessionDate
+        )
         sessionStart = cal.isDateInToday(date) ? Date() : nil
         resetRack()
     }
@@ -22,6 +37,27 @@ final class SessionLogStore: ObservableObject {
         let nextIndex = session.racks.count + 1
         currentRack = Rack(index: nextIndex)
         rackStart = sessionStart == nil ? nil : Date()
+    }
+
+    func attachActiveSession(_ session: Session, inProgressRack: Rack?) {
+        currentSession = session
+        currentRack = inProgressRack ?? Rack(index: session.racks.count + 1)
+        if sessionStart == nil, Calendar.current.isDateInToday(session.ts) {
+            sessionStart = Date()
+        }
+        if rackStart == nil {
+            rackStart = Date()
+        }
+    }
+
+    func matchesActiveSession(_ sessionUUID: String?) -> Bool {
+        guard let sessionUUID else { return true }
+        return currentSession?.sessionUUID == sessionUUID
+    }
+
+    func matchesActiveRack(_ rackUUID: String?) -> Bool {
+        guard let rackUUID else { return true }
+        return currentRack?.rackUUID == rackUUID
     }
 
     func updateRack(_ update: (inout Rack) -> Void) {
@@ -34,6 +70,31 @@ final class SessionLogStore: ObservableObject {
         }
         rack.breakAndRun = rack.runoutFirst && rack.breaker == "me" && rack.breakBalls >= 1
         currentRack = rack
+    }
+
+    func applyRemotePatch(_ patch: WatchRackPatch) {
+        updateRack { rack in
+            if let result = patch.result { rack.result = result }
+            if let breaker = patch.breaker { rack.breaker = breaker }
+            if let breakBalls = patch.breakBalls { rack.breakBalls = breakBalls }
+            if let breakFoul = patch.breakFoul { rack.breakFoul = breakFoul }
+            if let layout = patch.layout { rack.layout = layout }
+            if let outcome = patch.outcome { rack.outcome = outcome }
+            if let fouls = patch.fouls { rack.fouls = max(0, fouls) }
+            if let badSafety = patch.badSafety { rack.badSafety = max(0, badSafety) }
+            if let badPosition = patch.badPosition { rack.badPosition = max(0, badPosition) }
+            if let missCount = patch.missCount { rack.missCount = max(0, missCount) }
+            if let runoutFirst = patch.runoutFirst { rack.runoutFirst = runoutFirst }
+            if let breakAndRun = patch.breakAndRun { rack.breakAndRun = breakAndRun }
+        }
+        showExternalNotice("Updated from watch")
+    }
+
+    @discardableResult
+    func saveRackFromRemote() -> Bool {
+        let ok = saveRack()
+        if ok { showExternalNotice("Rack saved on watch") }
+        return ok
     }
 
     func saveRack() -> Bool {
@@ -49,6 +110,21 @@ final class SessionLogStore: ObservableObject {
         return true
     }
 
+    @discardableResult
+    func undoLastRack() -> Bool {
+        guard var session = currentSession, !session.racks.isEmpty else { return false }
+        session.racks.removeLast()
+        currentSession = session
+        resetRack()
+        showExternalNotice("Undo from watch")
+        return true
+    }
+
+    @discardableResult
+    func undoLastRackFromRemote() -> Bool {
+        undoLastRack()
+    }
+
     func endSession(savingTo store: DataStore) async {
         guard var session = currentSession, !session.racks.isEmpty else {
             discardSession()
@@ -62,6 +138,14 @@ final class SessionLogStore: ObservableObject {
         clearState()
     }
 
+    func endSessionFromRemote(rating: Int, savingTo store: DataStore) async {
+        guard var currentSession else { return }
+        currentSession.performanceRating = max(1, min(10, rating))
+        self.currentSession = currentSession
+        await endSession(savingTo: store)
+        showExternalNotice("Session ended on watch")
+    }
+
     func discardSession() {
         clearState()
     }
@@ -71,5 +155,41 @@ final class SessionLogStore: ObservableObject {
         currentRack = nil
         sessionStart = nil
         rackStart = nil
+        externalUpdateNotice = nil
     }
+
+    var activeSnapshot: ActiveSessionSnapshot? {
+        guard let currentSession else { return nil }
+        return ActiveSessionSnapshot(session: currentSession, rack: currentRack)
+    }
+
+    private func showExternalNotice(_ text: String) {
+        externalUpdateNotice = text
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            if self?.externalUpdateNotice == text {
+                self?.externalUpdateNotice = nil
+            }
+        }
+    }
+}
+
+struct WatchRackPatch: Codable, Hashable {
+    var result: String?
+    var breaker: String?
+    var breakBalls: Int?
+    var breakFoul: Bool?
+    var layout: String?
+    var outcome: String?
+    var fouls: Int?
+    var badSafety: Int?
+    var badPosition: Int?
+    var missCount: Int?
+    var runoutFirst: Bool?
+    var breakAndRun: Bool?
+}
+
+struct ActiveSessionSnapshot: Codable, Hashable {
+    var session: Session
+    var rack: Rack?
 }

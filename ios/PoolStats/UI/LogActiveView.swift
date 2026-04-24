@@ -4,41 +4,63 @@ struct LogActiveView: View {
     @EnvironmentObject private var store: SessionLogStore
     @Binding var showSaveToast: Bool
     @Binding var showEndConfirm: Bool
+    let showLiteScoreboard: Bool
+    let onScoreCardTap: (() -> Void)?
 
     var body: some View {
         if let session = store.currentSession, let rack = store.currentRack {
-            VStack(alignment: .leading, spacing: 10) {
-                header(session: session, rack: rack)
+            Group {
+                if showLiteScoreboard {
+                    LandscapeScoreboardView(
+                        session: session,
+                        rack: rack,
+                        showSaveToast: $showSaveToast,
+                        showEndConfirm: $showEndConfirm,
+                        onDismiss: onScoreCardTap
+                    )
+                } else {
+                    VStack(alignment: .leading, spacing: 10) {
+                        header(session: session, rack: rack)
 
-                if store.sessionStart != nil {
-                    LogTimerRow(session: session)
-                }
+                        if store.sessionStart != nil {
+                            LogTimerRow(session: session, onScoreCardTap: onScoreCardTap)
+                        }
 
-                LogSectionCard(title: "Break") {
-                    BreakSection(rack: rack)
-                }
+                        LogSectionCard(title: "Break") {
+                            BreakSection(rack: rack)
+                        }
 
-                LogSectionCard(title: "Layout difficulty") {
-                    LayoutSection(rack: rack)
-                }
+                        LogSectionCard(title: "Layout difficulty") {
+                            LayoutSection(rack: rack)
+                        }
 
-                LogSectionCard(title: "Unforced errors") {
-                    ErrorSection(rack: rack)
-                }
+                        LogSectionCard(title: "Unforced errors") {
+                            ErrorSection(rack: rack)
+                        }
 
-                LogSectionCard(title: "Result") {
-                    ResultSection(rack: rack, session: session)
-                }
+                        LogSectionCard(title: "Result") {
+                            ResultSection(rack: rack, session: session)
+                        }
 
-                ActionRow(rack: rack, isPractice: session.isPractice, showSaveToast: $showSaveToast, showEndConfirm: $showEndConfirm)
+                        ActionRow(rack: rack, isPractice: session.isPractice, showSaveToast: $showSaveToast, showEndConfirm: $showEndConfirm)
 
-                if showSaveToast {
-                    Text("Rack saved. Ready for the next one.")
-                        .font(.caption2)
-                        .foregroundColor(Theme.green)
-                        .transition(.opacity)
+                        if showSaveToast {
+                            Text("Rack saved. Ready for the next one.")
+                                .font(.caption2)
+                                .foregroundColor(Theme.green)
+                                .transition(.opacity)
+                        }
+
+                        if let notice = store.externalUpdateNotice {
+                            Text(notice)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundColor(Theme.teal)
+                                .transition(.opacity)
+                        }
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
             EmptyView()
         }
@@ -68,7 +90,10 @@ struct LogActiveView: View {
         let type = session.isPractice ? "practice" : "match"
         return session.label.isEmpty ? "\(game) \(type)" : "\(game) \(type) · \(session.label)"
     }
+
 }
+
+// MARK: - Full-view sections
 
 private struct BreakSection: View {
     @EnvironmentObject private var store: SessionLogStore
@@ -258,6 +283,7 @@ private struct ActionRow: View {
 private struct LogTimerRow: View {
     @EnvironmentObject private var store: SessionLogStore
     let session: Session
+    let onScoreCardTap: (() -> Void)?
 
     var body: some View {
         TimelineView(.periodic(from: Date(), by: 1)) { _ in
@@ -339,8 +365,9 @@ private struct LogTimerRow: View {
         }
     }
 
+    @ViewBuilder
     private func scoreCard(wins: Int, losses: Int) -> some View {
-        HStack(spacing: 0) {
+        let card = HStack(spacing: 0) {
             Text("\(wins)")
                 .foregroundColor(Theme.green)
             Text(":")
@@ -356,5 +383,359 @@ private struct LogTimerRow: View {
         .cornerRadius(10)
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
         .accessibilityLabel("Score \(wins) to \(losses)")
+
+        if let onScoreCardTap {
+            Button(action: onScoreCardTap) {
+                card
+            }
+            .buttonStyle(.plain)
+        } else {
+            card
+        }
+    }
+}
+
+// MARK: - Lite scoreboard (landscape / forced)
+
+private struct LandscapeScoreboardView: View {
+    enum Side { case me, opp }
+
+    @EnvironmentObject private var store: SessionLogStore
+    @EnvironmentObject private var profileStore: PlayerProfileStore
+    let session: Session
+    let rack: Rack
+    @Binding var showSaveToast: Bool
+    @Binding var showEndConfirm: Bool
+    var onDismiss: (() -> Void)? = nil
+
+    @State private var pulsingSide: Side? = nil
+    @State private var pressingSide: Side? = nil
+    @State private var pressProgress: CGFloat = 0
+    @State private var showMenu: Bool = false
+
+    private var userName: String { profileStore.profile.displayName }
+    private var oppName: String {
+        let n = session.opponent.trimmingCharacters(in: .whitespaces)
+        return n.isEmpty ? "Opponent" : n
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            layoutColumn
+                .frame(width: 92)
+
+            centerColumn
+                .frame(maxWidth: .infinity)
+
+            errorsColumn
+                .frame(width: 92)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Theme.bg.ignoresSafeArea())
+        .overlay(alignment: .top) {
+            menuDot.padding(.top, 4)
+        }
+        .overlay {
+            if showMenu {
+                customMenuOverlay
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .toolbar(.hidden, for: .navigationBar)
+    }
+
+    // MARK: center (names + score)
+
+    private var centerColumn: some View {
+        HStack(alignment: .center, spacing: 16) {
+            playerPanel(name: userName, side: .me, color: Theme.green, score: session.wins)
+            Text(":")
+                .font(.system(size: 110, weight: .ultraLight, design: .rounded))
+                .foregroundColor(Theme.muted.opacity(0.3))
+                .offset(y: -20)
+            playerPanel(name: oppName, side: .opp, color: Theme.red, score: session.losses)
+        }
+        .padding(.horizontal, 12)
+    }
+
+    private func playerPanel(name: String, side: Side, color: Color, score: Int) -> some View {
+        let isBreaker = (side == .me && rack.breaker == "me") || (side == .opp && rack.breaker == "opp")
+        let isPulsing = pulsingSide == side
+        let isPressing = pressingSide == side
+        let scale: CGFloat = isPressing ? 0.94 : (isPulsing ? 1.18 : 1.0)
+        return VStack(spacing: 10) {
+            Button {
+                store.updateRack { $0.breaker = side == .me ? "me" : "opp" }
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: isBreaker ? "circle.fill" : "circle")
+                        .font(.system(size: 7))
+                        .foregroundColor(isBreaker ? color : Theme.muted.opacity(0.6))
+                    Text(name)
+                        .font(.callout.weight(.semibold))
+                        .foregroundColor(isBreaker ? color : Theme.text2)
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(isBreaker ? color.opacity(0.2) : Theme.panel.opacity(0.55))
+                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .stroke(isBreaker ? color.opacity(0.55) : Theme.border, lineWidth: isBreaker ? 1.2 : 0.7)
+                )
+            }
+            .buttonStyle(.plain)
+
+            Text("\(score)")
+                .font(.system(size: 280, weight: .black, design: .rounded))
+                .monospacedDigit()
+                .foregroundColor(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.45)
+                .opacity(isPressing ? 0.7 : 1.0)
+                .scaleEffect(scale)
+                .animation(.spring(response: 0.24, dampingFraction: 0.55), value: pressingSide)
+                .animation(.spring(response: 0.28, dampingFraction: 0.45), value: pulsingSide)
+                .overlay {
+                    Circle()
+                        .trim(from: 0, to: isPressing ? pressProgress : 0)
+                        .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 245, height: 245)
+                        .opacity(isPressing || pressProgress > 0.02 ? 1 : 0)
+                        .allowsHitTesting(false)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { handleScoreTap(side: side) }
+                .onLongPressGesture(minimumDuration: 0.55, pressing: { pressing in
+                    if pressing {
+                        pressingSide = side
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        withAnimation(.linear(duration: 0.55)) {
+                            pressProgress = 1.0
+                        }
+                    } else {
+                        pressingSide = nil
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            pressProgress = 0
+                        }
+                    }
+                }, perform: {
+                    handleLongPress()
+                    pressingSide = nil
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        pressProgress = 0
+                    }
+                })
+        }
+    }
+
+    private func handleScoreTap(side: Side) {
+        store.updateRack { r in
+            r.result = side == .me ? "won" : "lost"
+            if r.outcome == nil { r.outcome = "noRunout" }
+            if r.breaker == "none" { r.breaker = side == .me ? "me" : "opp" }
+            if r.breakFoul || ![0, 1, 2].contains(r.breakBalls) { r.breakBalls = 1 }
+            if r.layout == "none" { r.layout = "open" }
+        }
+        if store.saveRack() {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.4)) {
+                pulsingSide = side
+            }
+            Task {
+                try? await Task.sleep(nanoseconds: 450_000_000)
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    pulsingSide = nil
+                }
+            }
+        }
+    }
+
+    private func handleLongPress() {
+        if store.undoLastRack() {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+    }
+
+    // MARK: left (layout)
+
+    private var layoutColumn: some View {
+        VStack(spacing: 5) {
+            sectionLabel("Layout")
+            layoutChoice("Open", value: "open", color: Theme.green)
+            layoutChoice("Cluster", value: "clustered", color: Theme.amber)
+            layoutChoice("Problem", value: "problematic", color: Theme.red)
+            layoutChoice("Snooked", value: "snookered", color: Theme.purple)
+        }
+        .padding(.top, 28)
+        .padding(.horizontal, 6)
+        .padding(.bottom, 10)
+    }
+
+    private func layoutChoice(_ label: String, value: String, color: Color) -> some View {
+        let isOn = rack.layout == value
+        return Button {
+            store.updateRack { $0.layout = value }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(isOn ? color : Theme.text2)
+                .frame(maxWidth: .infinity)
+                .frame(maxHeight: .infinity)
+                .background(isOn ? color.opacity(0.18) : Theme.panel.opacity(0.5))
+                .cornerRadius(8)
+                .overlay(RoundedRectangle(cornerRadius: 8).stroke(isOn ? color.opacity(0.45) : Theme.border, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .opacity(isOn ? 1.0 : 0.6)
+    }
+
+    // MARK: right (errors)
+
+    private var errorsColumn: some View {
+        VStack(spacing: 5) {
+            sectionLabel("Errors")
+            errorCounter("Miss", count: rack.missCount, color: Theme.teal,
+                         inc: { store.updateRack { $0.missCount += 1 } },
+                         dec: { store.updateRack { $0.missCount = max(0, $0.missCount - 1) } })
+            errorCounter("Position", count: rack.positionalCount, color: Theme.amber,
+                         inc: { store.updateRack { $0.badPosition += 1 } },
+                         dec: { store.updateRack { $0.badPosition = max(0, $0.badPosition - 1) } })
+            errorCounter("Safety", count: rack.safetyCount, color: Theme.blue,
+                         inc: { store.updateRack { $0.badSafety += 1 } },
+                         dec: { store.updateRack { $0.badSafety = max(0, $0.badSafety - 1) } })
+            errorCounter("Foul", count: rack.foulCount, color: Theme.red,
+                         inc: { store.updateRack { $0.fouls += 1 } },
+                         dec: { store.updateRack { $0.fouls = max(0, $0.fouls - 1) } })
+        }
+        .padding(.top, 28)
+        .padding(.horizontal, 6)
+        .padding(.bottom, 10)
+    }
+
+    private func errorCounter(_ label: String, count: Int, color: Color, inc: @escaping () -> Void, dec: @escaping () -> Void) -> some View {
+        let isActive = count > 0
+        return Button {
+            inc()
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            VStack(spacing: 2) {
+                Text(label)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundColor(isActive ? color : Theme.text2)
+                Text("\(count)")
+                    .font(.callout.weight(.bold).monospacedDigit())
+                    .foregroundColor(isActive ? color : Theme.muted)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(maxHeight: .infinity)
+            .background(isActive ? color.opacity(0.18) : Theme.panel.opacity(0.5))
+            .cornerRadius(8)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(isActive ? color.opacity(0.45) : Theme.border, lineWidth: 0.5))
+        }
+        .buttonStyle(.plain)
+        .opacity(isActive ? 1.0 : 0.6)
+        .onLongPressGesture(minimumDuration: 0.4) {
+            dec()
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+    }
+
+    private func sectionLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 10, weight: .bold))
+            .foregroundColor(Theme.muted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 2)
+            .padding(.bottom, 1)
+    }
+
+    // MARK: top-center menu dot
+
+    private var menuDot: some View {
+        Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                showMenu.toggle()
+            }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            Circle()
+                .fill(showMenu ? Theme.teal.opacity(0.85) : Theme.muted.opacity(0.45))
+                .frame(width: 10, height: 10)
+                .padding(10)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: custom menu overlay
+
+    private var customMenuOverlay: some View {
+        ZStack(alignment: .top) {
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    withAnimation(.easeOut(duration: 0.18)) { showMenu = false }
+                }
+
+            VStack(spacing: 0) {
+                menuRow(icon: "arrow.uturn.backward", label: "Undo last rack", tint: Theme.text2,
+                        disabled: session.racks.isEmpty) {
+                    if store.undoLastRack() {
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    }
+                }
+                menuDivider
+                menuRow(icon: "arrow.down.right.and.arrow.up.left", label: "Exit Lite view", tint: Theme.text2) {
+                    onDismiss?()
+                }
+                menuDivider
+                menuRow(icon: "stop.fill", label: "Save & exit", tint: Theme.red) {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    showEndConfirm = true
+                }
+            }
+            .frame(width: 240)
+            .background(Theme.panel)
+            .cornerRadius(14)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 0.6))
+            .shadow(color: Color.black.opacity(0.35), radius: 18, x: 0, y: 8)
+            .padding(.top, 34)
+        }
+    }
+
+    private func menuRow(icon: String, label: String, tint: Color, disabled: Bool = false, action: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.18)) { showMenu = false }
+            action()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(tint)
+                    .frame(width: 18)
+                Text(label)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(tint)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
+        .opacity(disabled ? 0.4 : 1.0)
+    }
+
+    private var menuDivider: some View {
+        Rectangle()
+            .fill(Theme.border)
+            .frame(height: 0.5)
     }
 }
