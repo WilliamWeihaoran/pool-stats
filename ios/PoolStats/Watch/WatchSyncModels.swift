@@ -11,6 +11,8 @@ enum WatchSyncAction: String, Codable {
     case discardSession = "discard_session"
     case endSessionWithRating = "end_session_with_rating"
     case sessionSnapshot = "session_snapshot"
+    case drillAttempt = "drill_attempt"
+    case drillSuccess = "drill_success"
     case ack = "ack"
 }
 
@@ -23,6 +25,10 @@ struct WatchSessionStartPayload: Codable, Hashable {
 
 struct WatchEndSessionPayload: Codable, Hashable {
     var rating: Int
+}
+
+struct WatchDrillEventPayload: Codable, Hashable {
+    var runID: String
 }
 
 struct WatchRackPatch: Codable, Hashable {
@@ -48,6 +54,7 @@ struct WatchSyncEnvelope: Codable, Hashable {
     var patch: WatchRackPatch?
     var start: WatchSessionStartPayload?
     var end: WatchEndSessionPayload?
+    var drillEvent: WatchDrillEventPayload?
     var sentAtMs: Int64
 }
 
@@ -91,8 +98,17 @@ struct ActiveSessionSnapshot: Codable, Hashable {
     var rack: WatchRack?
 }
 
+struct WatchDrillSnapshot: Codable, Hashable {
+    var runID: String
+    var title: String
+    var attempts: Int
+    var successes: Int
+    var misses: Int
+}
+
 struct WatchSessionSnapshot: Codable, Hashable {
     var active: ActiveSessionSnapshot?
+    var activeDrill: WatchDrillSnapshot?
     var availableOpponents: [String]
     var acknowledgedAtMs: Int64
     var message: String?

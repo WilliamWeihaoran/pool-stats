@@ -35,6 +35,10 @@ private struct WatchRootView: View {
         client.snapshot?.active ?? sessionStore.activeSnapshot
     }
 
+    private var effectiveDrill: WatchDrillSnapshot? {
+        client.snapshot?.activeDrill
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -54,6 +58,8 @@ private struct WatchRootView: View {
                     WatchActiveSessionView(active: active, onRequestFinish: { session in
                         finishedSession = session
                     })
+                } else if let drill = effectiveDrill {
+                    WatchActiveDrillView(drill: drill)
                 } else {
                     WatchSessionStartView(game: $game, type: $type, opponent: $opponent)
                 }
@@ -66,6 +72,84 @@ private struct WatchRootView: View {
                 if hasSession { runtime.start() } else { runtime.stop() }
             }
         }
+    }
+}
+
+// MARK: - Active drill
+
+private struct WatchActiveDrillView: View {
+    @EnvironmentObject private var client: WatchConnectivityClient
+    let drill: WatchDrillSnapshot
+
+    private var successRate: String {
+        guard drill.attempts > 0 else { return "--" }
+        let pct = Int(round(Double(drill.successes) / Double(drill.attempts) * 100))
+        return "\(pct)%"
+    }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack {
+                Text("Drill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.teal)
+                Spacer()
+            }
+
+            Text(drill.title)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            HStack(spacing: 6) {
+                stat("Try", "\(drill.attempts)", .white.opacity(0.88))
+                stat("Good", "\(drill.successes)", .green)
+                stat("Rate", successRate, .teal)
+            }
+
+            Button {
+                client.recordDrillAttempt(runID: drill.runID)
+            } label: {
+                Text("Attempt")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.18)))
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                client.recordDrillSuccess(runID: drill.runID)
+            } label: {
+                Text("Success")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.black.opacity(0.86))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.green))
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 6)
+        .navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("")
+    }
+
+    private func stat(_ label: String, _ value: String, _ color: Color) -> some View {
+        VStack(spacing: 1) {
+            Text(label.uppercased())
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.white.opacity(0.45))
+            Text(value)
+                .font(.callout.weight(.bold))
+                .monospacedDigit()
+                .foregroundStyle(color)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.1)))
     }
 }
 
@@ -206,6 +290,7 @@ private struct WatchActiveSessionView: View {
     @State private var foulCount: Int = 0
     @State private var showEndRackSheet: Bool = false
     @State private var pendingFinishAfterRackSave: Bool = false
+    @State private var pendingFinishedSession: WatchSession?
     @State private var scoreFlash: ScoreFlash?
 
     private var rack: WatchRack? { active.rack }
@@ -232,7 +317,8 @@ private struct WatchActiveSessionView: View {
             .onChange(of: showEndRackSheet) { _, showing in
                 if !showing && pendingFinishAfterRackSave {
                     pendingFinishAfterRackSave = false
-                    onRequestFinish(active.session)
+                    onRequestFinish(pendingFinishedSession ?? active.session)
+                    pendingFinishedSession = nil
                 }
             }
             .onChange(of: rack?.rackUUID) { _, _ in
@@ -252,14 +338,14 @@ private struct WatchActiveSessionView: View {
                 breakerIsMe: selectedBreaker == "me",
                 breakQualityBalls: selectedBreakBalls,
                 onSaveRack: { result, runout, breakAndRun in
-                    sendResultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
+                    let finalPatch = resultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
                     showNextRackFlash(for: result)
-                    client.saveRack(sessionUUID: sessionUUID)
+                    _ = client.saveRack(sessionUUID: sessionUUID, finalPatch: finalPatch)
                 },
                 onSaveAndExit: { result, runout, breakAndRun in
-                    sendResultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
+                    let finalPatch = resultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
+                    pendingFinishedSession = client.saveRack(sessionUUID: sessionUUID, finalPatch: finalPatch)
                     pendingFinishAfterRackSave = true
-                    client.saveRack(sessionUUID: sessionUUID)
                 }
             )
         }
@@ -562,13 +648,10 @@ private struct WatchActiveSessionView: View {
 
     // MARK: Helpers
 
-    private func sendResultPatch(result: String?, runout: Bool, breakAndRun: Bool) {
-        guard let result else { return }
+    private func resultPatch(result: String?, runout: Bool, breakAndRun: Bool) -> WatchRackPatch? {
+        guard let result else { return nil }
         let outcome = result == "won" ? (runout ? "runout" : "noRunout") : "noRunout"
-        client.patch(
-            .init(result: result, outcome: outcome, runoutFirst: runout, breakAndRun: breakAndRun),
-            sessionUUID: sessionUUID
-        )
+        return .init(result: result, outcome: outcome, runoutFirst: runout, breakAndRun: breakAndRun)
     }
 
     private func hydrateFromRack() {
@@ -844,12 +927,8 @@ private struct WatchSessionFinishView: View {
     let onDiscard: () -> Void
 
     @State private var rating: Double = 7
-    @State private var dragStartX: CGFloat = 0
-    @State private var dragStartRating: Double = 7
 
     // MARK: Computed stats
-
-    private var totalRacks: Int { session.racks.count }
 
     private var durationText: String {
         guard let d = session.durationSeconds, d > 0 else { return "--" }
@@ -861,12 +940,6 @@ private struct WatchSessionFinishView: View {
         let total = session.wins + session.losses
         guard total > 0, !session.isPractice else { return nil }
         return "\(Int(round(Double(session.wins) / Double(total) * 100)))%"
-    }
-
-    private var runoutRateText: String? {
-        guard session.wins > 0, !session.isPractice else { return nil }
-        let runouts = session.racks.filter { $0.outcome == "runout" }.count
-        return "\(Int(round(Double(runouts) / Double(session.wins) * 100)))%"
     }
 
     private var avgBreakBalls: String {

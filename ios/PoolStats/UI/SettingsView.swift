@@ -4,6 +4,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
     case me
     case account
     case opponents
+    case history
     case stats
     case recentForm
     case appearance
@@ -15,6 +16,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .me: return "Me"
         case .account: return "Account"
         case .opponents: return "Opponents"
+        case .history: return "History"
         case .stats: return "Stats"
         case .recentForm: return "Recent form"
         case .appearance: return "Appearance"
@@ -28,6 +30,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .me: return "Your profile, best opponent, and biggest leak"
         case .account: return "iCloud sync and Sign in with Apple"
         case .opponents: return "Add, edit, favorite, and compare opponents"
+        case .history: return "Review past sessions and summaries"
         case .stats: return "Session totals and performance snapshots"
         case .recentForm: return "A quick look at how the last 10 sessions went"
         case .appearance: return "Choose a color theme for the app"
@@ -41,6 +44,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .me: return "person.crop.circle.fill"
         case .account: return "lock.icloud.fill"
         case .opponents: return "person.2.fill"
+        case .history: return "clock.arrow.circlepath"
         case .stats: return "chart.bar.fill"
         case .recentForm: return "waveform.path.ecg"
         case .appearance: return "paintbrush.fill"
@@ -107,6 +111,7 @@ struct SettingsView: View {
     private var settingGroups: [SettingsGroup] {
         [
             SettingsGroup(title: "Player", sections: [.me, .account, .stats, .recentForm]),
+            SettingsGroup(title: "Sessions", sections: [.history]),
             SettingsGroup(title: "People", sections: [.opponents]),
             SettingsGroup(title: "App", sections: [.appearance, .data, .about])
         ]
@@ -161,6 +166,7 @@ private struct SettingsSectionRow: View {
         case .me: return Theme.purple
         case .account: return Theme.teal
         case .opponents: return Theme.teal
+        case .history: return Theme.amber
         case .stats, .recentForm: return Theme.blue
         case .appearance: return Theme.amber
         case .data: return Theme.green

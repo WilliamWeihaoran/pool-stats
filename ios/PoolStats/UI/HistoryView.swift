@@ -3,6 +3,7 @@ import SwiftUI
 struct HistoryView: View {
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
+    var showsHeader: Bool = true
     @State private var opponentFilter: String = "All opponents"
     @State private var searchText: String = ""
     @State private var selection = Set<Int64>()
@@ -14,7 +15,9 @@ struct HistoryView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 6) {
-                headerRow
+                if showsHeader {
+                    headerRow
+                }
                 filterBar
                 actionRow
                 if store.sessions.isEmpty {
@@ -50,8 +53,6 @@ struct HistoryView: View {
                                                     .lineLimit(1)
                                                 if session.isPractice {
                                                     badge(text: "Practice", color: Theme.muted)
-                                                } else if session.isDraw {
-                                                    badge(text: "Draw", color: Theme.muted)
                                                 }
                                                 if !session.opponent.isEmpty {
                                                     badge(text: session.opponent, color: Theme.blue)
@@ -237,7 +238,7 @@ struct HistoryView: View {
     }
 
     private var filteredSessions: [Session] {
-        var rows = store.sessions.sorted { $0.ts > $1.ts }
+        var rows = store.sessions.sorted(by: newestFirst)
         if opponentFilter != "All opponents" {
             rows = rows.filter { opponentStore.matches($0.opponent, selected: opponentFilter) }
         }
@@ -245,6 +246,12 @@ struct HistoryView: View {
             rows = rows.filter { $0.label.lowercased().contains(searchText.lowercased()) }
         }
         return rows
+    }
+
+    private func newestFirst(_ lhs: Session, _ rhs: Session) -> Bool {
+        if lhs.ts != rhs.ts { return lhs.ts > rhs.ts }
+        if lhs.id != rhs.id { return lhs.id > rhs.id }
+        return lhs.sessionUUID > rhs.sessionUUID
     }
 
     private var opponentOptions: [String] {

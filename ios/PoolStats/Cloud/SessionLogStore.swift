@@ -19,7 +19,8 @@ final class SessionLogStore: ObservableObject {
     ) {
         let finalLabel = type == "practice" ? "Practice" : label
         let cal = Calendar.current
-        let sessionDate = cal.startOfDay(for: date)
+        let isToday = cal.isDateInToday(date)
+        let sessionDate = isToday ? Date() : cal.startOfDay(for: date)
         currentSession = Session(
             sessionUUID: sessionUUID ?? UUID().uuidString,
             label: finalLabel,
@@ -28,7 +29,7 @@ final class SessionLogStore: ObservableObject {
             type: type,
             ts: sessionDate
         )
-        sessionStart = cal.isDateInToday(date) ? Date() : nil
+        sessionStart = isToday ? sessionDate : nil
         resetRack()
     }
 
@@ -117,6 +118,21 @@ final class SessionLogStore: ObservableObject {
         currentSession = session
         resetRack()
         showExternalNotice("Undo from watch")
+        return true
+    }
+
+    @discardableResult
+    func removeMostRecentRack(result: String) -> Bool {
+        guard var session = currentSession,
+              let idx = session.racks.lastIndex(where: { $0.result == result }) else { return false }
+        session.racks.remove(at: idx)
+        session.racks = session.racks.enumerated().map { offset, rack in
+            var updated = rack
+            updated.index = offset + 1
+            return updated
+        }
+        currentSession = session
+        resetRack()
         return true
     }
 

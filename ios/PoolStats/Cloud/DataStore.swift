@@ -76,13 +76,13 @@ final class DataStore: ObservableObject {
         syncStatus = .syncing
         do {
             try await service.saveSession(session)
-            sessions.append(session)
+            upsertSession(session)
             saveLocal()
             lastError = nil
             syncStatus = .synced
             markSyncSuccess()
         } catch {
-            sessions.append(session)
+            upsertSession(session)
             saveLocal()
             lastError = "Saved locally. iCloud sync failed."
             syncStatus = .localOnly("Saved locally. iCloud sync failed.")
@@ -249,6 +249,16 @@ final class DataStore: ObservableObject {
         try? data.write(to: localURL, options: .atomic)
     }
 
+    private func upsertSession(_ session: Session) {
+        if let idx = sessions.firstIndex(where: { $0.sessionUUID == session.sessionUUID }) {
+            sessions[idx] = session
+        } else if let idx = sessions.firstIndex(where: { $0.id == session.id }) {
+            sessions[idx] = session
+        } else {
+            sessions.append(session)
+        }
+    }
+
     private func markSyncAttempt() {
         lastSyncAttemptAt = Date()
     }
@@ -274,6 +284,8 @@ enum WatchSyncAction: String, Codable {
     case discardSession = "discard_session"
     case endSessionWithRating = "end_session_with_rating"
     case sessionSnapshot = "session_snapshot"
+    case drillAttempt = "drill_attempt"
+    case drillSuccess = "drill_success"
     case ack = "ack"
 }
 
@@ -288,6 +300,10 @@ struct WatchEndSessionPayload: Codable, Hashable {
     var rating: Int
 }
 
+struct WatchDrillEventPayload: Codable, Hashable {
+    var runID: String
+}
+
 struct WatchSyncEnvelope: Codable, Hashable {
     var version: Int = 1
     var action: WatchSyncAction
@@ -296,11 +312,21 @@ struct WatchSyncEnvelope: Codable, Hashable {
     var patch: WatchRackPatch?
     var start: WatchSessionStartPayload?
     var end: WatchEndSessionPayload?
+    var drillEvent: WatchDrillEventPayload?
     var sentAtMs: Int64
+}
+
+struct WatchDrillSnapshot: Codable, Hashable {
+    var runID: String
+    var title: String
+    var attempts: Int
+    var successes: Int
+    var misses: Int
 }
 
 struct WatchSessionSnapshot: Codable, Hashable {
     var active: ActiveSessionSnapshot?
+    var activeDrill: WatchDrillSnapshot?
     var availableOpponents: [String]
     var acknowledgedAtMs: Int64
     var message: String?
@@ -313,18 +339,27 @@ final class WatchSyncStore: NSObject, ObservableObject {
     private weak var dataStore: DataStore?
     private weak var logStore: SessionLogStore?
     private weak var opponentStore: OpponentStore?
+    private weak var drillStore: DrillStore?
     private var cancellables: Set<AnyCancellable> = []
 
-    func bind(dataStore: DataStore, logStore: SessionLogStore, opponentStore: OpponentStore) {
+    func bind(dataStore: DataStore, logStore: SessionLogStore, opponentStore: OpponentStore, drillStore: DrillStore) {
         self.dataStore = dataStore
         self.logStore = logStore
         self.opponentStore = opponentStore
+        self.drillStore = drillStore
         activateSessionIfNeeded()
 
         logStore.$currentSession
             .combineLatest(logStore.$currentRack)
             .receive(on: DispatchQueue.main)
             .sink { [weak self] _, _ in
+                self?.pushSnapshot(message: nil)
+            }
+            .store(in: &cancellables)
+
+        drillStore.$activeRun
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
                 self?.pushSnapshot(message: nil)
             }
             .store(in: &cancellables)
@@ -354,6 +389,7 @@ final class WatchSyncStore: NSObject, ObservableObject {
     private func makeSnapshot(message: String?) -> WatchSessionSnapshot {
         WatchSessionSnapshot(
             active: logStore?.activeSnapshot,
+            activeDrill: drillStore?.snapshotForWatch(),
             availableOpponents: availableOpponents(),
             acknowledgedAtMs: nowMs(),
             message: message
@@ -428,8 +464,11 @@ final class WatchSyncStore: NSObject, ObservableObject {
                 pushSnapshot(message: "stale_save_ignored")
                 return
             }
-            _ = logStore.saveRackFromRemote()
-            pushSnapshot(message: "rack_saved")
+            if let patch = env.patch {
+                logStore.applyRemotePatch(patch)
+            }
+            let didSave = logStore.saveRackFromRemote()
+            pushSnapshot(message: didSave ? "rack_saved" : "rack_save_rejected")
 
         case .undoLastRack:
             guard logStore.matchesActiveSession(env.sessionUUID) else {
@@ -459,6 +498,16 @@ final class WatchSyncStore: NSObject, ObservableObject {
                     self.pushSnapshot(message: "session_ended")
                 }
             }
+
+        case .drillAttempt:
+            guard let runID = env.drillEvent?.runID else { return }
+            drillStore?.recordAttempt(runID: runID)
+            pushSnapshot(message: "drill_attempt")
+
+        case .drillSuccess:
+            guard let runID = env.drillEvent?.runID else { return }
+            drillStore?.recordSuccess(runID: runID)
+            pushSnapshot(message: "drill_success")
 
         case .sessionSnapshot, .ack:
             break

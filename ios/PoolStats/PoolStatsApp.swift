@@ -11,6 +11,7 @@ struct PoolStatsApp: App {
     @StateObject private var opponentStore = OpponentStore()
     @StateObject private var authStore = AuthStore()
     @StateObject private var profileStore = PlayerProfileStore()
+    @StateObject private var drillStore = DrillStore()
     @StateObject private var watchSyncStore = WatchSyncStore()
 
     var body: some Scene {
@@ -23,9 +24,10 @@ struct PoolStatsApp: App {
                 .environmentObject(opponentStore)
                 .environmentObject(authStore)
                 .environmentObject(profileStore)
+                .environmentObject(drillStore)
                 .environmentObject(watchSyncStore)
                 .task {
-                    watchSyncStore.bind(dataStore: store, logStore: logStore, opponentStore: opponentStore)
+                    watchSyncStore.bind(dataStore: store, logStore: logStore, opponentStore: opponentStore, drillStore: drillStore)
                 }
                 .onChange(of: scenePhase) { newPhase in
                     guard newPhase == .active else { return }

@@ -62,6 +62,8 @@
 		AA1000010000000000000034 /* AppearanceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000034 /* AppearanceSettingsView.swift */; };
 		AA1000010000000000000035 /* DataSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000035 /* DataSettingsView.swift */; };
 		AA1000010000000000000036 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000036 /* AppDelegate.swift */; };
+		AA1000010000000000000037 /* Drills.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000037 /* Drills.swift */; };
+		AA1000010000000000000038 /* DrillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000038 /* DrillsView.swift */; };
 		AA1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
 		WA1000010000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
 		B48C585D837953CA58D88B53 /* WatchQueueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09DDE2033C526CE78DAEBC92 /* WatchQueueStore.swift */; };
@@ -193,6 +195,8 @@
 		AA2000010000000000000034 /* AppearanceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceSettingsView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000035 /* DataSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSettingsView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000036 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		AA2000010000000000000037 /* Drills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Drills.swift; sourceTree = "<group>"; };
+		AA2000010000000000000038 /* DrillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillsView.swift; sourceTree = "<group>"; };
 		B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "WatchExtension-Info.plist"; sourceTree = "<group>"; };
 		FC9E92BF268E25DB78D0CA99 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		FE8402DE8B5F3F7DAE0C3001 /* WatchRuntimeSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchRuntimeSession.swift; sourceTree = "<group>"; };
@@ -308,6 +312,7 @@
 				AA2000010000000000000022 /* GoalWindow.swift */,
 				AA2000010000000000000023 /* GoalMetric.swift */,
 				AA2000010000000000000024 /* GoalsStore.swift */,
+				AA2000010000000000000037 /* Drills.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -327,6 +332,7 @@
 				AA200001000000000000000F /* SummaryView.swift */,
 				AA2000010000000000000010 /* DashboardView.swift */,
 				AA2000010000000000000021 /* GoalsView.swift */,
+				AA2000010000000000000038 /* DrillsView.swift */,
 				AA2000010000000000000025 /* GoalCard.swift */,
 				AA2000010000000000000026 /* GoalOverlays.swift */,
 				AA2000010000000000000027 /* GoalEditorSheet.swift */,
@@ -549,6 +555,8 @@
 				AA1000010000000000000034 /* AppearanceSettingsView.swift in Sources */,
 				AA1000010000000000000035 /* DataSettingsView.swift in Sources */,
 				AA1000010000000000000036 /* AppDelegate.swift in Sources */,
+				AA1000010000000000000037 /* Drills.swift in Sources */,
+				AA1000010000000000000038 /* DrillsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

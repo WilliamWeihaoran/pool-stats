@@ -47,16 +47,18 @@ final class WatchSessionStore: ObservableObject {
         persist()
     }
 
-    func saveCurrentRack() {
-        guard var snap = activeSnapshot, let rack = snap.rack else { return }
+    @discardableResult
+    func saveCurrentRack() -> WatchSession? {
+        guard let snap = activeSnapshot, let rack = snap.rack else { return nil }
         var session = snap.session
         session.racks.append(rack)
         activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: rack.index + 1))
         persist()
+        return session
     }
 
     func undoLastRack() {
-        guard var snap = activeSnapshot, !snap.session.racks.isEmpty else { return }
+        guard let snap = activeSnapshot, !snap.session.racks.isEmpty else { return }
         var session = snap.session
         let restored = session.racks.removeLast()
         activeSnapshot = ActiveSessionSnapshot(session: session, rack: restored)

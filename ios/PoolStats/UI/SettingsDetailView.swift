@@ -8,16 +8,28 @@ struct SettingsDetailView: View {
     private let tabBarClearance: CGFloat = 74
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 14) {
-                detailHeader
-                content
+        Group {
+            if section == .history {
+                VStack(spacing: 8) {
+                    detailHeader
+                    HistoryView(showsHeader: false)
+                }
+                .padding(.horizontal, Layout.pagePadding)
+                .padding(.top, 8)
+                .background(Theme.bg)
+            } else {
+                ScrollView {
+                    VStack(spacing: 14) {
+                        detailHeader
+                        content
+                    }
+                    .padding(.horizontal, Layout.pagePadding)
+                    .padding(.top, 8)
+                    .padding(.bottom, 12 + tabBarClearance)
+                }
+                .background(Theme.bg)
             }
-            .padding(.horizontal, Layout.pagePadding)
-            .padding(.top, 8)
-            .padding(.bottom, 12 + tabBarClearance)
         }
-        .background(Theme.bg)
         .task {
             opponentStore.sync(with: store.sessions)
         }
@@ -66,6 +78,8 @@ struct SettingsDetailView: View {
             AccountSettingsView()
         case .opponents:
             OpponentManagementView()
+        case .history:
+            EmptyView()
         case .stats:
             statsSection
         case .recentForm:

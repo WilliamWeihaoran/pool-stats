@@ -220,7 +220,7 @@ struct AppTabBar: View {
                 tabButton(.dashboard)
                 tabButton(.goals)
                 logButton
-                tabButton(.history)
+                tabButton(.drills)
                 tabButton(.settings)
             }
             .frame(maxWidth: .infinity)

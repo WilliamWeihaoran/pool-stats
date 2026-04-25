@@ -412,6 +412,7 @@ private struct LandscapeScoreboardView: View {
     @State private var pressingSide: Side? = nil
     @State private var pressProgress: CGFloat = 0
     @State private var showMenu: Bool = false
+    @State private var showTrackingControls: Bool = true
 
     private var userName: String { profileStore.profile.displayName }
     private var oppName: String {
@@ -421,17 +422,24 @@ private struct LandscapeScoreboardView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            layoutColumn
-                .frame(width: 92)
+            if showTrackingControls {
+                layoutColumn
+                    .frame(width: 92)
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
+            }
 
             centerColumn
                 .frame(maxWidth: .infinity)
 
-            errorsColumn
-                .frame(width: 92)
+            if showTrackingControls {
+                errorsColumn
+                    .frame(width: 92)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg.ignoresSafeArea())
+        .animation(.spring(response: 0.28, dampingFraction: 0.86), value: showTrackingControls)
         .overlay(alignment: .top) {
             menuDot.padding(.top, 4)
         }
@@ -447,88 +455,172 @@ private struct LandscapeScoreboardView: View {
     // MARK: center (names + score)
 
     private var centerColumn: some View {
-        HStack(alignment: .center, spacing: 16) {
-            playerPanel(name: userName, side: .me, color: Theme.green, score: session.wins)
-            Text(":")
-                .font(.system(size: 110, weight: .ultraLight, design: .rounded))
-                .foregroundColor(Theme.muted.opacity(0.3))
-                .offset(y: -20)
-            playerPanel(name: oppName, side: .opp, color: Theme.red, score: session.losses)
+        ZStack(alignment: .top) {
+            HStack(spacing: 16) {
+                playerBadge(name: userName, side: .me, color: Theme.green)
+                    .frame(maxWidth: .infinity)
+                Color.clear.frame(width: 36)
+                playerBadge(name: oppName, side: .opp, color: Theme.red)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding(.top, 24)
+
+            HStack(alignment: .center, spacing: 16) {
+                scoreButton(side: .me, color: Theme.green, score: session.wins)
+                    .frame(maxWidth: .infinity)
+                scoreSeparator
+                    .frame(width: 36, height: 170)
+                scoreButton(side: .opp, color: Theme.red, score: session.losses)
+                    .frame(maxWidth: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+
+            if store.sessionStart != nil {
+                LiteTimingStrip(session: session)
+                    .padding(.bottom, 18)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+            }
         }
         .padding(.horizontal, 12)
     }
 
-    private func playerPanel(name: String, side: Side, color: Color, score: Int) -> some View {
+    private func playerBadge(name: String, side: Side, color: Color) -> some View {
         let isBreaker = (side == .me && rack.breaker == "me") || (side == .opp && rack.breaker == "opp")
+        return Button {
+            store.updateRack { $0.breaker = side == .me ? "me" : "opp" }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: isBreaker ? "circle.fill" : "circle")
+                    .font(.system(size: 7))
+                    .foregroundColor(isBreaker ? color : Theme.muted.opacity(0.6))
+                Text(name)
+                    .font(.callout.weight(.semibold))
+                    .foregroundColor(isBreaker ? color : Theme.text2)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(isBreaker ? color.opacity(0.2) : Theme.panel.opacity(0.55))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isBreaker ? color.opacity(0.55) : Theme.border, lineWidth: isBreaker ? 1.2 : 0.7)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var scoreSeparator: some View {
+        VStack(spacing: 32) {
+            Circle()
+                .fill(Theme.muted.opacity(0.34))
+                .frame(width: 10, height: 10)
+            Circle()
+                .fill(Theme.muted.opacity(0.34))
+                .frame(width: 10, height: 10)
+        }
+    }
+
+    private func scoreButton(side: Side, color: Color, score: Int) -> some View {
         let isPulsing = pulsingSide == side
         let isPressing = pressingSide == side
         let scale: CGFloat = isPressing ? 0.94 : (isPulsing ? 1.18 : 1.0)
-        return VStack(spacing: 10) {
-            Button {
-                store.updateRack { $0.breaker = side == .me ? "me" : "opp" }
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: isBreaker ? "circle.fill" : "circle")
-                        .font(.system(size: 7))
-                        .foregroundColor(isBreaker ? color : Theme.muted.opacity(0.6))
-                    Text(name)
-                        .font(.callout.weight(.semibold))
-                        .foregroundColor(isBreaker ? color : Theme.text2)
-                        .lineLimit(1)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(isBreaker ? color.opacity(0.2) : Theme.panel.opacity(0.55))
-                .cornerRadius(8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .stroke(isBreaker ? color.opacity(0.55) : Theme.border, lineWidth: isBreaker ? 1.2 : 0.7)
-                )
+        return Text("\(score)")
+            .font(.system(size: 310, weight: .black, design: .rounded))
+            .monospacedDigit()
+            .foregroundColor(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.45)
+            .opacity(isPressing ? 0.7 : 1.0)
+            .scaleEffect(scale)
+            .animation(.spring(response: 0.24, dampingFraction: 0.55), value: pressingSide)
+            .animation(.spring(response: 0.28, dampingFraction: 0.45), value: pulsingSide)
+            .overlay {
+                Circle()
+                    .trim(from: 0, to: isPressing ? pressProgress : 0)
+                    .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 270, height: 270)
+                    .opacity(isPressing || pressProgress > 0.02 ? 1 : 0)
+                    .allowsHitTesting(false)
             }
-            .buttonStyle(.plain)
-
-            Text("\(score)")
-                .font(.system(size: 280, weight: .black, design: .rounded))
-                .monospacedDigit()
-                .foregroundColor(color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.45)
-                .opacity(isPressing ? 0.7 : 1.0)
-                .scaleEffect(scale)
-                .animation(.spring(response: 0.24, dampingFraction: 0.55), value: pressingSide)
-                .animation(.spring(response: 0.28, dampingFraction: 0.45), value: pulsingSide)
-                .overlay {
-                    Circle()
-                        .trim(from: 0, to: isPressing ? pressProgress : 0)
-                        .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                        .frame(width: 245, height: 245)
-                        .opacity(isPressing || pressProgress > 0.02 ? 1 : 0)
-                        .allowsHitTesting(false)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture { handleScoreTap(side: side) }
-                .onLongPressGesture(minimumDuration: 0.55, pressing: { pressing in
-                    if pressing {
-                        pressingSide = side
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.linear(duration: 0.55)) {
-                            pressProgress = 1.0
-                        }
-                    } else {
-                        pressingSide = nil
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            pressProgress = 0
-                        }
+            .contentShape(Rectangle())
+            .onTapGesture { handleScoreTap(side: side) }
+            .onLongPressGesture(minimumDuration: 0.55, pressing: { pressing in
+                if pressing {
+                    pressingSide = side
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    withAnimation(.linear(duration: 0.55)) {
+                        pressProgress = 1.0
                     }
-                }, perform: {
-                    handleLongPress()
+                } else {
                     pressingSide = nil
                     withAnimation(.easeOut(duration: 0.2)) {
                         pressProgress = 0
                     }
-                })
+                }
+            }, perform: {
+                handleLongPress(side: side)
+                pressingSide = nil
+                withAnimation(.easeOut(duration: 0.2)) {
+                    pressProgress = 0
+                }
+            })
+    }
+
+    private struct LiteTimingStrip: View {
+        @EnvironmentObject private var store: SessionLogStore
+        let session: Session
+
+        var body: some View {
+            TimelineView(.periodic(from: Date(), by: 1)) { _ in
+                let now = Date()
+                let sessionElapsed = elapsedSince(store.sessionStart, now: now)
+                let rawRackElapsed = elapsedSince(store.rackStart, now: now)
+                let rackElapsed = max(0, rawRackElapsed - Session.rackSetupBufferSeconds)
+                let avgPerRack = session.bufferedAverageRackSeconds(totalSeconds: sessionElapsed)
+
+                HStack(spacing: 0) {
+                    timingMetric("Session", AppFormatters.elapsed(sessionElapsed))
+                    timingDivider
+                    timingMetric("Rack", AppFormatters.elapsed(rackElapsed), valueColor: Theme.green)
+                    timingDivider
+                    timingMetric("Avg", AppFormatters.elapsed(avgPerRack))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Theme.panel.opacity(0.52))
+                .cornerRadius(14)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Theme.border.opacity(0.65), lineWidth: 0.6)
+                )
+            }
+        }
+
+        private func elapsedSince(_ start: Date?, now: Date) -> TimeInterval {
+            guard let start else { return 0 }
+            return max(0, now.timeIntervalSince(start))
+        }
+
+        private func timingMetric(_ label: String, _ value: String, valueColor: Color = Theme.text2) -> some View {
+            VStack(spacing: 1) {
+                Text(label.uppercased())
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(Theme.muted.opacity(0.76))
+                Text(value)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(valueColor.opacity(0.9))
+            }
+            .frame(width: 62)
+        }
+
+        private var timingDivider: some View {
+            Rectangle()
+                .fill(Theme.border.opacity(0.8))
+                .frame(width: 0.6, height: 24)
         }
     }
 
@@ -554,8 +646,9 @@ private struct LandscapeScoreboardView: View {
         }
     }
 
-    private func handleLongPress() {
-        if store.undoLastRack() {
+    private func handleLongPress(side: Side) {
+        let result = side == .me ? "won" : "lost"
+        if store.removeMostRecentRack(result: result) {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         }
     }
@@ -689,6 +782,17 @@ private struct LandscapeScoreboardView: View {
                     if store.undoLastRack() {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     }
+                }
+                menuDivider
+                menuRow(
+                    icon: showTrackingControls ? "eye.slash" : "eye",
+                    label: showTrackingControls ? "Hide logging" : "Show logging",
+                    tint: Theme.text2
+                ) {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                        showTrackingControls.toggle()
+                    }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }
                 menuDivider
                 menuRow(icon: "arrow.down.right.and.arrow.up.left", label: "Exit Lite view", tint: Theme.text2) {
