@@ -37,8 +37,32 @@ struct SampleData {
             let opponent = isPr ? "" : opponents[rng.nextInt(0, opponents.count - 1)]
 
             var racks: [Rack] = []
-            for j in 0..<racksCount {
-                let res: String? = isPr ? nil : (rng.chance(0.54) ? "won" : "lost")
+            let drillTemplate = isPr ? DrillLibrary.templates[rng.nextInt(0, DrillLibrary.templates.count - 1)] : nil
+            let drillDifficulty = drillTemplate?.difficultyLevels[rng.nextInt(0, (drillTemplate?.difficultyLevels.count ?? 1) - 1)]
+            let attemptCount = isPr ? rng.nextInt(6, 14) : racksCount
+
+            for j in 0..<attemptCount {
+                if let drillTemplate {
+                    let success = rng.chance(0.62)
+                    let tagPool = drillTemplate.primarySkills + drillTemplate.secondarySkills
+                    let tag = tagPool[rng.nextInt(0, tagPool.count - 1)]
+                    let target = drillDifficulty?.ballCount ?? 5
+                    let made = success ? target : rng.nextInt(0, max(0, target - 1))
+                    racks.append(Rack(
+                        index: j + 1,
+                        breaker: "none",
+                        breakBalls: -1,
+                        layout: "none",
+                        drillOutcome: success ? "success" : "miss",
+                        drillTags: [tag],
+                        drillBallsMade: made,
+                        drillTargetBallCount: target,
+                        drillDifficulty: drillDifficulty?.level.rawValue
+                    ))
+                    continue
+                }
+
+                let res: String? = rng.chance(0.54) ? "won" : "lost"
                 let brk = rng.chance(0.55) ? "me" : "opp"
                 let bb = rng.nextInt(0, 3)
                 let lay = layouts[rng.nextInt(0, 3)]
@@ -50,11 +74,10 @@ struct SampleData {
                 else { oc = "other" }
 
                 let missCount = rng.nextInt(0, 5)
-
                 let ru = oc == "runout" && res == "won" && rng.chance(0.6)
                 let bnr = ru && brk == "me" && bb >= 1
 
-                let rack = Rack(
+                racks.append(Rack(
                     index: j + 1,
                     result: res,
                     breaker: brk,
@@ -68,13 +91,12 @@ struct SampleData {
                     missCount: missCount,
                     runoutFirst: ru,
                     breakAndRun: bnr
-                )
-                racks.append(rack)
+                ))
             }
 
-            let label = isPr ? "Practice" : "Sample"
+            let label = drillTemplate?.title ?? "Sample"
             let minutesPerRack = rng.nextInt(4, 8)
-            let durationSeconds = racksCount * minutesPerRack * 60
+            let durationSeconds = attemptCount * minutesPerRack * 60
             let sess = Session(
                 id: Int64(now.timeIntervalSince1970 * 1000) + Int64(i * 7),
                 label: label,
@@ -84,7 +106,16 @@ struct SampleData {
                 ts: ts,
                 racks: racks,
                 durationSeconds: durationSeconds,
-                performanceRating: isPr ? nil : rng.nextInt(4, 10)
+                performanceRating: isPr ? nil : rng.nextInt(4, 10),
+                drillID: drillTemplate?.id,
+                drillTitle: drillTemplate?.title,
+                drillKind: drillTemplate?.kind.rawValue,
+                drillDifficulty: drillDifficulty?.level.rawValue,
+                drillBallCount: drillDifficulty?.ballCount,
+                drillPrimarySkill: drillTemplate?.primarySkill,
+                drillPrimarySkills: drillTemplate.map { Array($0.primarySkills.prefix(3)) } ?? [],
+                drillSubskills: drillTemplate?.subskills ?? [],
+                drillSecondarySkills: drillTemplate.map { Array($0.secondarySkills.prefix(3)) } ?? []
             )
             out.append(sess)
         }

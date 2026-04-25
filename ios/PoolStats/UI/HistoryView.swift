@@ -3,6 +3,7 @@ import SwiftUI
 struct HistoryView: View {
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
+    var showsHeader: Bool = true
     @State private var opponentFilter: String = "All opponents"
     @State private var searchText: String = ""
     @State private var selection = Set<Int64>()
@@ -14,7 +15,9 @@ struct HistoryView: View {
     var body: some View {
         ZStack {
             VStack(spacing: 6) {
-                headerRow
+                if showsHeader {
+                    headerRow
+                }
                 filterBar
                 actionRow
                 if store.sessions.isEmpty {
@@ -48,16 +51,22 @@ struct HistoryView: View {
                                                     .font(.headline)
                                                     .foregroundColor(Theme.text)
                                                     .lineLimit(1)
-                                                if session.isPractice {
+                                                if session.isDrillPractice {
+                                                    badge(text: "Drill", color: Theme.purple)
+                                                    badge(text: session.drillDifficultyLabel, color: Theme.amber)
+                                                } else if session.isPractice {
                                                     badge(text: "Practice", color: Theme.muted)
-                                                } else if session.isDraw {
-                                                    badge(text: "Draw", color: Theme.muted)
                                                 }
                                                 if !session.opponent.isEmpty {
                                                     badge(text: session.opponent, color: Theme.blue)
                                                 }
                                             }
                                             .frame(maxWidth: .infinity, alignment: .leading)
+                                            if session.isDrillPractice {
+                                                Text(drillSummaryText(session))
+                                                    .font(.caption2)
+                                                    .foregroundColor(Theme.text2)
+                                            }
                                         }
                                         Spacer(minLength: 8)
                                         HStack(spacing: 4) {
@@ -144,6 +153,11 @@ struct HistoryView: View {
             .background(color.opacity(0.12))
             .overlay(RoundedRectangle(cornerRadius: 5).stroke(color.opacity(0.28), lineWidth: 0.5))
             .cornerRadius(5)
+    }
+
+    private func drillSummaryText(_ session: Session) -> String {
+        let rate = session.drillSuccessRate.map { "\($0)% success" } ?? "No attempts"
+        return "\(session.drillAttempts) attempts · \(rate) · \(session.drillDifficultyLabel)"
     }
 
     private var syncStatusBadge: some View {
@@ -237,7 +251,7 @@ struct HistoryView: View {
     }
 
     private var filteredSessions: [Session] {
-        var rows = store.sessions.sorted { $0.ts > $1.ts }
+        var rows = store.sessions.sorted(by: newestFirst)
         if opponentFilter != "All opponents" {
             rows = rows.filter { opponentStore.matches($0.opponent, selected: opponentFilter) }
         }
@@ -245,6 +259,12 @@ struct HistoryView: View {
             rows = rows.filter { $0.label.lowercased().contains(searchText.lowercased()) }
         }
         return rows
+    }
+
+    private func newestFirst(_ lhs: Session, _ rhs: Session) -> Bool {
+        if lhs.ts != rhs.ts { return lhs.ts > rhs.ts }
+        if lhs.id != rhs.id { return lhs.id > rhs.id }
+        return lhs.sessionUUID > rhs.sessionUUID
     }
 
     private var opponentOptions: [String] {

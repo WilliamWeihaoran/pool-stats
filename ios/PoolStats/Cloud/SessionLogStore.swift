@@ -17,18 +17,41 @@ final class SessionLogStore: ObservableObject {
         date: Date,
         sessionUUID: String? = nil
     ) {
-        let finalLabel = type == "practice" ? "Practice" : label
+        // Generic starts are match-only. Drill practices are created via startDrillPractice.
         let cal = Calendar.current
         let sessionDate = cal.startOfDay(for: date)
         currentSession = Session(
             sessionUUID: sessionUUID ?? UUID().uuidString,
-            label: finalLabel,
+            label: label,
             opponent: opponent,
             game: game,
-            type: type,
+            type: "match",
             ts: sessionDate
         )
         sessionStart = cal.isDateInToday(date) ? Date() : nil
+        resetRack()
+    }
+
+    func startDrillPractice(template: DrillTemplate, difficulty: DrillDifficulty, targetType: String? = nil, targetCount: Int? = nil) {
+        currentSession = Session(
+            label: template.title,
+            opponent: "",
+            game: "8ball",
+            type: "practice",
+            ts: Date(),
+            drillID: template.id,
+            drillTitle: template.title,
+            drillKind: template.kind.rawValue,
+            drillDifficulty: difficulty.level.rawValue,
+            drillBallCount: difficulty.ballCount,
+            drillPrimarySkill: template.primarySkill,
+            drillPrimarySkills: Array(template.primarySkills.prefix(3)),
+            drillSubskills: template.subskills,
+            drillSecondarySkills: Array(template.secondarySkills.prefix(3)),
+            drillTargetType: targetType,
+            drillTargetCount: targetCount
+        )
+        sessionStart = Date()
         resetRack()
     }
 
@@ -73,6 +96,7 @@ final class SessionLogStore: ObservableObject {
     }
 
     func applyRemotePatch(_ patch: WatchRackPatch) {
+        guard currentSession?.isDrillPractice != true else { return }
         updateRack { rack in
             if let result = patch.result { rack.result = result }
             if let breaker = patch.breaker { rack.breaker = breaker }
@@ -99,6 +123,7 @@ final class SessionLogStore: ObservableObject {
 
     func saveRack() -> Bool {
         guard var session = currentSession, var rack = currentRack else { return false }
+        guard session.isDrillPractice == false else { return false }
         let breakOK = rack.breaker != "none" && rack.breakBalls >= 0
         let convertedOK = session.isPractice ? true : rack.outcome != nil
         let resultOK = session.isPractice ? true : rack.result != nil
@@ -108,6 +133,57 @@ final class SessionLogStore: ObservableObject {
         currentSession = session
         resetRack()
         return true
+    }
+
+    func updateDrillDifficulty(level: DrillDifficultyLevel, ballCount: Int) {
+        guard var session = currentSession, session.isDrillPractice else { return }
+        session.drillDifficulty = level.rawValue
+        session.drillBallCount = ballCount
+        currentSession = session
+    }
+
+    func updateDrillDifficulty(levelRawValue: String, ballCount: Int) {
+        guard let level = DrillDifficultyLevel(rawValue: levelRawValue) else { return }
+        updateDrillDifficulty(level: level, ballCount: ballCount)
+    }
+
+    @discardableResult
+    func recordDrillAttempt(outcome: String, tags: [String], notes: String = "", ballsMade: Int? = nil, targetBallCount: Int? = nil, difficulty: String? = nil) -> Bool {
+        guard var session = currentSession, session.isDrillPractice else { return false }
+        let target = max(0, targetBallCount ?? session.drillBallCount ?? 0)
+        let made = min(max(0, ballsMade ?? (outcome == "success" ? target : 0)), target)
+        let cleanedTags = tags.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        let cleanedNotes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rack = Rack(
+            index: session.racks.count + 1,
+            breaker: "none",
+            breakBalls: -1,
+            layout: "none",
+            drillOutcome: outcome,
+            drillTags: cleanedTags.isEmpty ? nil : cleanedTags,
+            drillNotes: cleanedNotes.isEmpty ? nil : cleanedNotes,
+            drillBallsMade: made,
+            drillTargetBallCount: target,
+            drillDifficulty: difficulty ?? session.drillDifficulty
+        )
+        session.racks.append(rack)
+        currentSession = session
+        resetRack()
+        return true
+    }
+
+    @discardableResult
+    func recordDrillAttemptFromRemote(_ attempt: WatchDrillAttemptPayload) -> Bool {
+        guard currentSession?.isDrillPractice == true else { return false }
+        let ok = recordDrillAttempt(
+            outcome: attempt.outcome,
+            tags: attempt.tags,
+            ballsMade: attempt.ballsMade,
+            targetBallCount: attempt.targetBallCount,
+            difficulty: attempt.difficulty
+        )
+        if ok { showExternalNotice("Drill attempt saved on watch") }
+        return ok
     }
 
     @discardableResult
@@ -139,9 +215,10 @@ final class SessionLogStore: ObservableObject {
     }
 
     func endSessionFromRemote(rating: Int, savingTo store: DataStore) async {
-        guard var currentSession else { return }
+        guard var currentSession, currentSession.isDrillPractice == false else { return }
         currentSession.performanceRating = max(1, min(10, rating))
         self.currentSession = currentSession
+        _ = saveRack()
         await endSession(savingTo: store)
         showExternalNotice("Session ended on watch")
     }
@@ -160,7 +237,11 @@ final class SessionLogStore: ObservableObject {
 
     var activeSnapshot: ActiveSessionSnapshot? {
         guard let currentSession else { return nil }
-        return ActiveSessionSnapshot(session: currentSession, rack: currentRack)
+        return ActiveSessionSnapshot(session: currentSession, rack: currentRack, rackStartedAt: rackStart)
+    }
+
+    var activeSnapshotForWatch: ActiveSessionSnapshot? {
+        activeSnapshot
     }
 
     private func showExternalNotice(_ text: String) {
@@ -192,4 +273,5 @@ struct WatchRackPatch: Codable, Hashable {
 struct ActiveSessionSnapshot: Codable, Hashable {
     var session: Session
     var rack: Rack?
+    var rackStartedAt: Date?
 }

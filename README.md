@@ -31,7 +31,7 @@ That gives you enough detail to improve your game without forcing you to record 
 - Unforced errors are logged as a small set of categories rather than by shot difficulty
 - Backdated sessions are supported
 - Session and rack timers are tracked for current sessions
-- Session summary includes a drag-to-rate performance control
+- Session summary includes a drag-to-rate performance control (drag the capsule bar left/right)
 - Session summary also shows raw time and adjusted time with a 45-second rack buffer
 - All logging controls have haptic and press-scale feedback
 
@@ -89,6 +89,10 @@ That gives you enough detail to improve your game without forcing you to record 
 - The app also keeps a local JSON cache in Application Support so sessions are not lost if sync is delayed or unavailable
 
 ---
+
+## Distribution
+
+The app is distributed via TestFlight. Install the TestFlight app on your iPhone, accept the invite, and tap Install. The watchOS companion installs automatically alongside the iPhone app.
 
 ## Usage
 

@@ -17,11 +17,20 @@ final class WatchSessionStore: ObservableObject {
             label: "",
             opponent: opponent,
             game: game,
-            type: type,
+            type: "match",
             ts: Date(),
             racks: [],
             durationSeconds: nil,
-            performanceRating: nil
+            performanceRating: nil,
+            drillID: nil,
+            drillTitle: nil,
+            drillKind: nil,
+            drillDifficulty: nil,
+            drillBallCount: nil,
+            drillPrimarySkill: nil,
+            drillPrimarySkills: nil,
+            drillSubskills: nil,
+            drillSecondarySkills: nil
         )
         activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: 1))
         persist()
@@ -55,6 +64,46 @@ final class WatchSessionStore: ObservableObject {
         persist()
     }
 
+    func recordDrillAttempt(_ attempt: WatchDrillAttemptPayload) {
+        guard var snap = activeSnapshot, snap.session.isDrillPractice else { return }
+        var session = snap.session
+        let rack = WatchRack(
+            id: UUID().uuidString,
+            rackUUID: UUID().uuidString,
+            index: session.racks.count + 1,
+            result: nil,
+            breaker: "none",
+            breakBalls: -1,
+            breakFoul: false,
+            layout: "none",
+            outcome: nil,
+            fouls: 0,
+            badSafety: 0,
+            badPosition: 0,
+            missCount: 0,
+            runoutFirst: false,
+            breakAndRun: false,
+            drillOutcome: attempt.outcome,
+            drillTags: attempt.tags.isEmpty ? nil : attempt.tags,
+            drillNotes: nil,
+            drillBallsMade: attempt.ballsMade,
+            drillTargetBallCount: attempt.targetBallCount,
+            drillDifficulty: attempt.difficulty
+        )
+        session.racks.append(rack)
+        activeSnapshot = ActiveSessionSnapshot(session: session, rack: nil, rackStartedAt: snap.rackStartedAt)
+        persist()
+    }
+
+    func updateDrillDifficulty(_ payload: WatchDrillDifficultyPayload) {
+        guard var snap = activeSnapshot, snap.session.isDrillPractice else { return }
+        var session = snap.session
+        session.drillDifficulty = payload.difficulty
+        session.drillBallCount = payload.ballCount
+        activeSnapshot = ActiveSessionSnapshot(session: session, rack: snap.rack, rackStartedAt: snap.rackStartedAt)
+        persist()
+    }
+
     func undoLastRack() {
         guard var snap = activeSnapshot, !snap.session.racks.isEmpty else { return }
         var session = snap.session
@@ -66,6 +115,7 @@ final class WatchSessionStore: ObservableObject {
     func clear() {
         activeSnapshot = nil
         UserDefaults.standard.removeObject(forKey: key)
+        WatchComplicationStateStore.clear()
     }
 
     // Phone snapshot is always authoritative — overwrite local state when it arrives.
@@ -90,18 +140,26 @@ final class WatchSessionStore: ObservableObject {
             badPosition: 0,
             missCount: 0,
             runoutFirst: false,
-            breakAndRun: false
+            breakAndRun: false,
+            drillOutcome: nil,
+            drillTags: nil,
+            drillNotes: nil,
+            drillBallsMade: nil,
+            drillTargetBallCount: nil,
+            drillDifficulty: nil
         )
     }
 
     private func persist() {
         guard let data = try? JSONEncoder().encode(activeSnapshot) else { return }
         UserDefaults.standard.set(data, forKey: key)
+        WatchComplicationStateStore.save(active: activeSnapshot)
     }
 
     private func restore() {
         guard let data = UserDefaults.standard.data(forKey: key),
               let snap = try? JSONDecoder().decode(ActiveSessionSnapshot.self, from: data) else { return }
         activeSnapshot = snap
+        WatchComplicationStateStore.save(active: snap)
     }
 }

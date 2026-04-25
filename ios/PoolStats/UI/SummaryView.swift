@@ -18,10 +18,15 @@ struct SummaryView: View {
                 header
                 timeSection
                 performanceSection
-                summaryCards
-                errorsSection
-                breaksSection
-                rackLogSection
+                if session.isDrillPractice {
+                    drillSummaryCards
+                    drillAttemptLogSection
+                } else {
+                    summaryCards
+                    errorsSection
+                    breaksSection
+                    rackLogSection
+                }
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
@@ -43,7 +48,9 @@ struct SummaryView: View {
                 .foregroundColor(Theme.muted)
             TextField("Add a session label…", text: $labelText, onCommit: saveLabel)
                 .textFieldStyle(.roundedBorder)
-            opponentEditor
+            if !session.isPractice {
+                opponentEditor
+            }
         }
     }
 
@@ -219,6 +226,133 @@ struct SummaryView: View {
         return Color(red: r, green: g, blue: b, opacity: a)
     }
 
+    private var drillSummaryCards: some View {
+        let attempts = session.drillAttempts
+        let successes = session.drillSuccesses
+        let misses = session.drillMisses
+        let rate = session.drillSuccessRate.map { "\($0)%" } ?? "--"
+        let totalPotted = session.racks.reduce(0) { $0 + ($1.drillBallsMade ?? 0) }
+        let avgPotted = attempts == 0 ? "--" : String(format: "%.1f", Double(totalPotted) / Double(attempts))
+        let progress = session.drillTargetProgress
+
+        return SectionCard(title: "Practice") {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(session.drillTitle ?? session.displayLabel)
+                        .font(.headline.weight(.bold))
+                        .foregroundColor(Theme.text)
+                    HStack(spacing: 8) {
+                        badge(text: session.drillDifficultyLabel, color: Theme.purple)
+                        if let balls = session.drillBallCount { badge(text: "\(balls) balls", color: Theme.amber) }
+                        if let target = session.drillTargetLabel { badge(text: target, color: Theme.green) }
+                    }
+                }
+
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("\(successes)")
+                        .font(.system(size: 44, weight: .black, design: .rounded).monospacedDigit())
+                        .foregroundColor(Theme.green)
+                    Text(":")
+                        .font(.system(size: 36, weight: .black, design: .rounded).monospacedDigit())
+                        .foregroundColor(Theme.text2)
+                    Text("\(misses)")
+                        .font(.system(size: 44, weight: .black, design: .rounded).monospacedDigit())
+                        .foregroundColor(Theme.red)
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(rate)
+                            .font(.title3.bold().monospacedDigit())
+                            .foregroundColor(Theme.text)
+                        Text("success rate")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundColor(Theme.muted)
+                    }
+                }
+
+                if let progress {
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack {
+                            Text("Target progress")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(Theme.text2)
+                            Spacer()
+                            Text("\(progress.current)/\(progress.target)")
+                                .font(.caption.weight(.bold).monospacedDigit())
+                                .foregroundColor(Theme.green)
+                        }
+                        ProgressView(value: Double(progress.current), total: Double(max(progress.target, 1)))
+                            .tint(Theme.green)
+                    }
+                }
+
+                LazyVGrid(columns: Layout.fourColumn(), spacing: 8) {
+                    MiniStatCard(label: "Attempts", value: "\(attempts)")
+                    MiniStatCard(label: "Success", value: "\(successes)")
+                    MiniStatCard(label: "Miss", value: "\(misses)")
+                    MiniStatCard(label: "Avg potted", value: avgPotted)
+                }
+            }
+        }
+    }
+
+    private var drillAttemptLogSection: some View {
+        let mistakeCounts = Dictionary(grouping: session.racks.flatMap { $0.drillTags ?? [] }, by: { $0 })
+            .mapValues { $0.count }
+        return SectionCard(title: "Attempt log") {
+            VStack(alignment: .leading, spacing: 10) {
+                if !mistakeCounts.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Mistakes")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(Theme.muted)
+                        HStack(spacing: 6) {
+                            ForEach(mistakeCounts.keys.sorted(), id: \.self) { tag in
+                                badge(text: "\(tag) \(mistakeCounts[tag] ?? 0)", color: Theme.teal)
+                            }
+                        }
+                    }
+                }
+                VStack(spacing: 8) {
+                    ForEach(session.racks) { rack in
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack(spacing: 8) {
+                                Text("\(rack.index)")
+                                    .font(.caption)
+                                    .foregroundColor(Theme.muted)
+                                    .frame(width: 20, alignment: .leading)
+                                Text(rack.drillOutcomeLabel)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(rack.drillOutcome == "success" ? Theme.green : Theme.red)
+                                if let made = rack.drillBallsMade, let target = rack.drillTargetBallCount {
+                                    Text("\(made)/\(target) potted")
+                                        .font(.caption.weight(.bold).monospacedDigit())
+                                        .foregroundColor(Theme.text2)
+                                }
+                                Spacer()
+                                if let difficulty = rack.drillDifficulty {
+                                    Text(DrillDifficultyLevel(rawValue: difficulty)?.label ?? difficulty)
+                                        .font(.caption2.weight(.semibold))
+                                        .foregroundColor(Theme.muted)
+                                        .lineLimit(1)
+                                }
+                            }
+                            if let tags = rack.drillTags, !tags.isEmpty {
+                                HStack(spacing: 5) {
+                                    ForEach(tags, id: \.self) { tag in
+                                        badge(text: tag, color: Theme.teal)
+                                    }
+                                }
+                            }
+                        }
+                        .padding(9)
+                        .background(Theme.panel2.opacity(0.65))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                }
+            }
+        }
+    }
+
     private var errorsSection: some View {
         let rs = session.racks
         return SectionCard(title: "Unforced errors") {
@@ -302,11 +436,23 @@ struct SummaryView: View {
     }
 
     private func metaText() -> String {
-        let opponent = session.opponent.trimmingCharacters(in: .whitespaces)
+        let opponent = session.isPractice ? "" : session.opponent.trimmingCharacters(in: .whitespaces)
         let oppText = opponent.isEmpty ? nil : "vs \(opponent)"
-        return [session.typeLabel, session.gameLabel, oppText, "\(session.racks.count) racks", AppFormatters.sessionDate(session.ts)]
+        let countText = session.isDrillPractice ? "\(session.drillAttempts) attempts" : "\(session.racks.count) racks"
+        return [session.typeLabel, session.isDrillPractice ? session.drillTitle : session.gameLabel, oppText, countText, session.drillTargetLabel, AppFormatters.sessionDate(session.ts)]
             .compactMap { $0 }
             .joined(separator: " · ")
+    }
+
+    private func badge(text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .foregroundColor(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.12))
+            .overlay(RoundedRectangle(cornerRadius: 5).stroke(color.opacity(0.28), lineWidth: 0.5))
+            .cornerRadius(5)
     }
 
     private func outcomeLabel(_ outcome: String?) -> String {

@@ -22,6 +22,17 @@ final class CloudKitStore {
         static let ts = "ts"
         static let durationSeconds = "durationSeconds"
         static let performanceRating = "performanceRating"
+        static let drillID = "drillID"
+        static let drillTitle = "drillTitle"
+        static let drillKind = "drillKind"
+        static let drillDifficulty = "drillDifficulty"
+        static let drillBallCount = "drillBallCount"
+        static let drillPrimarySkill = "drillPrimarySkill"
+        static let drillPrimarySkills = "drillPrimarySkills"
+        static let drillSubskills = "drillSubskills"
+        static let drillSecondarySkills = "drillSecondarySkills"
+        static let drillTargetType = "drillTargetType"
+        static let drillTargetCount = "drillTargetCount"
 
         static let sessionRef = "sessionRef"
         static let index = "index"
@@ -37,6 +48,12 @@ final class CloudKitStore {
         static let missCount = "missCount"
         static let runoutFirst = "runoutFirst"
         static let breakAndRun = "breakAndRun"
+        static let drillOutcome = "drillOutcome"
+        static let drillTags = "drillTags"
+        static let drillNotes = "drillNotes"
+        static let drillBallsMade = "drillBallsMade"
+        static let drillTargetBallCount = "drillTargetBallCount"
+        static let drillRackDifficulty = "drillRackDifficulty"
     }
 
     func fetchAllSessions() async throws -> [Session] {
@@ -176,6 +193,17 @@ final class CloudKitStore {
         if let performanceRating = session.performanceRating {
             record[RecordKeys.performanceRating] = performanceRating
         }
+        if let drillID = session.drillID { record[RecordKeys.drillID] = drillID }
+        if let drillTitle = session.drillTitle { record[RecordKeys.drillTitle] = drillTitle }
+        if let drillKind = session.drillKind { record[RecordKeys.drillKind] = drillKind }
+        if let drillDifficulty = session.drillDifficulty { record[RecordKeys.drillDifficulty] = drillDifficulty }
+        if let drillBallCount = session.drillBallCount { record[RecordKeys.drillBallCount] = drillBallCount }
+        if let drillPrimarySkill = session.drillPrimarySkill { record[RecordKeys.drillPrimarySkill] = drillPrimarySkill }
+        if !session.drillPrimaryLabels.isEmpty { record[RecordKeys.drillPrimarySkills] = session.drillPrimaryLabels as NSArray }
+        if !session.drillSubskills.isEmpty { record[RecordKeys.drillSubskills] = session.drillSubskills as NSArray }
+        if !session.drillSecondaryLabels.isEmpty { record[RecordKeys.drillSecondarySkills] = session.drillSecondaryLabels as NSArray }
+        if let drillTargetType = session.drillTargetType { record[RecordKeys.drillTargetType] = drillTargetType }
+        if let drillTargetCount = session.drillTargetCount { record[RecordKeys.drillTargetCount] = drillTargetCount }
         return record
     }
 
@@ -196,6 +224,12 @@ final class CloudKitStore {
         record[RecordKeys.missCount] = rack.missCount
         record[RecordKeys.runoutFirst] = rack.runoutFirst
         record[RecordKeys.breakAndRun] = rack.breakAndRun
+        if let drillOutcome = rack.drillOutcome { record[RecordKeys.drillOutcome] = drillOutcome }
+        if let drillTags = rack.drillTags, !drillTags.isEmpty { record[RecordKeys.drillTags] = drillTags as NSArray }
+        if let drillNotes = rack.drillNotes { record[RecordKeys.drillNotes] = drillNotes }
+        if let drillBallsMade = rack.drillBallsMade { record[RecordKeys.drillBallsMade] = drillBallsMade }
+        if let drillTargetBallCount = rack.drillTargetBallCount { record[RecordKeys.drillTargetBallCount] = drillTargetBallCount }
+        if let drillDifficulty = rack.drillDifficulty { record[RecordKeys.drillRackDifficulty] = drillDifficulty }
         return record
     }
 
@@ -208,6 +242,15 @@ final class CloudKitStore {
         let ts = record[RecordKeys.ts] as? Date ?? Date()
         let duration = record[RecordKeys.durationSeconds] as? Int
         let rating = record[RecordKeys.performanceRating] as? Int
+        let drillPrimarySkills = (record[RecordKeys.drillPrimarySkills] as? [String])
+            ?? (record[RecordKeys.drillPrimarySkills] as? NSArray)?.compactMap { $0 as? String }
+            ?? []
+        let drillSubskills = (record[RecordKeys.drillSubskills] as? [String])
+            ?? (record[RecordKeys.drillSubskills] as? NSArray)?.compactMap { $0 as? String }
+            ?? []
+        let drillSecondarySkills = (record[RecordKeys.drillSecondarySkills] as? [String])
+            ?? (record[RecordKeys.drillSecondarySkills] as? NSArray)?.compactMap { $0 as? String }
+            ?? []
         return Session(
             id: id,
             sessionUUID: "session-\(id)",
@@ -218,7 +261,18 @@ final class CloudKitStore {
             ts: ts,
             racks: racks,
             durationSeconds: duration,
-            performanceRating: rating
+            performanceRating: rating,
+            drillID: record[RecordKeys.drillID] as? String,
+            drillTitle: record[RecordKeys.drillTitle] as? String,
+            drillKind: record[RecordKeys.drillKind] as? String,
+            drillDifficulty: record[RecordKeys.drillDifficulty] as? String,
+            drillBallCount: record[RecordKeys.drillBallCount] as? Int,
+            drillPrimarySkill: record[RecordKeys.drillPrimarySkill] as? String,
+            drillPrimarySkills: drillPrimarySkills,
+            drillSubskills: drillSubskills,
+            drillSecondarySkills: drillSecondarySkills,
+            drillTargetType: record[RecordKeys.drillTargetType] as? String,
+            drillTargetCount: record[RecordKeys.drillTargetCount] as? Int
         )
     }
 
@@ -241,6 +295,8 @@ final class CloudKitStore {
         )
         let runoutFirst = record[RecordKeys.runoutFirst] as? Bool ?? false
         let breakAndRun = record[RecordKeys.breakAndRun] as? Bool ?? false
+        let drillTags = (record[RecordKeys.drillTags] as? [String])
+            ?? (record[RecordKeys.drillTags] as? NSArray)?.compactMap { $0 as? String }
 
         return Rack(
             id: id,
@@ -257,7 +313,13 @@ final class CloudKitStore {
             badPosition: badPosition,
             missCount: missCount,
             runoutFirst: runoutFirst,
-            breakAndRun: breakAndRun
+            breakAndRun: breakAndRun,
+            drillOutcome: record[RecordKeys.drillOutcome] as? String,
+            drillTags: drillTags,
+            drillNotes: record[RecordKeys.drillNotes] as? String,
+            drillBallsMade: record[RecordKeys.drillBallsMade] as? Int,
+            drillTargetBallCount: record[RecordKeys.drillTargetBallCount] as? Int,
+            drillDifficulty: record[RecordKeys.drillRackDifficulty] as? String
         )
     }
 }

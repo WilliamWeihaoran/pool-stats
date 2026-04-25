@@ -20,7 +20,7 @@ struct LogView: View {
     @State private var suppressAutoLite: Bool = false
 
     private var showLite: Bool {
-        guard logStore.currentSession != nil else { return false }
+        guard let session = logStore.currentSession, session.isDrillPractice == false else { return false }
         if forceLiteScoreboard { return true }
         if suppressAutoLite { return false }
         return isLandscape || verticalSizeClass == .compact
@@ -41,6 +41,8 @@ struct LogView: View {
                     VStack(spacing: 10) {
                         if logStore.currentSession == nil {
                             LogStartView(label: $label)
+                        } else if logStore.currentSession?.isDrillPractice == true {
+                            DrillLogActiveView(showEndConfirm: $showEndConfirm)
                         } else {
                             LogActiveView(
                                 showSaveToast: $showSaveToast,
@@ -83,6 +85,7 @@ struct LogView: View {
         .sheet(isPresented: $showEndConfirm) {
             EndSessionConfirmationSheet(
                 onSave: {
+                    _ = logStore.saveRack()
                     Task { await logStore.endSession(savingTo: store) }
                 },
                 onDiscard: {
@@ -131,7 +134,7 @@ private struct EndSessionConfirmationSheet: View {
                 Text("End session?")
                     .font(.headline)
                     .foregroundColor(Theme.text)
-                Text("Save the session to history, discard it, or keep logging.")
+                Text("Save this session to history, discard it, or keep logging.")
                     .font(.caption)
                     .foregroundColor(Theme.muted)
             }

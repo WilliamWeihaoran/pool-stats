@@ -16,6 +16,12 @@ struct Rack: Identifiable, Codable, Hashable {
     var missCount: Int
     var runoutFirst: Bool
     var breakAndRun: Bool
+    var drillOutcome: String?
+    var drillTags: [String]?
+    var drillNotes: String?
+    var drillBallsMade: Int?
+    var drillTargetBallCount: Int?
+    var drillDifficulty: String?
 
     var converted: Bool { outcome == "runout" }
     var isNoRunout: Bool { outcome == "noRunout" }
@@ -23,6 +29,14 @@ struct Rack: Identifiable, Codable, Hashable {
     var safetyCount: Int { badSafety }
     var foulCount: Int { fouls }
     var unforcedErrorCount: Int { foulCount + safetyCount + positionalCount + missCount }
+    var isDrillAttempt: Bool { drillOutcome != nil }
+    var drillOutcomeLabel: String {
+        switch drillOutcome {
+        case "success": return "Success"
+        case "miss": return "Miss"
+        default: return "Attempt"
+        }
+    }
 
     init(
         id: String = UUID().uuidString,
@@ -39,7 +53,13 @@ struct Rack: Identifiable, Codable, Hashable {
         badPosition: Int = 0,
         missCount: Int = 0,
         runoutFirst: Bool = false,
-        breakAndRun: Bool = false
+        breakAndRun: Bool = false,
+        drillOutcome: String? = nil,
+        drillTags: [String]? = nil,
+        drillNotes: String? = nil,
+        drillBallsMade: Int? = nil,
+        drillTargetBallCount: Int? = nil,
+        drillDifficulty: String? = nil
     ) {
         self.id = id
         self.rackUUID = rackUUID
@@ -56,6 +76,12 @@ struct Rack: Identifiable, Codable, Hashable {
         self.missCount = missCount
         self.runoutFirst = runoutFirst
         self.breakAndRun = breakAndRun
+        self.drillOutcome = drillOutcome
+        self.drillTags = drillTags
+        self.drillNotes = drillNotes
+        self.drillBallsMade = drillBallsMade
+        self.drillTargetBallCount = drillTargetBallCount
+        self.drillDifficulty = drillDifficulty
     }
 
     enum CodingKeys: String, CodingKey {
@@ -74,6 +100,12 @@ struct Rack: Identifiable, Codable, Hashable {
         case missCount
         case runoutFirst
         case breakAndRun
+        case drillOutcome
+        case drillTags
+        case drillNotes
+        case drillBallsMade
+        case drillTargetBallCount
+        case drillDifficulty
     }
 
     init(from decoder: Decoder) throws {
@@ -93,6 +125,12 @@ struct Rack: Identifiable, Codable, Hashable {
         missCount = try c.decode(Int.self, forKey: .missCount)
         runoutFirst = try c.decode(Bool.self, forKey: .runoutFirst)
         breakAndRun = try c.decode(Bool.self, forKey: .breakAndRun)
+        drillOutcome = try c.decodeIfPresent(String.self, forKey: .drillOutcome)
+        drillTags = try c.decodeIfPresent([String].self, forKey: .drillTags)
+        drillNotes = try c.decodeIfPresent(String.self, forKey: .drillNotes)
+        drillBallsMade = try c.decodeIfPresent(Int.self, forKey: .drillBallsMade)
+        drillTargetBallCount = try c.decodeIfPresent(Int.self, forKey: .drillTargetBallCount)
+        drillDifficulty = try c.decodeIfPresent(String.self, forKey: .drillDifficulty)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -112,5 +150,11 @@ struct Rack: Identifiable, Codable, Hashable {
         try c.encode(missCount, forKey: .missCount)
         try c.encode(runoutFirst, forKey: .runoutFirst)
         try c.encode(breakAndRun, forKey: .breakAndRun)
+        try c.encodeIfPresent(drillOutcome, forKey: .drillOutcome)
+        if let drillTags, !drillTags.isEmpty { try c.encode(drillTags, forKey: .drillTags) }
+        try c.encodeIfPresent(drillNotes, forKey: .drillNotes)
+        try c.encodeIfPresent(drillBallsMade, forKey: .drillBallsMade)
+        try c.encodeIfPresent(drillTargetBallCount, forKey: .drillTargetBallCount)
+        try c.encodeIfPresent(drillDifficulty, forKey: .drillDifficulty)
     }
 }

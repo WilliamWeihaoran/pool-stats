@@ -2,13 +2,13 @@ import SwiftUI
 import UIKit
 
 enum AppTab: String, CaseIterable, Hashable {
-    case dashboard, log, history, goals, settings
+    case dashboard, log, drills, goals, settings
 
     var label: String {
         switch self {
         case .dashboard: return "Dashboard"
         case .log: return "Log"
-        case .history: return "History"
+        case .drills: return "Drills"
         case .goals: return "Goals"
         case .settings: return "Settings"
         }
@@ -18,7 +18,7 @@ enum AppTab: String, CaseIterable, Hashable {
         switch self {
         case .dashboard: return "chart.line.uptrend.xyaxis"
         case .log: return "plus.circle"
-        case .history: return "clock.arrow.circlepath"
+        case .drills: return "circle.grid.3x3.fill"
         case .goals: return "target"
         case .settings: return "gearshape"
         }
@@ -116,8 +116,8 @@ struct RootView: View {
             DashboardView()
         case .log:
             LogView()
-        case .history:
-            NavigationStack { HistoryView() }
+        case .drills:
+            NavigationStack { DrillsView(onStartDrill: { selectedTab = .log }) }
         case .goals:
             GoalsView()
         case .settings:

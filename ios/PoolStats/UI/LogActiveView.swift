@@ -243,7 +243,7 @@ private struct ActionRow: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Button("Save rack") {
+            Button("Next Rack") {
                 if store.saveRack() {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                     showSaveToast = true
@@ -260,7 +260,7 @@ private struct ActionRow: View {
             .cornerRadius(10)
             .disabled(!canSave(rack: rack, isPractice: isPractice))
 
-            Button("Save & exit") {
+            Button("Save & Exit") {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 showEndConfirm = true
             }
@@ -695,7 +695,7 @@ private struct LandscapeScoreboardView: View {
                     onDismiss?()
                 }
                 menuDivider
-                menuRow(icon: "stop.fill", label: "Save & exit", tint: Theme.red) {
+                menuRow(icon: "stop.fill", label: "Save & Exit", tint: Theme.red) {
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     showEndConfirm = true
                 }

@@ -31,12 +31,16 @@ Three single-line tap-to-cycle rows (Mode, Game, Opponent) and a Start Session b
 2. **Layout** — 2 × 2 grid: Open (green), Clustered (yellow), Problem (orange), Snookered (red). Advances automatically ~280 ms after a tap.
 3. **Errors** — 2 × 2 colored tile grid matching phone app colors: Miss (teal), Position (amber), Safety (blue), Foul (red). Tap a tile to increment, long-press to subtract. Number updates animate with `.contentTransition(.numericText())` and a spring bounce. "End Rack" button opens the result sheet.
 
+### Score flash
+
+After saving a rack the current score is displayed as a full-screen black overlay with large win/loss numbers. It auto-dismisses after 5 seconds or on tap.
+
 ### End-rack / finish sheets
 - **End Rack sheet**: Won / Lost chips, Runout toggle (visible only on Won), Save Rack / Save & Exit buttons.
-- **Finish session sheet**: summary stats (score, racks, duration, win rate, runout rate) + crown-controlled 1–10 performance rating, then Save or Discard.
+- **Finish session sheet**: scrollable summary stats (score, racks, duration, win rate, runout rate) + drag-based 1–10 performance rating capsule bar, then Save or Discard.
 
 ### Keep-alive
-`WatchRuntimeSession` wraps `WKExtendedRuntimeSession` and auto-restarts on `extendedRuntimeSessionWillExpire`. `WKBackgroundModes: [workout-processing]` is declared in `WatchExtension-Info.plist`.
+`WatchRuntimeSession` wraps `WKExtendedRuntimeSession` and auto-restarts on `extendedRuntimeSessionWillExpire`. `WKBackgroundModes` is intentionally absent — `workout-processing` was removed because it requires a HealthKit entitlement that is not provisioned.
 
 ### Offline-first sync
 `WatchSessionStore` holds local session state in `UserDefaults` so sessions survive watch kills. `WatchConnectivityClient` queues outgoing messages while the phone is unreachable and flushes them (with `rackUUID` stripped to avoid UUID mismatch) when the session becomes reachable. The phone is authoritative — incoming snapshots overwrite local state. The phone deduplicates `startSession` requests by UUID to prevent queue-replay from creating duplicate sessions.

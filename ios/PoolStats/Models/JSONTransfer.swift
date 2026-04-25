@@ -11,6 +11,17 @@ struct SessionJSON: Codable {
     var racks: [RackJSON]
     var durationSeconds: Int?
     var performanceRating: Int?
+    var drillID: String?
+    var drillTitle: String?
+    var drillKind: String?
+    var drillDifficulty: String?
+    var drillBallCount: Int?
+    var drillPrimarySkill: String?
+    var drillPrimarySkills: [String]?
+    var drillSubskills: [String]?
+    var drillSecondarySkills: [String]?
+    var drillTargetType: String?
+    var drillTargetCount: Int?
 }
 
 struct RackJSON: Codable {
@@ -27,6 +38,12 @@ struct RackJSON: Codable {
     var missCount: Int
     var runoutFirst: Bool
     var breakAndRun: Bool
+    var drillOutcome: String?
+    var drillTags: [String]?
+    var drillNotes: String?
+    var drillBallsMade: Int?
+    var drillTargetBallCount: Int?
+    var drillDifficulty: String?
 }
 
 struct WebSessionJSON: Decodable {
@@ -139,11 +156,28 @@ struct JSONTransfer {
                         badPosition: r.badPosition,
                         missCount: r.missCount,
                         runoutFirst: r.runoutFirst,
-                        breakAndRun: r.breakAndRun
+                        breakAndRun: r.breakAndRun,
+                        drillOutcome: r.drillOutcome,
+                        drillTags: r.drillTags,
+                        drillNotes: r.drillNotes,
+                        drillBallsMade: r.drillBallsMade,
+                        drillTargetBallCount: r.drillTargetBallCount,
+                        drillDifficulty: r.drillDifficulty
                     )
                 },
                 durationSeconds: s.durationSeconds,
-                performanceRating: s.performanceRating
+                performanceRating: s.performanceRating,
+                drillID: s.drillID,
+                drillTitle: s.drillTitle,
+                drillKind: s.drillKind,
+                drillDifficulty: s.drillDifficulty,
+                drillBallCount: s.drillBallCount,
+                drillPrimarySkill: s.drillPrimarySkill,
+                drillPrimarySkills: s.drillPrimarySkills,
+                drillSubskills: s.drillSubskills,
+                drillSecondarySkills: s.drillSecondarySkills,
+                drillTargetType: s.drillTargetType,
+                drillTargetCount: s.drillTargetCount
             )
         }
         let encoder = JSONEncoder()
@@ -170,7 +204,13 @@ struct JSONTransfer {
                         badPosition: r.badPosition,
                         missCount: r.missCount,
                         runoutFirst: r.runoutFirst,
-                        breakAndRun: r.breakAndRun
+                        breakAndRun: r.breakAndRun,
+                        drillOutcome: r.drillOutcome,
+                        drillTags: r.drillTags,
+                        drillNotes: r.drillNotes,
+                        drillBallsMade: r.drillBallsMade,
+                        drillTargetBallCount: r.drillTargetBallCount,
+                        drillDifficulty: r.drillDifficulty
                     )
                 }
                 return Session(
@@ -183,7 +223,18 @@ struct JSONTransfer {
                     ts: Date(timeIntervalSince1970: TimeInterval(s.ts) / 1000),
                     racks: racks,
                     durationSeconds: s.durationSeconds,
-                    performanceRating: s.performanceRating
+                    performanceRating: s.performanceRating,
+                    drillID: s.drillID,
+                    drillTitle: s.drillTitle,
+                    drillKind: s.drillKind,
+                    drillDifficulty: s.drillDifficulty,
+                    drillBallCount: s.drillBallCount,
+                    drillPrimarySkill: s.drillPrimarySkill,
+                    drillPrimarySkills: s.drillPrimarySkills ?? [],
+                    drillSubskills: s.drillSubskills ?? [],
+                    drillSecondarySkills: s.drillSecondarySkills ?? [],
+                    drillTargetType: s.drillTargetType,
+                    drillTargetCount: s.drillTargetCount
                 )
             }
         }

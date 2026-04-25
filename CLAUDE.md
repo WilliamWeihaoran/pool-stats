@@ -162,6 +162,14 @@ Three `LogSection` cases drive the active session flow, auto-advancing on select
 
 Auto-advance: both Break and Layout wait ~280–300 ms after the completing tap (so the selection is visibly highlighted) before spring-transitioning to the next section.
 
+### Score flash
+
+After saving a rack the current score is shown as a full-screen overlay (black background, large win/loss numbers). It auto-dismisses after 5 seconds or immediately on tap. Implemented as `scoreFlashOverlay` in `PoolStatsWatchApp.swift`.
+
+### Summary / finish session sheet
+
+The finish-session sheet is a `ScrollView` (drag to scroll). The performance rating control is a drag-based capsule bar inside a `GeometryReader`: dragging maps `location.x / barWidth` to the 1–10 rating range with haptic click feedback. Do NOT use `.digitalCrownRotation` or `.animation()` on the fill bar — crown rotation conflicts with ScrollView's crown ownership, and animating `frame(width:)` inside GeometryReader produces "Invalid sample AnimatablePair" errors.
+
 ### Sync / offline model
 
 - `WatchSessionStore` is the local source of truth. All action methods (patch, saveRack, etc.) update local state first, then send to phone.
@@ -172,7 +180,7 @@ Auto-advance: both Break and Layout wait ~280–300 ms after the completing tap 
 
 ### Keep-alive
 
-`WatchRuntimeSession` wraps `WKExtendedRuntimeSession`. `start()` / `stop()` are no-ops on simulator (`#if targetEnvironment(simulator)`). `extendedRuntimeSessionWillExpire` creates a new session immediately before the old one expires. `WKBackgroundModes: [workout-processing]` must be present in `WatchExtension-Info.plist`.
+`WatchRuntimeSession` wraps `WKExtendedRuntimeSession`. `start()` / `stop()` are no-ops on simulator (`#if targetEnvironment(simulator)`). `extendedRuntimeSessionWillExpire` creates a new session immediately before the old one expires. `WKBackgroundModes` is intentionally absent from `WatchExtension-Info.plist` — `workout-processing` was removed because it requires a HealthKit entitlement that is not provisioned.
 
 ### Watch UI rules
 

@@ -33,12 +33,13 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
     }
 
     func startSession(game: String, type: String, opponent: String) {
-        let sessionUUID = sessionStore?.startSession(game: game, type: type, opponent: opponent)
+        let normalizedType = "match"
+        let sessionUUID = sessionStore?.startSession(game: game, type: normalizedType, opponent: opponent)
             ?? UUID().uuidString
         send(WatchSyncEnvelope(
             action: .startSession,
             sessionUUID: sessionUUID,
-            start: WatchSessionStartPayload(game: game, type: type, opponent: opponent, timestampMs: nowMs()),
+            start: WatchSessionStartPayload(game: game, type: normalizedType, opponent: opponent, timestampMs: nowMs()),
             sentAtMs: nowMs()
         ))
     }
@@ -58,6 +59,22 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
         send(WatchSyncEnvelope(action: .undoLastRack, sessionUUID: sessionUUID, sentAtMs: nowMs()))
     }
 
+    func recordDrillAttempt(_ attempt: WatchDrillAttemptPayload, sessionUUID: String?) {
+        if !attempt.saveAndExit {
+            sessionStore?.recordDrillAttempt(attempt)
+        }
+        send(WatchSyncEnvelope(action: .drillAttempt, sessionUUID: sessionUUID, drillAttempt: attempt, sentAtMs: nowMs()))
+        if attempt.saveAndExit {
+            sessionStore?.clear()
+            snapshot = snapshot.map { WatchSessionSnapshot(active: nil, availableOpponents: $0.availableOpponents, acknowledgedAtMs: $0.acknowledgedAtMs, message: nil) }
+        }
+    }
+
+    func updateDrillDifficulty(_ payload: WatchDrillDifficultyPayload, sessionUUID: String?) {
+        sessionStore?.updateDrillDifficulty(payload)
+        send(WatchSyncEnvelope(action: .drillDifficulty, sessionUUID: sessionUUID, drillDifficulty: payload, sentAtMs: nowMs()))
+    }
+
     func endSession(sessionUUID: String?, rating: Int) {
         sessionStore?.clear()
         snapshot = snapshot.map { WatchSessionSnapshot(active: nil, availableOpponents: $0.availableOpponents, acknowledgedAtMs: $0.acknowledgedAtMs, message: nil) }
@@ -69,6 +86,7 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
         snapshot = snapshot.map { WatchSessionSnapshot(active: nil, availableOpponents: $0.availableOpponents, acknowledgedAtMs: $0.acknowledgedAtMs, message: nil) }
         send(WatchSyncEnvelope(action: .discardSession, sessionUUID: sessionUUID, sentAtMs: nowMs()))
     }
+
 
     private func send(_ envelope: WatchSyncEnvelope) {
         let session = WCSession.default
@@ -107,6 +125,8 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
         // If it has none, keep local state; our queued messages may not have arrived yet.
         if let active = decoded.active {
             sessionStore?.applyRemote(active)
+        } else if sessionStore?.activeSnapshot == nil {
+            WatchComplicationStateStore.clear()
         }
     }
 }

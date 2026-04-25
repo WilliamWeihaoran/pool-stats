@@ -76,13 +76,13 @@ final class DataStore: ObservableObject {
         syncStatus = .syncing
         do {
             try await service.saveSession(session)
-            sessions.append(session)
+            upsertSession(session)
             saveLocal()
             lastError = nil
             syncStatus = .synced
             markSyncSuccess()
         } catch {
-            sessions.append(session)
+            upsertSession(session)
             saveLocal()
             lastError = "Saved locally. iCloud sync failed."
             syncStatus = .localOnly("Saved locally. iCloud sync failed.")
@@ -249,6 +249,16 @@ final class DataStore: ObservableObject {
         try? data.write(to: localURL, options: .atomic)
     }
 
+    private func upsertSession(_ session: Session) {
+        if let idx = sessions.firstIndex(where: { $0.sessionUUID == session.sessionUUID }) {
+            sessions[idx] = session
+        } else if let idx = sessions.firstIndex(where: { $0.id == session.id }) {
+            sessions[idx] = session
+        } else {
+            sessions.append(session)
+        }
+    }
+
     private func markSyncAttempt() {
         lastSyncAttemptAt = Date()
     }
@@ -273,6 +283,8 @@ enum WatchSyncAction: String, Codable {
     case undoLastRack = "undo_last_rack"
     case discardSession = "discard_session"
     case endSessionWithRating = "end_session_with_rating"
+    case drillAttempt = "drill_attempt"
+    case drillDifficulty = "drill_difficulty"
     case sessionSnapshot = "session_snapshot"
     case ack = "ack"
 }
@@ -288,6 +300,20 @@ struct WatchEndSessionPayload: Codable, Hashable {
     var rating: Int
 }
 
+struct WatchDrillAttemptPayload: Codable, Hashable {
+    var outcome: String
+    var tags: [String]
+    var ballsMade: Int
+    var targetBallCount: Int
+    var difficulty: String
+    var saveAndExit: Bool
+}
+
+struct WatchDrillDifficultyPayload: Codable, Hashable {
+    var difficulty: String
+    var ballCount: Int
+}
+
 struct WatchSyncEnvelope: Codable, Hashable {
     var version: Int = 1
     var action: WatchSyncAction
@@ -296,8 +322,11 @@ struct WatchSyncEnvelope: Codable, Hashable {
     var patch: WatchRackPatch?
     var start: WatchSessionStartPayload?
     var end: WatchEndSessionPayload?
+    var drillAttempt: WatchDrillAttemptPayload?
+    var drillDifficulty: WatchDrillDifficultyPayload?
     var sentAtMs: Int64
 }
+
 
 struct WatchSessionSnapshot: Codable, Hashable {
     var active: ActiveSessionSnapshot?
@@ -328,6 +357,7 @@ final class WatchSyncStore: NSObject, ObservableObject {
                 self?.pushSnapshot(message: nil)
             }
             .store(in: &cancellables)
+
     }
 
     private func activateSessionIfNeeded() {
@@ -353,7 +383,7 @@ final class WatchSyncStore: NSObject, ObservableObject {
 
     private func makeSnapshot(message: String?) -> WatchSessionSnapshot {
         WatchSessionSnapshot(
-            active: logStore?.activeSnapshot,
+            active: logStore?.activeSnapshotForWatch,
             availableOpponents: availableOpponents(),
             acknowledgedAtMs: nowMs(),
             message: message
@@ -406,7 +436,7 @@ final class WatchSyncStore: NSObject, ObservableObject {
             let date = start.timestampMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
             logStore.startSession(
                 game: start.game,
-                type: start.type,
+                type: "match",
                 label: "",
                 opponent: start.opponent,
                 date: date,
@@ -428,8 +458,36 @@ final class WatchSyncStore: NSObject, ObservableObject {
                 pushSnapshot(message: "stale_save_ignored")
                 return
             }
-            _ = logStore.saveRackFromRemote()
-            pushSnapshot(message: "rack_saved")
+            if let patch = env.patch {
+                logStore.applyRemotePatch(patch)
+            }
+            let didSave = logStore.saveRackFromRemote()
+            pushSnapshot(message: didSave ? "rack_saved" : "rack_save_rejected")
+
+        case .drillAttempt:
+            guard let attempt = env.drillAttempt else { return }
+            guard logStore.matchesActiveSession(env.sessionUUID) else {
+                pushSnapshot(message: "stale_drill_attempt_ignored")
+                return
+            }
+            let didSave = logStore.recordDrillAttemptFromRemote(attempt)
+            if attempt.saveAndExit, let dataStore, didSave {
+                Task {
+                    await logStore.endSession(savingTo: dataStore)
+                    await MainActor.run { self.pushSnapshot(message: "drill_session_ended") }
+                }
+            } else {
+                pushSnapshot(message: didSave ? "drill_attempt_saved" : "drill_attempt_rejected")
+            }
+
+        case .drillDifficulty:
+            guard let difficulty = env.drillDifficulty else { return }
+            guard logStore.matchesActiveSession(env.sessionUUID) else {
+                pushSnapshot(message: "stale_drill_difficulty_ignored")
+                return
+            }
+            logStore.updateDrillDifficulty(levelRawValue: difficulty.difficulty, ballCount: difficulty.ballCount)
+            pushSnapshot(message: "drill_difficulty_updated")
 
         case .undoLastRack:
             guard logStore.matchesActiveSession(env.sessionUUID) else {
@@ -459,6 +517,7 @@ final class WatchSyncStore: NSObject, ObservableObject {
                     self.pushSnapshot(message: "session_ended")
                 }
             }
+
 
         case .sessionSnapshot, .ack:
             break

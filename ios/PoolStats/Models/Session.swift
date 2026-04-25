@@ -11,6 +11,17 @@ struct Session: Identifiable, Codable, Hashable {
     var racks: [Rack]
     var durationSeconds: Int?
     var performanceRating: Int?
+    var drillID: String?
+    var drillTitle: String?
+    var drillKind: String?
+    var drillDifficulty: String?
+    var drillBallCount: Int?
+    var drillPrimarySkill: String?
+    var drillPrimarySkills: [String]
+    var drillSubskills: [String]
+    var drillSecondarySkills: [String]
+    var drillTargetType: String?
+    var drillTargetCount: Int?
 
     init(
         id: Int64 = Int64(Date().timeIntervalSince1970 * 1000),
@@ -22,7 +33,18 @@ struct Session: Identifiable, Codable, Hashable {
         ts: Date = Date(),
         racks: [Rack] = [],
         durationSeconds: Int? = nil,
-        performanceRating: Int? = nil
+        performanceRating: Int? = nil,
+        drillID: String? = nil,
+        drillTitle: String? = nil,
+        drillKind: String? = nil,
+        drillDifficulty: String? = nil,
+        drillBallCount: Int? = nil,
+        drillPrimarySkill: String? = nil,
+        drillPrimarySkills: [String] = [],
+        drillSubskills: [String] = [],
+        drillSecondarySkills: [String] = [],
+        drillTargetType: String? = nil,
+        drillTargetCount: Int? = nil
     ) {
         self.id = id
         self.sessionUUID = sessionUUID
@@ -34,6 +56,17 @@ struct Session: Identifiable, Codable, Hashable {
         self.racks = racks
         self.durationSeconds = durationSeconds
         self.performanceRating = performanceRating
+        self.drillID = drillID
+        self.drillTitle = drillTitle
+        self.drillKind = drillKind
+        self.drillDifficulty = drillDifficulty
+        self.drillBallCount = drillBallCount
+        self.drillPrimarySkill = drillPrimarySkill
+        self.drillPrimarySkills = drillPrimarySkills
+        self.drillSubskills = drillSubskills
+        self.drillSecondarySkills = drillSecondarySkills
+        self.drillTargetType = drillTargetType
+        self.drillTargetCount = drillTargetCount
     }
 
     enum CodingKeys: String, CodingKey {
@@ -47,6 +80,17 @@ struct Session: Identifiable, Codable, Hashable {
         case racks
         case durationSeconds
         case performanceRating
+        case drillID
+        case drillTitle
+        case drillKind
+        case drillDifficulty
+        case drillBallCount
+        case drillPrimarySkill
+        case drillPrimarySkills
+        case drillSubskills
+        case drillSecondarySkills
+        case drillTargetType
+        case drillTargetCount
     }
 
     init(from decoder: Decoder) throws {
@@ -61,6 +105,17 @@ struct Session: Identifiable, Codable, Hashable {
         racks = try c.decode([Rack].self, forKey: .racks)
         durationSeconds = try c.decodeIfPresent(Int.self, forKey: .durationSeconds)
         performanceRating = try c.decodeIfPresent(Int.self, forKey: .performanceRating)
+        drillID = try c.decodeIfPresent(String.self, forKey: .drillID)
+        drillTitle = try c.decodeIfPresent(String.self, forKey: .drillTitle)
+        drillKind = try c.decodeIfPresent(String.self, forKey: .drillKind)
+        drillDifficulty = try c.decodeIfPresent(String.self, forKey: .drillDifficulty)
+        drillBallCount = try c.decodeIfPresent(Int.self, forKey: .drillBallCount)
+        drillPrimarySkill = try c.decodeIfPresent(String.self, forKey: .drillPrimarySkill)
+        drillPrimarySkills = try c.decodeIfPresent([String].self, forKey: .drillPrimarySkills) ?? []
+        drillSubskills = try c.decodeIfPresent([String].self, forKey: .drillSubskills) ?? []
+        drillSecondarySkills = try c.decodeIfPresent([String].self, forKey: .drillSecondarySkills) ?? []
+        drillTargetType = try c.decodeIfPresent(String.self, forKey: .drillTargetType)
+        drillTargetCount = try c.decodeIfPresent(Int.self, forKey: .drillTargetCount)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -75,20 +130,77 @@ struct Session: Identifiable, Codable, Hashable {
         try c.encode(racks, forKey: .racks)
         try c.encodeIfPresent(durationSeconds, forKey: .durationSeconds)
         try c.encodeIfPresent(performanceRating, forKey: .performanceRating)
+        try c.encodeIfPresent(drillID, forKey: .drillID)
+        try c.encodeIfPresent(drillTitle, forKey: .drillTitle)
+        try c.encodeIfPresent(drillKind, forKey: .drillKind)
+        try c.encodeIfPresent(drillDifficulty, forKey: .drillDifficulty)
+        try c.encodeIfPresent(drillBallCount, forKey: .drillBallCount)
+        try c.encodeIfPresent(drillPrimarySkill, forKey: .drillPrimarySkill)
+        if !drillPrimarySkills.isEmpty { try c.encode(drillPrimarySkills, forKey: .drillPrimarySkills) }
+        if !drillSubskills.isEmpty { try c.encode(drillSubskills, forKey: .drillSubskills) }
+        if !drillSecondarySkills.isEmpty { try c.encode(drillSecondarySkills, forKey: .drillSecondarySkills) }
+        try c.encodeIfPresent(drillTargetType, forKey: .drillTargetType)
+        try c.encodeIfPresent(drillTargetCount, forKey: .drillTargetCount)
     }
 
     var isPractice: Bool { type == "practice" }
+    var isDrillPractice: Bool { isPractice && drillID != nil }
     var wins: Int { racks.filter { $0.result == "won" }.count }
     var losses: Int { racks.filter { $0.result == "lost" }.count }
     var isDraw: Bool { !isPractice && wins == losses && wins > 0 }
     var gameLabel: String { game == "8ball" ? "8-ball" : "9-ball" }
-    var typeLabel: String { isPractice ? "Practice" : "Match" }
+    var typeLabel: String { isDrillPractice ? "Drill practice" : (isPractice ? "Practice" : "Match") }
     var displayLabel: String {
         let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { return trimmed }
+        if isDrillPractice, let drillTitle { return drillTitle }
         let gameName = game == "8ball" ? "8 ball" : "9 ball"
         let modeName = isPractice ? "practice" : "match"
         return "\(gameName) \(modeName)"
+    }
+    var drillPrimaryLabels: [String] {
+        let labels = drillPrimarySkills.isEmpty ? [drillPrimarySkill].compactMap { $0 } : drillPrimarySkills
+        return Array(labels.prefix(3))
+    }
+    var drillSecondaryLabels: [String] {
+        let labels = drillSecondarySkills.isEmpty ? drillSubskills : drillSecondarySkills
+        return Array(labels.prefix(3))
+    }
+    var drillSkillSummary: String {
+        drillPrimaryLabels.joined(separator: " · ")
+    }
+    var drillAttempts: Int { racks.filter { $0.drillOutcome != nil }.count }
+    var drillTargetLabel: String? {
+        guard let drillTargetCount, drillTargetCount > 0 else { return nil }
+        if drillTargetType == "attempts" { return "Target: \(drillTargetCount) attempts" }
+        return "Target: \(drillTargetCount) successes"
+    }
+    var drillTargetProgress: (current: Int, target: Int)? {
+        guard let drillTargetCount, drillTargetCount > 0 else { return nil }
+        let current = drillTargetType == "attempts" ? drillAttempts : drillSuccesses
+        return (current, drillTargetCount)
+    }
+    var drillSuccesses: Int { racks.filter { $0.drillOutcome == "success" }.count }
+    var drillMisses: Int { racks.filter { $0.drillOutcome == "miss" }.count }
+    var drillSuccessRate: Int? {
+        let attempts = drillAttempts
+        guard attempts > 0 else { return nil }
+        return Int(round(Double(drillSuccesses) / Double(attempts) * 100))
+    }
+
+    var drillDifficultyLevel: DrillDifficultyLevel? {
+        guard let drillDifficulty else { return nil }
+        return DrillDifficultyLevel(rawValue: drillDifficulty)
+    }
+    var drillDifficultyLabel: String {
+        switch drillDifficulty {
+        case "beginner": return "Beginner"
+        case "easy": return "Easy"
+        case "standard": return "Standard"
+        case "hard": return "Hard"
+        case "expert": return "Expert"
+        default: return "Drill"
+        }
     }
 }
 

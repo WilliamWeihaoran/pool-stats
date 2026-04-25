@@ -7,10 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		02CE4AB1E4B451F9A23571A1 /* PoolStatsWatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		061D246E9013651CFF1BD3C4 /* WatchComplicationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E5534E7B76A00C357B30B0E /* WatchComplicationState.swift */; };
 		0D52DE4A7A4FA4F6299D14EA /* PoolStatsWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A03E32D9A1C7D5795E26164D /* PoolStatsWatchApp.swift */; };
+		270D7BDB1D64CC5E28150519 /* WatchComplicationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E5534E7B76A00C357B30B0E /* WatchComplicationState.swift */; };
+		2F49D5E4D60378BD12355782 /* WatchSyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DB8CB67DEEF7C32E13365F /* WatchSyncModels.swift */; };
 		361A8B865609ADA31C805909 /* PoolStatsWatchExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 6796882EB3A1DC2039DB20C0 /* PoolStatsWatchExtension.appex */; };
 		40576368ACA893DFB77B1E88 /* WatchConnectivityClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304A8C77D82733F0C7CB230C /* WatchConnectivityClient.swift */; };
+		4F615CB5132527D2AF44A03F /* PoolStatsWatchComplications.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 9EB5F481BF3F9925C1F51611 /* PoolStatsWatchComplications.appex */; };
+		9096B1DCDF86CDC5B03B5B1B /* PoolStatsWatchComplications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9A91B9066103F654E63871 /* PoolStatsWatchComplications.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* WatchSessionStartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */; };
+		A72E884BB1CD551125DE4E8E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9E92BF268E25DB78D0CA99 /* Foundation.framework */; };
 		AA1000010000000000000001 /* PoolStatsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000001 /* PoolStatsApp.swift */; };
 		AA1000010000000000000002 /* CloudKitStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000002 /* CloudKitStore.swift */; };
 		AA1000010000000000000003 /* DataStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000003 /* DataStore.swift */; };
@@ -62,14 +68,19 @@
 		AA1000010000000000000034 /* AppearanceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000034 /* AppearanceSettingsView.swift */; };
 		AA1000010000000000000035 /* DataSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000035 /* DataSettingsView.swift */; };
 		AA1000010000000000000036 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000036 /* AppDelegate.swift */; };
+		AA1000010000000000000037 /* Drills.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000037 /* Drills.swift */; };
+		AA1000010000000000000038 /* DrillsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000038 /* DrillsView.swift */; };
 		AA1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
-		WA1000010000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
+		B2C3D4E5F6A7B8C9D0E1F2A3 /* WatchActiveSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */; };
 		B48C585D837953CA58D88B53 /* WatchQueueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09DDE2033C526CE78DAEBC92 /* WatchQueueStore.swift */; };
 		BF105516C3EA12DAF5066C2C /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9E92BF268E25DB78D0CA99 /* Foundation.framework */; };
+		C3D4E5F6A7B8C9D0E1F2A3B4 /* WatchEndRackSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A6B7C8D9E0F1A2B3C4 /* WatchEndRackSheet.swift */; };
+		D4E5F6A7B8C9D0E1F2A3B4C5 /* WatchSessionFinishView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5A6B7C8D9E0F1A2B3C4D5 /* WatchSessionFinishView.swift */; };
 		D6781C13732D22A412AD7F22 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9E92BF268E25DB78D0CA99 /* Foundation.framework */; };
 		E183CB44E38FEC4329C81E35 /* WatchSyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DB8CB67DEEF7C32E13365F /* WatchSyncModels.swift */; };
 		FE7501CD9D3A4E8E9C1B2F00 /* WatchRuntimeSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE8402DE8B5F3F7DAE0C3001 /* WatchRuntimeSession.swift */; };
 		FE9503EF7C6B5A8BD1E0400A /* WatchSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEA604F08D7C6B9CE2F1501B /* WatchSessionStore.swift */; };
+		WA1000010000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -80,6 +91,13 @@
 			remoteGlobalIDString = 322A82D7DD5380894A1D5DA1;
 			remoteInfo = PoolStatsWatchApp;
 		};
+		7666B305D8ED99F6C78BD5AE /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA6000010000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C00D05DCA8A06095BCC74361;
+			remoteInfo = PoolStatsWatchComplications;
+		};
 		9B165BBFE3C4136164BDBC83 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = AA6000010000000000000001 /* Project object */;
@@ -89,22 +107,6 @@
 		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		EMBED001000000000000WATCH /* Embed Watch App */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = ();
-			inputFileListPaths = ();
-			inputPaths = ();
-			name = "Embed Watch App";
-			outputFileListPaths = ();
-			outputPaths = ();
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\nWATCH_APP_NAME=\"PoolStatsWatchApp.app\"\nWATCH_DIR=\"$(dirname \"$BUILT_PRODUCTS_DIR\")/Release-watchos\"\nWATCH_APP=\"${WATCH_DIR}/${WATCH_APP_NAME}\"\nif [ ! -d \"$WATCH_APP\" ]; then\n  echo \"warning: Watch app not found at $WATCH_APP\"\n  exit 0\nfi\nDEST=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Watch\"\nmkdir -p \"$DEST\"\nrsync -a --delete \"${WATCH_APP}/\" \"${DEST}/${WATCH_APP_NAME}/\"\necho \"Embedded ${WATCH_APP_NAME} into ${DEST}\"\n";
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXCopyFilesBuildPhase section */
 		D628F696F7319A460A1D35F7 /* Embed App Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -113,31 +115,26 @@
 			dstSubfolderSpec = 13;
 			files = (
 				361A8B865609ADA31C805909 /* PoolStatsWatchExtension.appex in Embed App Extensions */,
+				4F615CB5132527D2AF44A03F /* PoolStatsWatchComplications.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F4EEAB0F2E13EB719CFD15CA /* Embed Watch Content */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "Watch";
-			dstSubfolderSpec = 14;
-			files = (
-				02CE4AB1E4B451F9A23571A1 /* PoolStatsWatchApp.app in Embed Watch Content */,
-			);
-			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		09DDE2033C526CE78DAEBC92 /* WatchQueueStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchQueueStore.swift; sourceTree = "<group>"; };
+		0C9A91B9066103F654E63871 /* PoolStatsWatchComplications.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PoolStatsWatchComplications.swift; sourceTree = "<group>"; };
 		20DB8CB67DEEF7C32E13365F /* WatchSyncModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSyncModels.swift; sourceTree = "<group>"; };
+		2E2CC21B0A18309FA9BDCF2E /* PoolStatsWatchComplications.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = PoolStatsWatchComplications.entitlements; sourceTree = "<group>"; };
 		304A8C77D82733F0C7CB230C /* WatchConnectivityClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnectivityClient.swift; sourceTree = "<group>"; };
+		4918DD309E6478BF48903FDF /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		4E5534E7B76A00C357B30B0E /* WatchComplicationState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchComplicationState.swift; sourceTree = "<group>"; };
 		5A41B497ECE1C81D983FA4AA /* WatchApp-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "WatchApp-Info.plist"; sourceTree = "<group>"; };
 		664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PoolStatsWatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6796882EB3A1DC2039DB20C0 /* PoolStatsWatchExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PoolStatsWatchExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		886D45192F89469F00338AC1 /* PoolStats.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PoolStats.entitlements; sourceTree = "<group>"; };
+		9EB5F481BF3F9925C1F51611 /* PoolStatsWatchComplications.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PoolStatsWatchComplications.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A03E32D9A1C7D5795E26164D /* PoolStatsWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PoolStatsWatchApp.swift; sourceTree = "<group>"; };
 		AA2000010000000000000001 /* PoolStatsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PoolStatsApp.swift; sourceTree = "<group>"; };
 		AA2000010000000000000002 /* CloudKitStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitStore.swift; sourceTree = "<group>"; };
@@ -193,7 +190,14 @@
 		AA2000010000000000000034 /* AppearanceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppearanceSettingsView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000035 /* DataSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSettingsView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000036 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		AA2000010000000000000037 /* Drills.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Drills.swift; sourceTree = "<group>"; };
+		AA2000010000000000000038 /* DrillsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillsView.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionStartView.swift; sourceTree = "<group>"; };
 		B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "WatchExtension-Info.plist"; sourceTree = "<group>"; };
+		C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchActiveSessionView.swift; sourceTree = "<group>"; };
+		D3E4F5A6B7C8D9E0F1A2B3C4 /* WatchEndRackSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchEndRackSheet.swift; sourceTree = "<group>"; };
+		E4F5A6B7C8D9E0F1A2B3C4D5 /* WatchSessionFinishView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionFinishView.swift; sourceTree = "<group>"; };
+		FAA5765BC3D4AB7AD4B7CAFC /* PoolStatsWatchExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = PoolStatsWatchExtension.entitlements; sourceTree = "<group>"; };
 		FC9E92BF268E25DB78D0CA99 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		FE8402DE8B5F3F7DAE0C3001 /* WatchRuntimeSession.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchRuntimeSession.swift; sourceTree = "<group>"; };
 		FEA604F08D7C6B9CE2F1501B /* WatchSessionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionStore.swift; sourceTree = "<group>"; };
@@ -205,6 +209,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				BF105516C3EA12DAF5066C2C /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6A2682BD35D12FCB6D805D46 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A72E884BB1CD551125DE4E8E /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -226,10 +238,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		00CAC026206F8DCB79AD2F72 /* WatchComplications */ = {
+			isa = PBXGroup;
+			children = (
+				0C9A91B9066103F654E63871 /* PoolStatsWatchComplications.swift */,
+				4918DD309E6478BF48903FDF /* Info.plist */,
+				2E2CC21B0A18309FA9BDCF2E /* PoolStatsWatchComplications.entitlements */,
+			);
+			path = WatchComplications;
+			sourceTree = "<group>";
+		};
 		2F588EC825C4C4E826362F45 /* Watch */ = {
 			isa = PBXGroup;
 			children = (
 				A03E32D9A1C7D5795E26164D /* PoolStatsWatchApp.swift */,
+				B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */,
+				C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */,
+				D3E4F5A6B7C8D9E0F1A2B3C4 /* WatchEndRackSheet.swift */,
+				E4F5A6B7C8D9E0F1A2B3C4D5 /* WatchSessionFinishView.swift */,
 				304A8C77D82733F0C7CB230C /* WatchConnectivityClient.swift */,
 				09DDE2033C526CE78DAEBC92 /* WatchQueueStore.swift */,
 				20DB8CB67DEEF7C32E13365F /* WatchSyncModels.swift */,
@@ -237,6 +263,8 @@
 				FEA604F08D7C6B9CE2F1501B /* WatchSessionStore.swift */,
 				5A41B497ECE1C81D983FA4AA /* WatchApp-Info.plist */,
 				B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */,
+				4E5534E7B76A00C357B30B0E /* WatchComplicationState.swift */,
+				FAA5765BC3D4AB7AD4B7CAFC /* PoolStatsWatchExtension.entitlements */,
 			);
 			path = Watch;
 			sourceTree = "<group>";
@@ -258,6 +286,7 @@
 				664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */,
 				86F38CDB3C596F2CD2F91064 /* Frameworks */,
 				6796882EB3A1DC2039DB20C0 /* PoolStatsWatchExtension.appex */,
+				9EB5F481BF3F9925C1F51611 /* PoolStatsWatchComplications.appex */,
 			);
 			sourceTree = "<group>";
 		};
@@ -272,6 +301,7 @@
 				AA4000010000000000000006 /* Resources */,
 				AA2000010000000000000012 /* Resources/Info.plist */,
 				2F588EC825C4C4E826362F45 /* Watch */,
+				00CAC026206F8DCB79AD2F72 /* WatchComplications */,
 			);
 			sourceTree = "<group>";
 		};
@@ -308,6 +338,7 @@
 				AA2000010000000000000022 /* GoalWindow.swift */,
 				AA2000010000000000000023 /* GoalMetric.swift */,
 				AA2000010000000000000024 /* GoalsStore.swift */,
+				AA2000010000000000000037 /* Drills.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -327,6 +358,7 @@
 				AA200001000000000000000F /* SummaryView.swift */,
 				AA2000010000000000000010 /* DashboardView.swift */,
 				AA2000010000000000000021 /* GoalsView.swift */,
+				AA2000010000000000000038 /* DrillsView.swift */,
 				AA2000010000000000000025 /* GoalCard.swift */,
 				AA2000010000000000000026 /* GoalOverlays.swift */,
 				AA2000010000000000000027 /* GoalEditorSheet.swift */,
@@ -394,6 +426,7 @@
 			);
 			dependencies = (
 				227A2CA42A91E4F4B79009C5 /* PBXTargetDependency */,
+				103E9E1153FC41254116A1D9 /* PBXTargetDependency */,
 			);
 			name = PoolStatsWatchApp;
 			productName = PoolStatsWatchApp;
@@ -418,6 +451,23 @@
 			productName = PoolStats;
 			productReference = AA2000010000000000000013 /* PoolStats.app */;
 			productType = "com.apple.product-type.application";
+		};
+		C00D05DCA8A06095BCC74361 /* PoolStatsWatchComplications */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B1AD57BF8B2208AF42C5D698 /* Build configuration list for PBXNativeTarget "PoolStatsWatchComplications" */;
+			buildPhases = (
+				61F0C3C989B22DE1351960BE /* Sources */,
+				6A2682BD35D12FCB6D805D46 /* Frameworks */,
+				9E68D92A486200DF9B572ECA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PoolStatsWatchComplications;
+			productName = PoolStatsWatchComplications;
+			productReference = 9EB5F481BF3F9925C1F51611 /* PoolStatsWatchComplications.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -450,6 +500,7 @@
 				AA5000010000000000000001 /* PoolStats */,
 				322A82D7DD5380894A1D5DA1 /* PoolStatsWatchApp */,
 				32129069343BA03C31C114B6 /* PoolStatsWatchExtension */,
+				C00D05DCA8A06095BCC74361 /* PoolStatsWatchComplications */,
 			);
 		};
 /* End PBXProject section */
@@ -460,6 +511,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				WA1000010000000000000001 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9E68D92A486200DF9B572ECA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -480,17 +538,53 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		EMBED001000000000000WATCH /* Embed Watch App */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Embed Watch App";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nWATCH_APP_NAME=\"PoolStatsWatchApp.app\"\nWATCH_DIR=\"$(dirname \"$BUILT_PRODUCTS_DIR\")/Release-watchos\"\nWATCH_APP=\"${WATCH_DIR}/${WATCH_APP_NAME}\"\nif [ ! -d \"$WATCH_APP\" ]; then\n  echo \"warning: Watch app not found at $WATCH_APP\"\n  exit 0\nfi\nDEST=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Watch\"\nmkdir -p \"$DEST\"\nrsync -a --delete \"${WATCH_APP}/\" \"${DEST}/${WATCH_APP_NAME}/\"\necho \"Embedded ${WATCH_APP_NAME} into ${DEST}\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		1D53F7A7CBC60DF2996A4D75 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				0D52DE4A7A4FA4F6299D14EA /* PoolStatsWatchApp.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* WatchSessionStartView.swift in Sources */,
+				B2C3D4E5F6A7B8C9D0E1F2A3 /* WatchActiveSessionView.swift in Sources */,
+				C3D4E5F6A7B8C9D0E1F2A3B4 /* WatchEndRackSheet.swift in Sources */,
+				D4E5F6A7B8C9D0E1F2A3B4C5 /* WatchSessionFinishView.swift in Sources */,
 				40576368ACA893DFB77B1E88 /* WatchConnectivityClient.swift in Sources */,
 				B48C585D837953CA58D88B53 /* WatchQueueStore.swift in Sources */,
 				E183CB44E38FEC4329C81E35 /* WatchSyncModels.swift in Sources */,
 				FE7501CD9D3A4E8E9C1B2F00 /* WatchRuntimeSession.swift in Sources */,
 				FE9503EF7C6B5A8BD1E0400A /* WatchSessionStore.swift in Sources */,
+				270D7BDB1D64CC5E28150519 /* WatchComplicationState.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		61F0C3C989B22DE1351960BE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				061D246E9013651CFF1BD3C4 /* WatchComplicationState.swift in Sources */,
+				9096B1DCDF86CDC5B03B5B1B /* PoolStatsWatchComplications.swift in Sources */,
+				2F49D5E4D60378BD12355782 /* WatchSyncModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -549,6 +643,8 @@
 				AA1000010000000000000034 /* AppearanceSettingsView.swift in Sources */,
 				AA1000010000000000000035 /* DataSettingsView.swift in Sources */,
 				AA1000010000000000000036 /* AppDelegate.swift in Sources */,
+				AA1000010000000000000037 /* Drills.swift in Sources */,
+				AA1000010000000000000038 /* DrillsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -562,6 +658,12 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		103E9E1153FC41254116A1D9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = PoolStatsWatchComplications;
+			target = C00D05DCA8A06095BCC74361 /* PoolStatsWatchComplications */;
+			targetProxy = 7666B305D8ED99F6C78BD5AE /* PBXContainerItemProxy */;
+		};
 		227A2CA42A91E4F4B79009C5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = PoolStatsWatchExtension;
@@ -581,8 +683,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
@@ -601,12 +704,44 @@
 			};
 			name = Release;
 		};
+		5BF0A85477083E26137015E7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = SM6Y3D2D55;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WatchComplications/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.poolstats.appi.watchkitapp.complications;
+				PRODUCT_NAME = PoolStatsWatchComplications;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchsimulator watchos";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
 		9525B0587338D0C048F59E8F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -629,13 +764,42 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.poolstats.appi.watchkitapp;
 				PRODUCT_NAME = PoolStatsWatchApp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchsimulator watchos";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		9ADA434BED0C45AE398EF6A0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				DEVELOPMENT_TEAM = SM6Y3D2D55;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = WatchComplications/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.poolstats.appi.watchkitapp.complications;
+				PRODUCT_NAME = PoolStatsWatchComplications;
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
 				SUPPORTED_PLATFORMS = "watchsimulator watchos";
@@ -655,7 +819,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -685,7 +849,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -737,7 +901,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -783,6 +947,15 @@
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
+		};
+		B1AD57BF8B2208AF42C5D698 /* Build configuration list for PBXNativeTarget "PoolStatsWatchComplications" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5BF0A85477083E26137015E7 /* Release */,
+				9ADA434BED0C45AE398EF6A0 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		D2DA7ECDB7912EE9D3C6A61A /* Build configuration list for PBXNativeTarget "PoolStatsWatchApp" */ = {
 			isa = XCConfigurationList;
