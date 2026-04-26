@@ -5,14 +5,15 @@ extension Analytics {
         let racks = matchSessions.flatMap { $0.racks }
 
         let missErrors = Double(racks.reduce(0) { $0 + $1.missCount })
-        let positionalErrors = Double(racks.reduce(0) { $0 + $1.badPosition })
+        let positionalErrors = Double(racks.reduce(0) { $0 + $1.positionTrackingCount })
         let safetyErrors = Double(racks.reduce(0) { $0 + $1.badSafety })
-        let foulErrors = Double(racks.reduce(0) { $0 + $1.fouls })
-        let unforcedTotal = missErrors + positionalErrors + safetyErrors + foulErrors
+        let patternErrors = Double(racks.reduce(0) { $0 + $1.patternMistakeCount })
+        let unforcedTotal = missErrors + positionalErrors + safetyErrors + patternErrors
 
-        // Potting / positional are "raw %" derived from unforced-error composition.
+        // Skill factors use the current four-error taxonomy. Legacy fouls are folded into position.
         let pottingPct = unforcedTotal > 0 ? (1 - missErrors / unforcedTotal) * 100 : 50
         let positionalPct = unforcedTotal > 0 ? (1 - positionalErrors / unforcedTotal) * 100 : 50
+        let patternErrorPct = unforcedTotal > 0 ? (1 - patternErrors / unforcedTotal) * 100 : 50
 
         let runouts = Double(racks.filter { $0.outcome == "runout" }.count)
         let openLayouts = Double(racks.filter { $0.layout == "open" }.count)
@@ -27,8 +28,11 @@ extension Analytics {
         let nonRunnableRunoutPct = nonRunnableLayouts > 0 ? (nonRunnableRunouts / nonRunnableLayouts) * 100 : 50
         let openRunoutPct = openLayouts > 0 ? (openRunouts / openLayouts) * 100 : 50
         let openCleanPct = openLayouts > 0 ? (1 - openWithErrors / openLayouts) * 100 : 50
-        // Pattern play: reward hard-layout runouts, penalize errors on runnable/open layouts.
-        let patternPct = 0.45 * openRunoutPct + 0.35 * nonRunnableRunoutPct + 0.20 * openCleanPct
+        let layoutPatternPct = 0.45 * openRunoutPct + 0.35 * nonRunnableRunoutPct + 0.20 * openCleanPct
+        // Historical sessions had no explicit pattern counter, so keep the old layout/runout signal when absent.
+        let patternPct = patternErrors > 0
+            ? 0.70 * patternErrorPct + 0.30 * layoutPatternPct
+            : layoutPatternPct
 
         let myBreaks = racks.filter { $0.breaker == "me" }
         let myBreakCount = Double(myBreaks.count)
@@ -42,9 +46,9 @@ extension Analytics {
         let openCreatedPct = myBreakCount > 0 ? (Double(myBreakOpenLayouts) / myBreakCount) * 100 : 50
         let myBreakFouls = myBreaks.filter(\.breakFoul).count
         let breakDisciplinePct = myBreakCount > 0 ? (1 - Double(myBreakFouls) / myBreakCount) * 100 : 50
-        let foulSafetyPct = unforcedTotal > 0 ? (1 - (foulErrors + safetyErrors) / unforcedTotal) * 100 : 50
-        // Overall game: foul+safety discipline + break quality (balls, open layouts, break fouls).
-        let overallGamePct = 0.35 * foulSafetyPct + 0.25 * breakBallsPct + 0.25 * openCreatedPct + 0.15 * breakDisciplinePct
+        let safetyDisciplinePct = unforcedTotal > 0 ? (1 - safetyErrors / unforcedTotal) * 100 : 50
+        // Overall game: safety discipline + break quality (balls, open layouts, break fouls).
+        let overallGamePct = 0.35 * safetyDisciplinePct + 0.25 * breakBallsPct + 0.25 * openCreatedPct + 0.15 * breakDisciplinePct
 
         let values = [
             clamp(pottingPct, min: 0, max: 100),

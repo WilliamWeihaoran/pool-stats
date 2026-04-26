@@ -45,6 +45,7 @@ final class CloudKitStore {
         static let fouls = "fouls"
         static let badSafety = "badSafety"
         static let badPosition = "badPosition"
+        static let patternCount = "patternCount"
         static let missCount = "missCount"
         static let runoutFirst = "runoutFirst"
         static let breakAndRun = "breakAndRun"
@@ -221,6 +222,7 @@ final class CloudKitStore {
         record[RecordKeys.fouls] = rack.fouls
         record[RecordKeys.badSafety] = rack.badSafety
         record[RecordKeys.badPosition] = rack.badPosition
+        record[RecordKeys.patternCount] = rack.patternCount
         record[RecordKeys.missCount] = rack.missCount
         record[RecordKeys.runoutFirst] = rack.runoutFirst
         record[RecordKeys.breakAndRun] = rack.breakAndRun
@@ -288,6 +290,7 @@ final class CloudKitStore {
         let fouls = record[RecordKeys.fouls] as? Int ?? 0
         let badSafety = record[RecordKeys.badSafety] as? Int ?? 0
         let badPosition = record[RecordKeys.badPosition] as? Int ?? 0
+        let patternCount = record[RecordKeys.patternCount] as? Int ?? 0
         let missCount = record[RecordKeys.missCount] as? Int ?? (
             (record["missEasy"] as? Int ?? 0) +
             (record["missMed"] as? Int ?? 0) +
@@ -311,6 +314,7 @@ final class CloudKitStore {
             fouls: fouls,
             badSafety: badSafety,
             badPosition: badPosition,
+            patternCount: patternCount,
             missCount: missCount,
             runoutFirst: runoutFirst,
             breakAndRun: breakAndRun,

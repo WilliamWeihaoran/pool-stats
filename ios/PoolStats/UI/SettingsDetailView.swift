@@ -82,8 +82,6 @@ struct SettingsDetailView: View {
             EmptyView()
         case .stats:
             statsSection
-        case .recentForm:
-            recentFormSection
         case .appearance:
             AppearanceSettingsView()
         case .data:
@@ -109,32 +107,6 @@ struct SettingsDetailView: View {
                 StatCard(label: "Avg rating", value: avgRating)
                 StatCard(label: "Practice", value: "\(practiceCount)")
                 StatCard(label: "Best game", value: bestGame)
-            }
-        }
-    }
-
-    private var recentFormSection: some View {
-        SectionCard(title: "Recent form") {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Last 10 sessions")
-                        .font(.caption)
-                        .foregroundColor(Theme.muted)
-                    Spacer()
-                    Text(recentWinText)
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(Theme.purple)
-                }
-                PercentageBar(value: recentWinPct, color: Theme.teal, height: 8)
-                HStack {
-                    Text("Recent balance")
-                        .font(.caption2)
-                        .foregroundColor(Theme.text2)
-                    Spacer()
-                    Text(recentBalanceText)
-                        .font(.caption2.weight(.medium))
-                        .foregroundColor(Theme.text2)
-                }
             }
         }
     }
@@ -205,32 +177,4 @@ struct SettingsDetailView: View {
         return "\(Int(round(Double(wins) / Double(racks.count) * 100)))%"
     }
 
-    private var recentWinText: String {
-        let recent = Array(store.sessions.sorted { $0.ts > $1.ts }.prefix(10))
-        guard !recent.isEmpty else { return "—" }
-        let matches = recent.filter { $0.type == "match" }
-        if matches.isEmpty { return "Practice only" }
-        let wins = matches.filter { $0.wins > $0.racks.count / 2 }.count
-        return "\(Int(round(Double(wins) / Double(matches.count) * 100)))% match win"
-    }
-
-    private var recentBalanceText: String {
-        let recent = Array(store.sessions.sorted { $0.ts > $1.ts }.prefix(10))
-        guard !recent.isEmpty else { return "—" }
-        let matches = recent.filter { $0.type == "match" }
-        guard !matches.isEmpty else { return "Practice only" }
-        let wins = matches.filter { $0.wins > $0.racks.count / 2 }.count
-        let losses = matches.count - wins
-        if wins == losses { return "Even" }
-        return wins > losses ? "+\(wins - losses)" : "-\(losses - wins)"
-    }
-
-    private var recentWinPct: Int {
-        let recent = Array(store.sessions.sorted { $0.ts > $1.ts }.prefix(10))
-        guard !recent.isEmpty else { return 0 }
-        let matches = recent.filter { $0.type == "match" }
-        guard !matches.isEmpty else { return 0 }
-        let wins = matches.filter { $0.wins > $0.racks.count / 2 }.count
-        return Int(round(Double(wins) / Double(matches.count) * 100))
-    }
 }

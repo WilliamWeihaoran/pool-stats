@@ -32,8 +32,15 @@ final class SessionLogStore: ObservableObject {
         resetRack()
     }
 
-    func startDrillPractice(template: DrillTemplate, difficulty: DrillDifficulty, targetType: String? = nil, targetCount: Int? = nil) {
+    func startDrillPractice(
+        template: DrillTemplate,
+        difficulty: DrillDifficulty,
+        targetType: String? = nil,
+        targetCount: Int? = nil,
+        sessionUUID: String? = nil
+    ) {
         currentSession = Session(
+            sessionUUID: sessionUUID ?? UUID().uuidString,
             label: template.title,
             opponent: "",
             game: "8ball",
@@ -107,6 +114,7 @@ final class SessionLogStore: ObservableObject {
             if let fouls = patch.fouls { rack.fouls = max(0, fouls) }
             if let badSafety = patch.badSafety { rack.badSafety = max(0, badSafety) }
             if let badPosition = patch.badPosition { rack.badPosition = max(0, badPosition) }
+            if let patternCount = patch.patternCount { rack.patternCount = max(0, patternCount) }
             if let missCount = patch.missCount { rack.missCount = max(0, missCount) }
             if let runoutFirst = patch.runoutFirst { rack.runoutFirst = runoutFirst }
             if let breakAndRun = patch.breakAndRun { rack.breakAndRun = breakAndRun }
@@ -197,6 +205,21 @@ final class SessionLogStore: ObservableObject {
     }
 
     @discardableResult
+    func removeMostRecentRack(result: String) -> Bool {
+        guard var session = currentSession,
+              let idx = session.racks.lastIndex(where: { $0.result == result }) else { return false }
+        session.racks.remove(at: idx)
+        session.racks = session.racks.enumerated().map { offset, rack in
+            var updated = rack
+            updated.index = offset + 1
+            return updated
+        }
+        currentSession = session
+        resetRack()
+        return true
+    }
+
+    @discardableResult
     func undoLastRackFromRemote() -> Bool {
         undoLastRack()
     }
@@ -265,6 +288,7 @@ struct WatchRackPatch: Codable, Hashable {
     var fouls: Int?
     var badSafety: Int?
     var badPosition: Int?
+    var patternCount: Int?
     var missCount: Int?
     var runoutFirst: Bool?
     var breakAndRun: Bool?

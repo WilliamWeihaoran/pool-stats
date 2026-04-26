@@ -35,6 +35,7 @@ struct RackJSON: Codable {
     var fouls: Int
     var badSafety: Int
     var badPosition: Int
+    var patternCount: Int?
     var missCount: Int
     var runoutFirst: Bool
     var breakAndRun: Bool
@@ -67,12 +68,13 @@ struct WebRackJSON: Decodable {
     var fouls: Int?
     var badSafety: Int?
     var badPosition: Int?
+    var patternCount: Int?
     var missCount: Int?
     var runoutFirst: Bool?
     var breakAndRun: Bool?
 
     private enum CodingKeys: String, CodingKey {
-        case result, breaker, breakBalls, breakFoul, layout, outcome, fouls, badSafety, badPosition, missCount, runoutFirst, breakAndRun
+        case result, breaker, breakBalls, breakFoul, layout, outcome, fouls, badSafety, badPosition, patternCount, missCount, runoutFirst, breakAndRun
     }
 
     private enum LegacyCodingKeys: String, CodingKey {
@@ -90,6 +92,7 @@ struct WebRackJSON: Decodable {
         fouls = try c.decodeIfPresent(Int.self, forKey: .fouls)
         badSafety = try c.decodeIfPresent(Int.self, forKey: .badSafety)
         badPosition = try c.decodeIfPresent(Int.self, forKey: .badPosition)
+        patternCount = try c.decodeIfPresent(Int.self, forKey: .patternCount)
         missCount = try c.decodeIfPresent(Int.self, forKey: .missCount)
         if missCount == nil {
             let legacy = try decoder.container(keyedBy: LegacyCodingKeys.self)
@@ -112,6 +115,7 @@ struct WebRackJSON: Decodable {
         fouls: Int? = nil,
         badSafety: Int? = nil,
         badPosition: Int? = nil,
+        patternCount: Int? = nil,
         missCount: Int? = nil,
         runoutFirst: Bool? = nil,
         breakAndRun: Bool? = nil
@@ -125,6 +129,7 @@ struct WebRackJSON: Decodable {
         self.fouls = fouls
         self.badSafety = badSafety
         self.badPosition = badPosition
+        self.patternCount = patternCount
         self.missCount = missCount
         self.runoutFirst = runoutFirst
         self.breakAndRun = breakAndRun
@@ -154,6 +159,7 @@ struct JSONTransfer {
                         fouls: r.fouls,
                         badSafety: r.badSafety,
                         badPosition: r.badPosition,
+                        patternCount: r.patternCount,
                         missCount: r.missCount,
                         runoutFirst: r.runoutFirst,
                         breakAndRun: r.breakAndRun,
@@ -202,6 +208,7 @@ struct JSONTransfer {
                         fouls: r.fouls,
                         badSafety: r.badSafety,
                         badPosition: r.badPosition,
+                        patternCount: r.patternCount ?? 0,
                         missCount: r.missCount,
                         runoutFirst: r.runoutFirst,
                         breakAndRun: r.breakAndRun,
@@ -254,6 +261,7 @@ struct JSONTransfer {
                     fouls: r.fouls ?? 0,
                     badSafety: r.badSafety ?? 0,
                     badPosition: r.badPosition ?? 0,
+                    patternCount: r.patternCount ?? 0,
                     missCount: r.missCount ?? 0,
                     runoutFirst: r.runoutFirst ?? false,
                     breakAndRun: r.breakAndRun ?? false

@@ -85,9 +85,10 @@ struct SampleData {
                     breakFoul: rng.chance(0.05),
                     layout: lay,
                     outcome: oc,
-                    fouls: rng.nextInt(0, 2),
+                    fouls: 0,
                     badSafety: rng.nextInt(0, 2),
                     badPosition: rng.nextInt(0, 2),
+                    patternCount: rng.nextInt(0, 2),
                     missCount: missCount,
                     runoutFirst: ru,
                     breakAndRun: bnr

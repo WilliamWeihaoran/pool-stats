@@ -1,7 +1,7 @@
 # CLAUDE.md
 
-This repository contains `pool-stats`, a native SwiftUI iOS app for logging pool matches and practice sessions, syncing data with CloudKit, and surfacing analytics in Dashboard / Log / History.
-The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings tab with theme selection.
+This repository contains `pool-stats`, a native SwiftUI iOS app for logging pool matches and drill-based practice sessions, syncing data with CloudKit, and surfacing analytics in Dashboard / Log / Drills / History.
+The app also has a custom bottom nav bar, a Drills tab, a Goals tab, and drill-in Settings pages with theme selection.
 
 ## Scope
 
@@ -28,7 +28,7 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
 
 ## Current Data Model
 
-- `Session` represents a logged session and now includes optional `durationSeconds`.
+- `Session` represents a logged session and includes optional `durationSeconds` plus optional drill metadata for practice sessions.
 - `Rack` is the core logging unit.
 - `Rack.outcome` currently uses:
   - `runout`
@@ -45,7 +45,11 @@ The app also has a custom bottom nav bar, a Goals tab, and a drill-in Settings t
   - `snookered`
 - `Rack.unforcedErrorCount` is the dashboard-facing aggregate for miss / positional / safety / foul errors.
 - `Session.performanceRating` is a 1-10 user rating set with a drag control on the summary screen.
-- `Session.opponent` stores the tracked opponent name when available.
+- `Session.opponent` stores the tracked opponent name for match sessions only; practices should not have opponents.
+- Practice sessions must be drill practices: `Session.type == "practice"` with a non-nil `drillID`.
+- Drill session metadata includes `drillID`, `drillTitle`, `drillKind`, `drillDifficulty`, `drillBallCount`, `drillPrimarySkills`, `drillSecondarySkills`, optional `drillTargetType`, and optional `drillTargetCount`.
+- `Rack` can represent a drill attempt when `drillOutcome` is set. Drill attempts store `drillTags`, `drillBallsMade`, `drillTargetBallCount`, and attempt-level `drillDifficulty`.
+- Drill attempts are stored as rack-like rows for persistence/history, but normal match analytics should ignore drill-specific fields.
 - `Session.displayLabel` falls back to game+mode text when `label` is empty (for example: `8 ball match`).
 - `Goal` includes `starterGenerated` to distinguish app-generated starter goals from user-authored goals.
 - `PlayerProfile` stores onboarding/profile preferences:
@@ -110,6 +114,31 @@ Name boxes always show a border and background to signal they are tappable (brea
 
 A small dot at top-center toggles a custom overlay menu (not `Menu {}`). The overlay is a `ZStack` with a dimmed backdrop and a 240 pt wide panel containing: Undo last rack, Exit Lite view (always present), Save & exit.
 
+## Drills And Practice Flow
+
+- Bottom tabs are `Dashboard`, `Log`, `Drills`, `Goals`, and `Settings`; `History` lives inside Settings.
+- `ios/PoolStats/Models/Drills.swift` defines the static drill library. Drill templates have:
+  - fixed `pictureID` / SwiftUI diagram
+  - kind (`staticLayout` or `randomLayout`) for semantics only
+  - up to 3 primary Fargo skill labels
+  - up to 3 secondary focus labels
+  - five adaptive difficulty levels (`beginner`, `easy`, `standard`, `hard`, `expert`)
+- Drill diagrams are SwiftUI vector/table drawings in `DrillsView.swift`; they should render standard pool-ball colors and the selected difficulty ball count.
+- The Drills tab supports search plus multi-skill filters. Skill filters are AND filters: selected drills must contain all selected skills across primary + secondary labels.
+- Starting a drill from Drills calls `SessionLogStore.startDrillPractice(template:difficulty:targetType:targetCount:)` and switches to the Log tab.
+- Starting practice from the Log tab asks for drill, difficulty, and a target. Targets are either successful reps or total attempts.
+- Drill logging screen rules:
+  - Title row includes a compact `See layout` button; do not make layout preview a full section.
+  - Use W:L display where green is successful attempts and red is misses.
+  - Mistakes are exactly `Potting`, `Position`, `Pattern`, and `Runout`.
+  - `Potted` slider controls balls made for the current attempt.
+  - `Success` is enabled only when potted equals the target ball count; `Miss` is enabled only when potted is below target.
+  - `Save & Exit` records the current attempt first, then ends/saves the practice.
+  - Attempts section is foldable and each attempt row should show all logged mistake tags.
+- Practice summaries should be drill-specific: no opponent editor, W:L summary, target progress when available, success rate, average potted, and mistake tags/counts.
+- Drill practices must not affect match win rate, Fargo estimate, match rack conversion, or regular rack analytics.
+- Watch drill logging should mirror the phone flow without diagrams: difficulty controls, `Potted`, mistakes, Miss/Success gating, Save & Exit, and recent attempts.
+
 ## Logging Flow
 
 - The active logging screen has been redesigned around these sections:
@@ -120,7 +149,9 @@ A small dot at top-center toggles a custom overlay menu (not `Menu {}`). The ove
 - `Break` combines who broke and break quality.
 - `Runout at first visit` lives inside the Result section and is the conversion tracker.
 - The end-session confirmation supports Save, Cancel, and Discard.
-- Opponent selection on `Log a session` supports typeahead, quick-pick suggestions, and inline opponent creation.
+- The Log start screen can start either a match or a drill practice.
+- Match start supports opponent typeahead, quick-pick suggestions, and inline opponent creation.
+- Practice start requires a drill, adaptive difficulty, and target; it does not ask for an opponent.
 - Unselected layout and break buttons are intentionally faint.
 - The save gate requires the key rack fields to be set before a rack can be saved.
 - The session summary is shared by both History and the post-session view.
@@ -144,7 +175,7 @@ In addition to the existing charts, the Dashboard now includes:
 
 ## Watch App Architecture
 
-The `PoolStatsWatchExtension` target lives under `ios/PoolStats/Watch/`. Key files:
+The `PoolStatsWatchExtension` target lives under `ios/PoolStats/Watch/`. It supports normal match logging plus active drill-practice logging when the phone has an active drill session. Key files:
 
 | File | Role |
 |---|---|
@@ -231,6 +262,7 @@ All interactive controls on the logging page have haptic and animation feedback:
 ## Persistence
 
 - CloudKit is the primary sync layer.
+- Drill session metadata and attempt-level drill fields are included in native JSON and CloudKit persistence.
 - A local JSON cache is also maintained in Application Support so sessions survive app relaunches and CloudKit hiccups.
 - The History page now shows a sync status chip in the header.
 - JSON import supports both:
@@ -240,8 +272,9 @@ All interactive controls on the logging page have haptic and animation feedback:
 - SIWA is intentionally independent from CloudKit sync and does not gate app usage.
 - Local sign-out clears auth identity metadata only and keeps sessions/history/cache untouched.
 - `PlayerProfileStore` is local app config persistence (UserDefaults JSON) and is independent from session sync.
-- The app tabs are currently Dashboard, Log, History, Goals, and Settings.
-- Settings is a drill-in list with Me, Stats, Recent form, Appearance, Data, and About sections.
+- The app tabs are currently Dashboard, Log, Drills, Goals, and Settings.
+- History is exposed through Settings.
+- Settings is a drill-in list with Me, Stats, Recent form, History, Appearance, Data, and About sections.
 - Goals has a custom action panel with Edit, Complete, Archive/Reset, and Delete, plus a celebration/reset flow.
 - Goal editor metrics are split into Grow and Trim groups.
 - Rolling goal windows use a slider with quick-set chips; due dates use a graphical date picker.
@@ -260,6 +293,7 @@ All interactive controls on the logging page have haptic and animation feedback:
 
 - Keep UI changes consistent with the app’s dark panel style.
 - Prefer small, high-signal logging controls over dense “all mistakes” screens.
+- For drill logging, keep mistake tags limited to `Potting`, `Position`, `Pattern`, and `Runout` unless intentionally redesigning the drill model.
 - When touching analytics, update Dashboard and Summary together so labels and logic stay aligned.
 - Keep the custom bottom nav bar anchored to the bottom and visually restrained.
 - If you touch Goals, keep the custom action panel, completion flow, and reset target nudging in sync with the model.

@@ -8,9 +8,9 @@ extension Analytics {
         }
         return [
             MetricItem(label: "Miss", value: sum(\.missCount) / n),
-            MetricItem(label: "Positional", value: sum(\.badPosition) / n),
+            MetricItem(label: "Position", value: sum(\.positionTrackingCount) / n),
             MetricItem(label: "Safety", value: sum(\.badSafety) / n),
-            MetricItem(label: "Foul", value: sum(\.fouls) / n)
+            MetricItem(label: "Pattern", value: sum(\.patternMistakeCount) / n)
         ]
     }
 

@@ -241,10 +241,13 @@ struct AppTabBar: View {
             VStack(spacing: 2) {
                 Image(systemName: tab.icon)
                     .font(.system(size: 16, weight: .semibold))
+                    .frame(width: 28, height: 20)
                     .foregroundColor(selection == tab ? Theme.purple : Theme.text2)
                 Text(tab.label)
                     .font(.caption2.weight(.medium))
                     .foregroundColor(Theme.text2)
+                    .lineLimit(1)
+                    .frame(height: 14)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 46, alignment: .bottom)

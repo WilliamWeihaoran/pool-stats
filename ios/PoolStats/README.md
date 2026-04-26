@@ -1,16 +1,18 @@
 # PoolStats iOS
 
-Native SwiftUI iOS app for logging pool matches and practice sessions, syncing through CloudKit, and surfacing actionable stats.
+Native SwiftUI iOS app for logging pool matches and drill-based practice sessions, syncing through CloudKit, and surfacing actionable stats.
 
 ## Current structure
-- Custom bottom nav with `Dashboard`, `Log`, `History`, `Goals`, and `Settings`
-- Session logging around `Break`, `Layout`, `Unforced errors`, and `Result`
-- Log start opponent selector supports typeahead, quick-pick, and inline create
+- Custom bottom nav with `Dashboard`, `Log`, `Drills`, `Goals`, and `Settings`; History lives in Settings
+- Match logging around `Break`, `Layout`, `Unforced errors`, and `Result`
+- Drill-based practice logging with drill, adaptive difficulty, target, W:L score, `Potted` slider, and mistake tags
+- Log start can create either a match or drill practice; opponent selector appears only for matches and supports typeahead, quick-pick, and inline create
+- Drills tab supports search and AND-style multi-skill filtering, fixed SwiftUI layouts, five difficulty levels, and start-from-detail practice
 - Goal tracking with custom actions, completion celebration, and reset prompts
-- Drill-in Settings sections for `Me`, `Stats`, `Recent form`, `Appearance`, `Data`, and `About`
+- Drill-in Settings sections for `Me`, `Stats`, `Appearance`, `Data`, and `About`
 - First-run onboarding + legacy one-time personalize prompt
 - Optional Sign in with Apple account linking in `Settings → Me → Account`
-- Training activity heatmap (18-week calendar, fills card width, active-day count in card header) and error composition stacked area chart on Dashboard
+- Dashboard includes recent form, training activity heatmap (18-week calendar, fills card width, active-day count in card header), and error composition stacked area chart
 - Haptic + press-scale feedback on all logging controls (`ChoiceButton`, `SmallToggleButton`, `ErrorCounterTile`)
 
 ## Open in Xcode
@@ -21,7 +23,7 @@ Native SwiftUI iOS app for logging pool matches and practice sessions, syncing t
 
 ## Apple Watch companion
 
-A watchOS extension ships alongside the iOS app (`PoolStatsWatchExtension` target). It operates fully standalone — sessions can be started, logged, and saved from the watch without the phone present, then sync automatically when the phone becomes reachable.
+A watchOS extension ships alongside the iOS app (`PoolStatsWatchExtension` target). It operates fully standalone for match logging — sessions can be started, logged, and saved from the watch without the phone present, then sync automatically when the phone becomes reachable. For drill practice, the watch mirrors the active phone drill session with difficulty controls, `Potted`, mistake tags, Miss/Success, and Save & Exit.
 
 ### Quick Log start screen
 Three single-line tap-to-cycle rows (Mode, Game, Opponent) and a Start Session button — all visible without scrolling on a 40 mm watch.
@@ -47,6 +49,7 @@ After saving a rack the current score is displayed as a full-screen black overla
 
 ## Notes
 - CloudKit is the primary sync layer.
+- Drill session metadata and attempt-level drill fields are included in native JSON and CloudKit persistence.
 - A local JSON cache in Application Support keeps sessions safe if sync is delayed.
 - Sign in with Apple is optional and lives in `Settings → Me → Account`.
 - SIWA is profile-only in this phase (not a sync gate); CloudKit remains independent.

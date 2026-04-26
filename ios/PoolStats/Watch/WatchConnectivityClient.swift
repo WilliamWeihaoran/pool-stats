@@ -44,14 +44,46 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
         ))
     }
 
+    func startDrillPractice(drill: WatchDrillTemplatePayload, targetCount: Int) {
+        let chosenDifficulty = drill.difficultyLevels.first(where: { $0.level == "standard" })
+            ?? drill.difficultyLevels.first
+            ?? WatchDrillTemplateDifficultyPayload(level: "standard", label: "Standard", ballCount: 5, constraint: "")
+        let sessionUUID = sessionStore?.startDrillPractice(
+            drill: drill,
+            difficulty: chosenDifficulty,
+            targetType: "successes",
+            targetCount: targetCount
+        ) ?? UUID().uuidString
+
+        send(WatchSyncEnvelope(
+            action: .startSession,
+            sessionUUID: sessionUUID,
+            start: WatchSessionStartPayload(
+                game: "8ball",
+                type: "practice",
+                opponent: "",
+                drillID: drill.id,
+                targetType: "successes",
+                targetCount: targetCount,
+                drillDifficulty: chosenDifficulty.level,
+                drillBallCount: chosenDifficulty.ballCount,
+                timestampMs: nowMs()
+            ),
+            sentAtMs: nowMs()
+        ))
+    }
+
     func patch(_ patch: WatchRackPatch, sessionUUID: String?) {
         sessionStore?.applyPatch(patch)
         send(WatchSyncEnvelope(action: .rackPatch, sessionUUID: sessionUUID, patch: patch, sentAtMs: nowMs()))
     }
 
-    func saveRack(sessionUUID: String?) {
+    func saveRack(sessionUUID: String?, patch: WatchRackPatch? = nil) {
+        if let patch {
+            sessionStore?.applyPatch(patch)
+        }
         sessionStore?.saveCurrentRack()
-        send(WatchSyncEnvelope(action: .saveRack, sessionUUID: sessionUUID, sentAtMs: nowMs()))
+        send(WatchSyncEnvelope(action: .saveRack, sessionUUID: sessionUUID, patch: patch, sentAtMs: nowMs()))
     }
 
     func undoLastRack(sessionUUID: String?) {
@@ -66,7 +98,15 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
         send(WatchSyncEnvelope(action: .drillAttempt, sessionUUID: sessionUUID, drillAttempt: attempt, sentAtMs: nowMs()))
         if attempt.saveAndExit {
             sessionStore?.clear()
-            snapshot = snapshot.map { WatchSessionSnapshot(active: nil, availableOpponents: $0.availableOpponents, acknowledgedAtMs: $0.acknowledgedAtMs, message: nil) }
+            snapshot = snapshot.map {
+                WatchSessionSnapshot(
+                    active: nil,
+                    availableOpponents: $0.availableOpponents,
+                    availableDrills: $0.availableDrills,
+                    acknowledgedAtMs: $0.acknowledgedAtMs,
+                    message: nil
+                )
+            }
         }
     }
 
@@ -77,13 +117,29 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
 
     func endSession(sessionUUID: String?, rating: Int) {
         sessionStore?.clear()
-        snapshot = snapshot.map { WatchSessionSnapshot(active: nil, availableOpponents: $0.availableOpponents, acknowledgedAtMs: $0.acknowledgedAtMs, message: nil) }
+        snapshot = snapshot.map {
+            WatchSessionSnapshot(
+                active: nil,
+                availableOpponents: $0.availableOpponents,
+                availableDrills: $0.availableDrills,
+                acknowledgedAtMs: $0.acknowledgedAtMs,
+                message: nil
+            )
+        }
         send(WatchSyncEnvelope(action: .endSessionWithRating, sessionUUID: sessionUUID, end: WatchEndSessionPayload(rating: rating), sentAtMs: nowMs()))
     }
 
     func discardSession(sessionUUID: String?) {
         sessionStore?.clear()
-        snapshot = snapshot.map { WatchSessionSnapshot(active: nil, availableOpponents: $0.availableOpponents, acknowledgedAtMs: $0.acknowledgedAtMs, message: nil) }
+        snapshot = snapshot.map {
+            WatchSessionSnapshot(
+                active: nil,
+                availableOpponents: $0.availableOpponents,
+                availableDrills: $0.availableDrills,
+                acknowledgedAtMs: $0.acknowledgedAtMs,
+                message: nil
+            )
+        }
         send(WatchSyncEnvelope(action: .discardSession, sessionUUID: sessionUUID, sentAtMs: nowMs()))
     }
 
@@ -121,12 +177,26 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
 
     private func handleIncomingSnapshot(_ decoded: WatchSessionSnapshot) {
         snapshot = decoded
+        if let drills = decoded.availableDrills {
+            sessionStore?.updateDrillCatalog(drills)
+        }
         // Phone is authoritative — adopt its active session if it has one.
-        // If it has none, keep local state; our queued messages may not have arrived yet.
+        // If it has none with an explicit clear message, remove any local active state too.
         if let active = decoded.active {
             sessionStore?.applyRemote(active)
+        } else if isSessionClearMessage(decoded.message) {
+            sessionStore?.clear()
         } else if sessionStore?.activeSnapshot == nil {
             WatchComplicationStateStore.clear()
+        }
+    }
+
+    private func isSessionClearMessage(_ message: String?) -> Bool {
+        switch message {
+        case "session_cleared", "session_ended", "session_discarded", "drill_session_ended":
+            return true
+        default:
+            return false
         }
     }
 }

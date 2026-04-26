@@ -84,10 +84,26 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
     case missErrors
     case positionalErrors
     case safetyErrors
+    case patternErrors
     case foulErrors
     case averagePerformance
 
     var id: String { rawValue }
+
+    static var allCases: [GoalMetric] {
+        [
+            .conversionRate,
+            .matchWinRate,
+            .rackWinRate,
+            .runouts,
+            .breakAndRuns,
+            .missErrors,
+            .positionalErrors,
+            .safetyErrors,
+            .patternErrors,
+            .averagePerformance
+        ]
+    }
 
     var label: String {
         switch self {
@@ -99,7 +115,8 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
         case .missErrors: return "Miss errors"
         case .positionalErrors: return "Positional errors"
         case .safetyErrors: return "Safety errors"
-        case .foulErrors: return "Foul errors"
+        case .patternErrors: return "Pattern errors"
+        case .foulErrors: return "Foul errors (legacy)"
         case .averagePerformance: return "Performance rating"
         }
     }
@@ -114,7 +131,7 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
 
     var isLowerBetter: Bool {
         switch self {
-        case .missErrors, .positionalErrors, .safetyErrors, .foulErrors:
+        case .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
             return true
         default:
             return false
@@ -127,14 +144,14 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
             return "%"
         case .averagePerformance:
             return "/10"
-        case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .foulErrors:
+        case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
             return ""
         }
     }
 
     var supportsValueStyle: Bool {
         switch self {
-        case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .foulErrors:
+        case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
             return true
         default:
             return false
@@ -154,7 +171,7 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .runouts, .breakAndRuns:
             return .cumulative
-        case .missErrors, .positionalErrors, .safetyErrors, .foulErrors:
+        case .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
             return .average
         default:
             return .cumulative
@@ -186,9 +203,11 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
         case .missErrors:
             return Double(sessions.flatMap(\.racks).reduce(0) { $0 + $1.missCount })
         case .positionalErrors:
-            return Double(sessions.flatMap(\.racks).reduce(0) { $0 + $1.positionalCount })
+            return Double(sessions.flatMap(\.racks).reduce(0) { $0 + $1.positionTrackingCount })
         case .safetyErrors:
             return Double(sessions.flatMap(\.racks).reduce(0) { $0 + $1.safetyCount })
+        case .patternErrors:
+            return Double(sessions.flatMap(\.racks).reduce(0) { $0 + $1.patternMistakeCount })
         case .foulErrors:
             return Double(sessions.flatMap(\.racks).reduce(0) { $0 + $1.foulCount })
         case .averagePerformance:
@@ -210,9 +229,11 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
         case .missErrors:
             total = Double(racks.reduce(0) { $0 + $1.missCount })
         case .positionalErrors:
-            total = Double(racks.reduce(0) { $0 + $1.positionalCount })
+            total = Double(racks.reduce(0) { $0 + $1.positionTrackingCount })
         case .safetyErrors:
             total = Double(racks.reduce(0) { $0 + $1.safetyCount })
+        case .patternErrors:
+            total = Double(racks.reduce(0) { $0 + $1.patternMistakeCount })
         case .foulErrors:
             total = Double(racks.reduce(0) { $0 + $1.foulCount })
         default:
@@ -238,7 +259,7 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
             return "\(Int(round(value)))%"
         case .averagePerformance:
             return String(format: "%.1f/10", value)
-        case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .foulErrors:
+        case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
             if style == .average {
                 return String(format: "%.1f", value)
             }
@@ -264,7 +285,7 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
             return "\(label) \(isLowerBetter ? "under" : "above") \(formatted)"
         case .averagePerformance:
             return "\(label) \(isLowerBetter ? "under" : "above") \(formatted)"
-        case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .foulErrors:
+        case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
             if style == .average {
                 let basis = basis ?? defaultAverageBasis
                 return "\(isLowerBetter ? "Keep" : "Average") \(label.lowercased()) \(isLowerBetter ? "under" : "at") \(formatted) per \(basis.unitLabel)"

@@ -293,6 +293,11 @@ struct WatchSessionStartPayload: Codable, Hashable {
     var game: String
     var type: String
     var opponent: String
+    var drillID: String?
+    var targetType: String?
+    var targetCount: Int?
+    var drillDifficulty: String?
+    var drillBallCount: Int?
     var timestampMs: Int64?
 }
 
@@ -314,6 +319,21 @@ struct WatchDrillDifficultyPayload: Codable, Hashable {
     var ballCount: Int
 }
 
+struct WatchDrillTemplateDifficultyPayload: Codable, Hashable {
+    var level: String
+    var label: String
+    var ballCount: Int
+    var constraint: String
+}
+
+struct WatchDrillTemplatePayload: Codable, Hashable {
+    var id: String
+    var title: String
+    var details: String
+    var countUnit: String? = nil
+    var difficultyLevels: [WatchDrillTemplateDifficultyPayload]
+}
+
 struct WatchSyncEnvelope: Codable, Hashable {
     var version: Int = 1
     var action: WatchSyncAction
@@ -331,6 +351,7 @@ struct WatchSyncEnvelope: Codable, Hashable {
 struct WatchSessionSnapshot: Codable, Hashable {
     var active: ActiveSessionSnapshot?
     var availableOpponents: [String]
+    var availableDrills: [WatchDrillTemplatePayload]
     var acknowledgedAtMs: Int64
     var message: String?
 }
@@ -343,6 +364,7 @@ final class WatchSyncStore: NSObject, ObservableObject {
     private weak var logStore: SessionLogStore?
     private weak var opponentStore: OpponentStore?
     private var cancellables: Set<AnyCancellable> = []
+    private var lastKnownActiveSessionUUID: String?
 
     func bind(dataStore: DataStore, logStore: SessionLogStore, opponentStore: OpponentStore) {
         self.dataStore = dataStore
@@ -353,8 +375,19 @@ final class WatchSyncStore: NSObject, ObservableObject {
         logStore.$currentSession
             .combineLatest(logStore.$currentRack)
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _, _ in
-                self?.pushSnapshot(message: nil)
+            .sink { [weak self] session, _ in
+                guard let self else { return }
+                let message: String?
+                if let session {
+                    self.lastKnownActiveSessionUUID = session.sessionUUID
+                    message = nil
+                } else if self.lastKnownActiveSessionUUID != nil {
+                    self.lastKnownActiveSessionUUID = nil
+                    message = "session_cleared"
+                } else {
+                    message = nil
+                }
+                self.pushSnapshot(message: message)
             }
             .store(in: &cancellables)
 
@@ -381,10 +414,30 @@ final class WatchSyncStore: NSObject, ObservableObject {
         return names
     }
 
+    private func availableDrills() -> [WatchDrillTemplatePayload] {
+        DrillLibrary.templates.map { template in
+            WatchDrillTemplatePayload(
+                id: template.id,
+                title: template.title,
+                details: template.description,
+                countUnit: template.countUnit.rawValue,
+                difficultyLevels: template.difficultyLevels.map { difficulty in
+                    WatchDrillTemplateDifficultyPayload(
+                        level: difficulty.level.rawValue,
+                        label: difficulty.level.label,
+                        ballCount: difficulty.ballCount,
+                        constraint: difficulty.constraint
+                    )
+                }
+            )
+        }
+    }
+
     private func makeSnapshot(message: String?) -> WatchSessionSnapshot {
         WatchSessionSnapshot(
             active: logStore?.activeSnapshotForWatch,
             availableOpponents: availableOpponents(),
+            availableDrills: availableDrills(),
             acknowledgedAtMs: nowMs(),
             message: message
         )
@@ -433,16 +486,38 @@ final class WatchSyncStore: NSObject, ObservableObject {
                 pushSnapshot(message: "already_active")
                 return
             }
-            let date = start.timestampMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
-            logStore.startSession(
-                game: start.game,
-                type: "match",
-                label: "",
-                opponent: start.opponent,
-                date: date,
-                sessionUUID: env.sessionUUID
-            )
-            pushSnapshot(message: "session_started")
+            if start.type == "practice", let drillID = start.drillID, let template = DrillLibrary.template(id: drillID) {
+                let fallbackDifficulty = template.standardDifficulty
+                let resolvedDifficulty: DrillDifficulty = {
+                    guard let raw = start.drillDifficulty,
+                          let level = DrillDifficultyLevel(rawValue: raw),
+                          let specific = template.difficultyLevels.first(where: { $0.level == level }) else {
+                        return fallbackDifficulty
+                    }
+                    let chosenCount = start.drillBallCount ?? specific.ballCount
+                    return DrillDifficulty(level: specific.level, ballCount: chosenCount, constraint: specific.constraint)
+                }()
+
+                logStore.startDrillPractice(
+                    template: template,
+                    difficulty: resolvedDifficulty,
+                    targetType: start.targetType ?? "successes",
+                    targetCount: start.targetCount ?? 3,
+                    sessionUUID: env.sessionUUID
+                )
+                pushSnapshot(message: "drill_session_started")
+            } else {
+                let date = start.timestampMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
+                logStore.startSession(
+                    game: start.game,
+                    type: "match",
+                    label: "",
+                    opponent: start.opponent,
+                    date: date,
+                    sessionUUID: env.sessionUUID
+                )
+                pushSnapshot(message: "session_started")
+            }
 
         case .rackPatch:
             guard let patch = env.patch else { return }

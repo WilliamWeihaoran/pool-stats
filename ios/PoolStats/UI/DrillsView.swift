@@ -137,10 +137,6 @@ private struct DrillTemplateRow: View {
                     ForEach(Array(template.primarySkills.prefix(3)), id: \.self) { skill in
                         drillBadge(skill, color: drillColor(skill))
                     }
-                    Text(template.difficultyRangeText)
-                        .font(.caption2.weight(.semibold))
-                        .foregroundColor(Theme.text2)
-                        .lineLimit(1)
                 }
             }
 
@@ -224,7 +220,7 @@ private struct DrillDetailView: View {
 
     private var diagramButton: some View {
         Button { showPicture = true } label: {
-            DrillPictureView(template: template, ballCount: selectedDifficulty.ballCount)
+            DrillPictureView(template: template, difficulty: selectedDifficulty)
                 .frame(height: 222)
                 .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 22).stroke(Theme.border, lineWidth: 0.8))
@@ -243,13 +239,27 @@ private struct DrillDetailView: View {
     }
 
     private var skillsSection: some View {
-        SectionCard(title: "Skills") {
-            VStack(alignment: .leading, spacing: 14) {
-                skillGroup(title: "Fargo skills", subtitle: "Main parts of your game this drill trains", items: Array(template.primarySkills.prefix(3)), color: nil)
-                Divider().overlay(Theme.border)
-                skillGroup(title: "Practice focus", subtitle: "Secondary cues to pay attention to", items: Array(template.secondarySkills.prefix(3)), color: Theme.teal)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "scope")
+                    .font(.caption.weight(.black))
+                    .foregroundColor(Theme.teal)
+                    .frame(width: 24, height: 24)
+                    .background(Theme.teal.opacity(0.14))
+                    .clipShape(Circle())
+                Text("Training focus")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Theme.text)
+                Spacer(minLength: 0)
             }
+
+            compactSkillRow(label: "Fargo", items: Array(template.primarySkills.prefix(3)), color: nil)
+            compactSkillRow(label: "Cues", items: Array(template.secondarySkills.prefix(3)), color: Theme.teal)
         }
+        .padding(12)
+        .background(Theme.panel.opacity(0.92))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.border, lineWidth: 0.5))
     }
 
     private var difficultySection: some View {
@@ -257,7 +267,7 @@ private struct DrillDetailView: View {
             VStack(alignment: .leading, spacing: 14) {
                 DifficultyGradientSlider(levels: template.difficultyLevels, selectedLevel: $selectedLevel)
                 HStack(spacing: 10) {
-                    DrillInfoTile(label: "Balls", value: "\(selectedDifficulty.ballCount)", color: difficultyColor(for: selectedLevel))
+                    DrillInfoTile(label: template.countUnit.title, value: "\(selectedDifficulty.ballCount)", color: difficultyColor(for: selectedLevel))
                     VStack(alignment: .leading, spacing: 5) {
                         Text(selectedDifficulty.level.label)
                             .font(.caption.weight(.bold))
@@ -312,7 +322,7 @@ private struct DrillDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Start drill")
                         .font(.headline)
-                    Text("\(selectedDifficulty.level.label) · \(selectedDifficulty.ballCount) balls")
+                    Text(template.difficultySummary(selectedDifficulty))
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.82))
                 }
@@ -328,16 +338,14 @@ private struct DrillDetailView: View {
         .buttonStyle(.plain)
     }
 
-    private func skillGroup(title: String, subtitle: String, items: [String], color: Color?) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Theme.text)
-                Text(subtitle)
-                    .font(.caption2)
-                    .foregroundColor(Theme.muted)
-            }
+    private func compactSkillRow(label: String, items: [String], color: Color?) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(label)
+                .font(.caption2.weight(.black))
+                .foregroundColor(Theme.muted)
+                .textCase(.uppercase)
+                .frame(width: 44, alignment: .leading)
+                .padding(.top, 5)
             SkillChipRow(items: items) { item in color ?? drillColor(item) }
         }
     }
@@ -352,12 +360,18 @@ struct DrillLogActiveView: View {
     @State private var showPicture = false
     @State private var toast: String?
     @State private var attemptsExpanded = false
+    @State private var liteSelectedLevel: DrillDifficultyLevel = .standard
     @Binding var showEndConfirm: Bool
+    let showLiteMode: Bool
+    let onExitLite: (() -> Void)?
+    let onEnterLite: (() -> Void)?
 
     private let mistakeOptions = ["Potting", "Position", "Pattern", "Runout"]
     private var session: Session? { store.currentSession }
     private var template: DrillTemplate? { DrillLibrary.template(id: session?.drillID) }
     private var targetBallCount: Int { currentDifficulty?.ballCount ?? session?.drillBallCount ?? 0 }
+    private var targetCountText: String { template?.countText(targetBallCount) ?? "\(targetBallCount) reps" }
+    private var progressTitle: String { template?.progressTitle() ?? "Completed" }
     private var currentDifficulty: DrillDifficulty? {
         guard let template else { return nil }
         return template.difficultyLevels.first(where: { $0.level == currentLevel }) ?? template.standardDifficulty
@@ -369,28 +383,49 @@ struct DrillLogActiveView: View {
     private var canLogSuccess: Bool { Int(ballsMade) >= targetBallCount }
     private var canLogMiss: Bool { Int(ballsMade) < targetBallCount }
 
+    init(
+        showEndConfirm: Binding<Bool>,
+        showLiteMode: Bool = false,
+        onExitLite: (() -> Void)? = nil,
+        onEnterLite: (() -> Void)? = nil
+    ) {
+        _showEndConfirm = showEndConfirm
+        self.showLiteMode = showLiteMode
+        self.onExitLite = onExitLite
+        self.onEnterLite = onEnterLite
+    }
+
     var body: some View {
         if let session, session.isDrillPractice {
-            VStack(alignment: .leading, spacing: 12) {
-                practiceHeader(session)
-                scorePanel(session)
-                compactDifficulty
-                mistakesPanel
-                pottedPanel
-                actionPanel
-                attemptLog(session)
-                if let toast {
-                    Text(toast)
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(Theme.green)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .transition(.opacity)
+            Group {
+                if showLiteMode {
+                    liteLayout(session)
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        practiceHeader(session)
+                        scorePanel(session)
+                        compactDifficulty
+                        mistakesPanel
+                        pottedPanel
+                        actionPanel
+                        attemptLog(session)
+                        if let toast {
+                            Text(toast)
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(Theme.green)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .transition(.opacity)
+                        }
+                    }
                 }
             }
             .padding(.top, 4)
-            .padding(.bottom, 118)
+            .padding(.bottom, showLiteMode ? 12 : 118)
             .onAppear { hydrateDifficulty(from: session) }
             .onChange(of: session.drillDifficulty) { _ in hydrateDifficulty(from: session) }
+            .onChange(of: currentLevel) { newLevel in
+                liteSelectedLevel = newLevel
+            }
             .fullScreenCover(isPresented: $showPicture) {
                 if let template, let currentDifficulty {
                     DrillPictureExpandedView(template: template, difficulty: currentDifficulty)
@@ -414,21 +449,43 @@ struct DrillLogActiveView: View {
                         .foregroundColor(Theme.text2)
                 }
                 Spacer(minLength: 4)
-                Button { showPicture = true } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "rectangle.expand.vertical")
-                            .font(.caption.weight(.bold))
-                        Text("See layout")
-                            .font(.caption.weight(.bold))
+                HStack(spacing: 8) {
+                    if let onEnterLite {
+                        Button {
+                            onEnterLite()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "rectangle.split.3x1")
+                                    .font(.caption.weight(.bold))
+                                Text("Lite")
+                                    .font(.caption.weight(.bold))
+                            }
+                            .foregroundColor(Theme.blue)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(Theme.blue.opacity(0.12))
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(Theme.blue.opacity(0.28), lineWidth: 0.6))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .foregroundColor(Theme.teal)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(Theme.teal.opacity(0.12))
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(Theme.teal.opacity(0.28), lineWidth: 0.6))
+
+                    Button { showPicture = true } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "rectangle.expand.vertical")
+                                .font(.caption.weight(.bold))
+                            Text("See layout")
+                                .font(.caption.weight(.bold))
+                        }
+                        .foregroundColor(Theme.teal)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Theme.teal.opacity(0.12))
+                        .clipShape(Capsule())
+                        .overlay(Capsule().stroke(Theme.teal.opacity(0.28), lineWidth: 0.6))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             if let label = session.drillTargetLabel {
@@ -500,7 +557,7 @@ struct DrillLogActiveView: View {
             Text(currentDifficulty?.level.label ?? "Difficulty")
                 .font(.caption.weight(.black))
                 .foregroundColor(difficultyColor(for: currentLevel))
-            Text("· \(targetBallCount) balls")
+            Text("· \(targetCountText)")
                 .font(.caption.weight(.semibold))
                 .foregroundColor(Theme.text2)
             Spacer()
@@ -557,7 +614,7 @@ struct DrillLogActiveView: View {
     private var pottedPanel: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Potted")
+                Text(progressTitle)
                     .font(.headline.weight(.semibold))
                     .foregroundColor(Theme.text)
                 Spacer()
@@ -714,6 +771,7 @@ struct DrillLogActiveView: View {
     private func hydrateDifficulty(from session: Session) {
         if let level = session.drillDifficultyLevel {
             currentLevel = level
+            liteSelectedLevel = level
         }
         ballsMade = min(ballsMade, Double(max(session.drillBallCount ?? 0, 0)))
     }
@@ -737,7 +795,7 @@ struct DrillLogActiveView: View {
     }
 
     private func metaLine(_ session: Session) -> String {
-        [currentDifficulty?.level.label ?? session.drillDifficultyLabel, "\(targetBallCount) balls"]
+        [currentDifficulty?.level.label ?? session.drillDifficultyLabel, targetCountText]
             .joined(separator: " · ")
     }
 
@@ -745,359 +803,203 @@ struct DrillLogActiveView: View {
         guard let start else { return 0 }
         return max(0, Date().timeIntervalSince(start))
     }
-}
 
-private struct DrillPictureExpandedView: View {
-    @Environment(\.dismiss) private var dismiss
-    let template: DrillTemplate
-    let difficulty: DrillDifficulty
+    private func applyLiteDifficulty(_ level: DrillDifficultyLevel) {
+        guard let template else { return }
+        let difficulty = template.difficultyLevels.first(where: { $0.level == level }) ?? template.standardDifficulty
+        currentLevel = difficulty.level
+        ballsMade = min(ballsMade, Double(difficulty.ballCount))
+        store.updateDrillDifficulty(level: difficulty.level, ballCount: difficulty.ballCount)
+    }
 
-    var body: some View {
-        ZStack {
-            Theme.bg.ignoresSafeArea()
-            VStack(spacing: 16) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(template.title)
+    private func liteLayout(_ session: Session) -> some View {
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(session.drillTitle ?? "Drill")
                             .font(.headline.weight(.bold))
                             .foregroundColor(Theme.text)
-                        Text("\(difficulty.level.label) · \(difficulty.ballCount) balls")
+                        Text(metaLine(session))
                             .font(.caption.weight(.semibold))
-                            .foregroundColor(difficultyColor(for: difficulty.level))
+                            .foregroundColor(Theme.text2)
+                        if let target = session.drillTargetLabel {
+                            Text(target)
+                                .font(.caption2.weight(.bold))
+                                .foregroundColor(Theme.amber)
+                        }
                     }
-                    Spacer()
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .font(.caption.weight(.black))
-                            .foregroundColor(Theme.text)
-                            .frame(width: 34, height: 34)
-                            .background(Theme.panel2)
+                    Spacer(minLength: 0)
+                    Button {
+                        showPicture = true
+                    } label: {
+                        Image(systemName: "rectangle.expand.vertical")
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(Theme.teal)
+                            .frame(width: 32, height: 32)
+                            .background(Theme.teal.opacity(0.12))
                             .clipShape(Circle())
+                            .overlay(Circle().stroke(Theme.teal.opacity(0.28), lineWidth: 0.7))
                     }
                     .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 18)
 
-                DrillPictureView(template: template, ballCount: difficulty.ballCount)
-                    .aspectRatio(1.9, contentMode: .fit)
-                    .padding(.horizontal, 14)
+                HStack(spacing: 6) {
+                    ForEach(mistakeOptions, id: \.self) { item in
+                        MistakeSquareButton(title: item, isOn: selectedTags.contains(item), color: drillColor(item)) {
+                            if selectedTags.contains(item) { selectedTags.remove(item) } else { selectedTags.insert(item) }
+                        }
+                    }
+                }
+
+                HStack(spacing: 8) {
+                    Button {
+                        saveAttemptAndExit()
+                    } label: {
+                        Text("Save & Exit")
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(Theme.purple)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 38)
+                            .background(Theme.purple.opacity(0.16))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.purple.opacity(0.28), lineWidth: 0.8))
+                    }
+                    .buttonStyle(.plain)
+
+                    if let onExitLite {
+                        Button {
+                            onExitLite()
+                        } label: {
+                            Text("Exit Lite")
+                                .font(.caption.weight(.bold))
+                                .foregroundColor(Theme.text2)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 38)
+                                .background(Theme.panel2)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.8))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Theme.panel2.opacity(0.92))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border, lineWidth: 0.6))
+
+            VStack(alignment: .leading, spacing: 10) {
+                TimelineView(.periodic(from: Date(), by: 1)) { _ in
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("\(successes)")
+                            .font(.system(size: 70, weight: .black, design: .rounded).monospacedDigit())
+                            .foregroundColor(Theme.green)
+                        Text(":")
+                            .font(.system(size: 52, weight: .black, design: .rounded))
+                            .foregroundColor(Theme.text2)
+                        Text("\(misses)")
+                            .font(.system(size: 70, weight: .black, design: .rounded).monospacedDigit())
+                            .foregroundColor(Theme.red)
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 3) {
+                            Text(AppFormatters.elapsed(elapsedSince(store.sessionStart)))
+                                .font(.headline.weight(.bold).monospacedDigit())
+                                .foregroundColor(Theme.text)
+                            Text("\(attempts) attempts")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(Theme.muted)
+                            Text(successRate)
+                                .font(.caption.weight(.bold))
+                                .foregroundColor(Theme.text2)
+                        }
+                    }
+                }
+
+                HStack {
+                    Text(progressTitle)
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(Theme.text2)
+                    Spacer()
+                    Text("\(Int(ballsMade))/\(targetBallCount)")
+                        .font(.headline.weight(.bold).monospacedDigit())
+                        .foregroundColor(pottedColor)
+                }
+                PottedAttemptSlider(value: $ballsMade, maxValue: max(targetBallCount, 1))
+
+                HStack(spacing: 8) {
+                    outcomeButton(title: "Miss", icon: "xmark", color: Theme.red, disabled: !canLogMiss) { recordCurrent(outcome: "miss") }
+                    outcomeButton(title: "Success", icon: "checkmark", color: Theme.green, disabled: !canLogSuccess) { recordCurrent(outcome: "success") }
+                }
+
+                if let toast {
+                    Text(toast)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.green)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(Theme.panel2.opacity(0.92))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border, lineWidth: 0.6))
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Difficulty")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(Theme.muted)
+
+                if let template {
+                    DifficultyGradientSlider(levels: template.difficultyLevels, selectedLevel: $liteSelectedLevel)
+                        .onChange(of: liteSelectedLevel) { newValue in
+                            applyLiteDifficulty(newValue)
+                        }
+                }
+
+                if let difficulty = currentDifficulty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(difficulty.level.label)
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(difficultyColor(for: difficulty.level))
+                        Text(template?.countText(difficulty.ballCount) ?? "\(difficulty.ballCount) reps")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundColor(Theme.text2)
+                        Text(difficulty.constraint)
+                            .font(.caption2)
+                            .foregroundColor(Theme.muted)
+                            .lineLimit(3)
+                    }
+                    .padding(10)
+                    .background(Theme.panel.opacity(0.65))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.6))
+                }
 
                 Spacer(minLength: 0)
-            }
-            .padding(.top, 18)
-        }
-    }
-}
-
-private struct DifficultyGradientSlider: View {
-    let levels: [DrillDifficulty]
-    @Binding var selectedLevel: DrillDifficultyLevel
-
-    var selectedIndex: Int { levels.firstIndex(where: { $0.level == selectedLevel }) ?? 0 }
-
-    var body: some View {
-        VStack(spacing: 9) {
-            GeometryReader { geo in
-                let count = max(levels.count, 1)
-                let inset: CGFloat = 14
-                let width = max(geo.size.width - inset * 2, 1)
-                let step = count > 1 ? width / CGFloat(count - 1) : 0
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(LinearGradient(colors: [Theme.green, Theme.amber, Theme.red], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: width, height: 10)
-                        .position(x: inset + width / 2, y: 20)
-                        .opacity(0.9)
-                    ForEach(Array(levels.enumerated()), id: \.element.id) { idx, difficulty in
-                        Circle()
-                            .fill(selectedIndex == idx ? Color.white : Theme.bg)
-                            .overlay(Circle().stroke(difficultyColor(for: difficulty.level), lineWidth: selectedIndex == idx ? 3 : 2))
-                            .frame(width: selectedIndex == idx ? 26 : 18, height: selectedIndex == idx ? 26 : 18)
-                            .position(x: inset + CGFloat(idx) * step, y: 20)
+                if let progress = session.drillTargetProgress {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Target progress")
+                            .font(.caption2.weight(.bold))
+                            .foregroundColor(Theme.muted)
+                        ProgressView(value: Double(progress.current), total: Double(max(progress.target, 1)))
+                            .tint(Theme.green)
+                        Text("\(progress.current)/\(progress.target)")
+                            .font(.caption2.weight(.bold).monospacedDigit())
+                            .foregroundColor(Theme.text2)
                     }
                 }
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            let x = min(max(value.location.x - inset, 0), width)
-                            let idx = min(max(Int(round(x / max(step, 1))), 0), count - 1)
-                            selectedLevel = levels[idx].level
-                        }
-                )
             }
-            .frame(height: 40)
-
-            HStack(spacing: 4) {
-                ForEach(levels) { difficulty in
-                    Text(difficulty.level.label)
-                        .font(.system(size: 9, weight: difficulty.level == selectedLevel ? .black : .semibold))
-                        .foregroundColor(difficulty.level == selectedLevel ? difficultyColor(for: difficulty.level) : Theme.muted)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.55)
-                        .frame(maxWidth: .infinity)
-                }
-            }
+            .padding(12)
+            .frame(width: 230)
+            .frame(maxHeight: .infinity, alignment: .topLeading)
+            .background(Theme.panel2.opacity(0.92))
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Theme.border, lineWidth: 0.6))
         }
+        .padding(.horizontal, 10)
     }
-}
-
-private struct PottedAttemptSlider: View {
-    @Binding var value: Double
-    let maxValue: Int
-
-    var body: some View {
-        VStack(spacing: 8) {
-            GeometryReader { geo in
-                let inset: CGFloat = 12
-                let width = max(geo.size.width - inset * 2, 1)
-                let total = max(maxValue, 1)
-                let step = width / CGFloat(total)
-                let selectedX = inset + CGFloat(value / Double(total)) * width
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(Theme.border.opacity(0.85))
-                        .frame(width: width, height: 10)
-                        .position(x: inset + width / 2, y: 18)
-                    Capsule()
-                        .fill(LinearGradient(colors: [Theme.red, Theme.amber, Theme.green], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: max(1, selectedX - inset), height: 10)
-                        .position(x: inset + max(1, selectedX - inset) / 2, y: 18)
-                    ForEach(0...total, id: \.self) { idx in
-                        Circle()
-                            .fill(idx == Int(value) ? Color.white : Theme.bg)
-                            .overlay(Circle().stroke(idx == Int(value) ? Theme.green : Theme.border, lineWidth: idx == Int(value) ? 3 : 1.5))
-                            .frame(width: idx == Int(value) ? 22 : 13, height: idx == Int(value) ? 22 : 13)
-                            .position(x: inset + CGFloat(idx) * step, y: 18)
-                    }
-                }
-                .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { drag in
-                            let x = min(max(drag.location.x - inset, 0), width)
-                            value = Double(min(max(Int(round(x / max(step, 1))), 0), total))
-                        }
-                )
-            }
-            .frame(height: 36)
-
-            HStack {
-                Text("0")
-                Spacer()
-                Text("Target \(maxValue)")
-            }
-            .font(.caption2.weight(.semibold))
-            .foregroundColor(Theme.muted)
-        }
-    }
-}
-
-private struct FilterSkillButton: View {
-    let skill: String
-    let isOn: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(skill)
-                .font(.caption.weight(.bold))
-                .foregroundColor(isOn ? .black.opacity(0.82) : drillColor(skill))
-                .padding(.horizontal, 11)
-                .padding(.vertical, 8)
-                .background(isOn ? drillColor(skill) : drillColor(skill).opacity(0.12))
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(drillColor(skill).opacity(0.32), lineWidth: 0.6))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct MistakeSquareButton: View {
-    let title: String
-    let isOn: Bool
-    let color: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 10, weight: .black))
-                .foregroundColor(isOn ? .black.opacity(0.82) : color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.55)
-                .frame(maxWidth: .infinity)
-                .frame(height: 46)
-                .background(isOn ? color : color.opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(color.opacity(isOn ? 0.55 : 0.28), lineWidth: 0.8))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private struct DrillInfoTile: View {
-    let label: String
-    let value: String
-    let color: Color
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(label)
-                .font(.caption2.weight(.bold))
-                .foregroundColor(Theme.muted)
-            Text(value)
-                .font(.title3.bold())
-                .foregroundColor(color)
-                .monospacedDigit()
-        }
-        .frame(width: 92, alignment: .leading)
-        .padding(12)
-        .background(Theme.panel2)
-        .cornerRadius(14)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 0.5))
-    }
-}
-
-private struct DrillThumbnail: View {
-    let template: DrillTemplate
-    var body: some View {
-        DrillPictureView(template: template, ballCount: template.standardDifficulty.ballCount)
-            .allowsHitTesting(false)
-    }
-}
-
-private struct DrillPictureView: View {
-    let template: DrillTemplate
-    let ballCount: Int
-
-    var body: some View {
-        GeometryReader { geo in
-            let size = geo.size
-            ZStack {
-                tableBackground
-                pockets(in: size)
-                drillZones(template.pictureID, in: size)
-                ForEach(balls(for: template.pictureID, ballCount: ballCount)) { ball in
-                    ballView(ball, in: size)
-                }
-            }
-        }
-    }
-
-    private var tableBackground: some View {
-        RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .fill(LinearGradient(colors: [Color(red: 0.02, green: 0.31, blue: 0.24), Color(red: 0.01, green: 0.18, blue: 0.16)], startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(Color.white.opacity(0.13), lineWidth: 2).padding(5))
-            .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.black.opacity(0.34), lineWidth: 6).padding(4))
-    }
-
-    private func pockets(in size: CGSize) -> some View {
-        let insetX = max(13, size.width * 0.045)
-        let insetY = max(12, size.height * 0.08)
-        let radius = max(5, min(size.width, size.height) * 0.04)
-        let points = [
-            CGPoint(x: insetX, y: insetY), CGPoint(x: size.width / 2, y: insetY * 0.72), CGPoint(x: size.width - insetX, y: insetY),
-            CGPoint(x: insetX, y: size.height - insetY), CGPoint(x: size.width / 2, y: size.height - insetY * 0.72), CGPoint(x: size.width - insetX, y: size.height - insetY)
-        ]
-        return ForEach(Array(points.enumerated()), id: \.offset) { _, point in
-            Circle().fill(Color.black.opacity(0.88)).frame(width: radius * 2, height: radius * 2).position(point)
-        }
-    }
-
-    @ViewBuilder
-    private func drillZones(_ id: String, in size: CGSize) -> some View {
-        if id == "one_side_pattern" {
-            zone(x: 0.52, y: 0.12, w: 0.38, h: 0.76, label: "Do not cross", color: Theme.red, in: size)
-            centerLine(in: size, color: Theme.red)
-        } else if id == "centerline_control" {
-            zone(x: 0.14, y: 0.41, w: 0.72, h: 0.18, label: "Center lane", color: Theme.blue, in: size)
-        } else if id == "rail_avoidance" {
-            zone(x: 0.10, y: 0.09, w: 0.80, h: 0.15, label: "Avoid rail", color: Theme.red, in: size)
-            zone(x: 0.10, y: 0.76, w: 0.80, h: 0.15, label: "Avoid rail", color: Theme.red, in: size)
-        }
-    }
-
-    private func centerLine(in size: CGSize, color: Color) -> some View {
-        Rectangle().fill(color.opacity(0.55)).frame(width: 1.5, height: size.height * 0.78).position(x: size.width * 0.5, y: size.height * 0.5)
-    }
-
-    private func zone(x: Double, y: Double, w: Double, h: Double, label: String, color: Color, in size: CGSize) -> some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(color.opacity(0.12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(color.opacity(0.42), style: StrokeStyle(lineWidth: 1, dash: [6, 5])))
-            .overlay(alignment: .topLeading) {
-                Text(label)
-                    .font(.system(size: max(7, min(size.width, size.height) * 0.04), weight: .bold))
-                    .foregroundColor(color.opacity(0.8))
-                    .padding(6)
-            }
-            .frame(width: size.width * w, height: size.height * h)
-            .position(x: size.width * (x + w / 2), y: size.height * (y + h / 2))
-    }
-
-    private func balls(for id: String, ballCount: Int) -> [PictureBall] {
-        let count = max(1, min(ballCount, 9))
-        let coords: [(Double, Double)]
-        let cuePoint: (Double, Double)
-        switch id {
-        case "l_drill":
-            cuePoint = (0.24, 0.76)
-            coords = [(0.36,0.76),(0.48,0.76),(0.60,0.76),(0.72,0.76),(0.72,0.64),(0.72,0.52),(0.72,0.40),(0.72,0.28),(0.60,0.28)]
-        case "one_side_pattern":
-            cuePoint = (0.24, 0.50)
-            coords = [(0.20,0.25),(0.39,0.31),(0.31,0.49),(0.42,0.67),(0.22,0.75),(0.36,0.18),(0.18,0.58)]
-        case "stop_shot_ladder":
-            cuePoint = (0.16, 0.50)
-            coords = [(0.30,0.50),(0.41,0.50),(0.52,0.50),(0.63,0.50),(0.74,0.50),(0.84,0.50),(0.91,0.50)]
-        case "centerline_control":
-            cuePoint = (0.50, 0.50)
-            coords = [(0.22,0.25),(0.78,0.28),(0.34,0.72),(0.66,0.75),(0.50,0.23),(0.25,0.52),(0.76,0.55)]
-        case "rail_avoidance":
-            cuePoint = (0.24, 0.50)
-            coords = [(0.34,0.35),(0.52,0.42),(0.70,0.35),(0.44,0.65),(0.66,0.62),(0.54,0.53),(0.31,0.58)]
-        default:
-            cuePoint = (0.28, 0.52)
-            coords = [(0.22,0.26),(0.40,0.66),(0.58,0.31),(0.76,0.70),(0.70,0.43),(0.48,0.50),(0.33,0.39),(0.62,0.60)]
-        }
-        return [PictureBall(id: "cue", number: 0, x: cuePoint.0, y: cuePoint.1)] + Array(coords.prefix(count)).enumerated().map { idx, coord in
-            PictureBall(id: "ball-\(idx + 1)", number: idx + 1, x: coord.0, y: coord.1)
-        }
-    }
-
-    private func ballView(_ ball: PictureBall, in size: CGSize) -> some View {
-        let diameter = max(7, min(15, min(size.width, size.height) * 0.062))
-        return ZStack {
-            if ball.number == 0 {
-                Circle().fill(Color.white)
-            } else if ball.number == 9 {
-                Circle().fill(Color.white)
-                Rectangle()
-                    .fill(poolBallColor(ball.number))
-                    .frame(width: diameter, height: diameter * 0.42)
-                    .clipShape(Circle())
-                Circle().stroke(poolBallColor(ball.number), lineWidth: max(1, diameter * 0.08))
-            } else {
-                Circle().fill(poolBallColor(ball.number))
-                if ball.number != 8 {
-                    Circle().fill(Color.white.opacity(0.94)).frame(width: diameter * 0.54, height: diameter * 0.54)
-                }
-            }
-            Text(ball.number == 0 ? "C" : "\(ball.number)")
-                .font(.system(size: max(4, diameter * 0.32), weight: .black, design: .rounded))
-                .foregroundColor(ball.number == 8 ? .white : .black.opacity(0.84))
-        }
-        .frame(width: diameter, height: diameter)
-        .shadow(color: .black.opacity(0.32), radius: 3, x: 0, y: 2)
-        .position(x: size.width * ball.x, y: size.height * ball.y)
-    }
-}
-
-private struct PictureBall: Identifiable {
-    let id: String
-    let number: Int
-    let x: Double
-    let y: Double
 }
 
 private struct SkillChipRow: View {
@@ -1133,40 +1035,4 @@ private func drillBadge(_ text: String, color: Color) -> some View {
         .background(color.opacity(0.13))
         .clipShape(Capsule())
         .overlay(Capsule().stroke(color.opacity(0.28), lineWidth: 0.5))
-}
-
-private func drillColor(_ name: String) -> Color {
-    switch name.lowercased() {
-    case "potting", "red": return Theme.red
-    case "position", "blue": return Theme.blue
-    case "pattern", "teal": return Theme.teal
-    case "runout", "purple": return Theme.purple
-    case "overall", "fundamentals", "green": return Theme.green
-    case "break", "orange", "yellow", "amber": return Theme.amber
-    default: return Theme.text2
-    }
-}
-
-private func difficultyColor(for level: DrillDifficultyLevel) -> Color {
-    switch level {
-    case .beginner: return Theme.green
-    case .easy: return Theme.teal
-    case .standard: return Theme.amber
-    case .hard: return Color.orange
-    case .expert: return Theme.red
-    }
-}
-
-private func poolBallColor(_ number: Int) -> Color {
-    switch number {
-    case 1, 9: return Color(red: 0.96, green: 0.78, blue: 0.18)
-    case 2: return Color(red: 0.16, green: 0.45, blue: 0.88)
-    case 3: return Color(red: 0.88, green: 0.18, blue: 0.24)
-    case 4: return Color(red: 0.45, green: 0.24, blue: 0.78)
-    case 5: return Color(red: 0.95, green: 0.48, blue: 0.12)
-    case 6: return Color(red: 0.18, green: 0.58, blue: 0.25)
-    case 7: return Color(red: 0.50, green: 0.10, blue: 0.12)
-    case 8: return Color.black
-    default: return Color.white
-    }
 }

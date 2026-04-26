@@ -31,14 +31,14 @@ struct WatchSessionFinishView: View {
 
     private var avgErrors: String {
         guard !session.racks.isEmpty else { return "--" }
-        let total = session.racks.reduce(0) { $0 + $1.missCount + $1.badPosition + $1.badSafety + $1.fouls }
+        let total = session.racks.reduce(0) { $0 + $1.missCount + $1.badPosition + $1.fouls + $1.badSafety + $1.patternCount }
         let avg = Double(total) / Double(session.racks.count)
         return String(format: "%.1f", avg)
     }
 
     private var avgErrorsValue: Double {
         guard !session.racks.isEmpty else { return 0 }
-        let total = session.racks.reduce(0) { $0 + $1.missCount + $1.badPosition + $1.badSafety + $1.fouls }
+        let total = session.racks.reduce(0) { $0 + $1.missCount + $1.badPosition + $1.fouls + $1.badSafety + $1.patternCount }
         return Double(total) / Double(session.racks.count)
     }
 

@@ -6,7 +6,6 @@ enum SettingsSection: String, CaseIterable, Hashable {
     case opponents
     case history
     case stats
-    case recentForm
     case appearance
     case data
     case about
@@ -18,7 +17,6 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .opponents: return "Opponents"
         case .history: return "History"
         case .stats: return "Stats"
-        case .recentForm: return "Recent form"
         case .appearance: return "Appearance"
         case .data: return "Data"
         case .about: return "About"
@@ -32,7 +30,6 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .opponents: return "Add, edit, favorite, and compare opponents"
         case .history: return "Review past sessions and summaries"
         case .stats: return "Session totals and performance snapshots"
-        case .recentForm: return "A quick look at how the last 10 sessions went"
         case .appearance: return "Choose a color theme for the app"
         case .data: return "Sync health and local data tools"
         case .about: return "App version and build information"
@@ -46,7 +43,6 @@ enum SettingsSection: String, CaseIterable, Hashable {
         case .opponents: return "person.2.fill"
         case .history: return "clock.arrow.circlepath"
         case .stats: return "chart.bar.fill"
-        case .recentForm: return "waveform.path.ecg"
         case .appearance: return "paintbrush.fill"
         case .data: return "icloud.and.arrow.down.fill"
         case .about: return "info.circle.fill"
@@ -110,7 +106,7 @@ struct SettingsView: View {
 
     private var settingGroups: [SettingsGroup] {
         [
-            SettingsGroup(title: "Player", sections: [.me, .account, .stats, .recentForm]),
+            SettingsGroup(title: "Player", sections: [.me, .account, .stats]),
             SettingsGroup(title: "Sessions", sections: [.history]),
             SettingsGroup(title: "People", sections: [.opponents]),
             SettingsGroup(title: "App", sections: [.appearance, .data, .about])
@@ -167,7 +163,7 @@ private struct SettingsSectionRow: View {
         case .account: return Theme.teal
         case .opponents: return Theme.teal
         case .history: return Theme.amber
-        case .stats, .recentForm: return Theme.blue
+        case .stats: return Theme.blue
         case .appearance: return Theme.amber
         case .data: return Theme.green
         case .about: return Theme.text2

@@ -151,7 +151,7 @@ struct SummaryView: View {
                             .font(.caption2)
                             .foregroundColor(Theme.muted)
                         Spacer(minLength: 0)
-                        Text("includes 45s setup buffer per rack")
+                        Text("subtracts 45s setup buffer per rack")
                             .font(.caption2)
                             .foregroundColor(Theme.amber)
                     }
@@ -231,8 +231,10 @@ struct SummaryView: View {
         let successes = session.drillSuccesses
         let misses = session.drillMisses
         let rate = session.drillSuccessRate.map { "\($0)%" } ?? "--"
-        let totalPotted = session.racks.reduce(0) { $0 + ($1.drillBallsMade ?? 0) }
-        let avgPotted = attempts == 0 ? "--" : String(format: "%.1f", Double(totalPotted) / Double(attempts))
+        let template = DrillLibrary.template(id: session.drillID)
+        let totalCompleted = session.racks.reduce(0) { $0 + ($1.drillBallsMade ?? 0) }
+        let avgCompleted = attempts == 0 ? "--" : String(format: "%.1f", Double(totalCompleted) / Double(attempts))
+        let averageLabel = template?.progressTitle() == "Potted" ? "Avg potted" : "Avg completed"
         let progress = session.drillTargetProgress
 
         return SectionCard(title: "Practice") {
@@ -243,7 +245,7 @@ struct SummaryView: View {
                         .foregroundColor(Theme.text)
                     HStack(spacing: 8) {
                         badge(text: session.drillDifficultyLabel, color: Theme.purple)
-                        if let balls = session.drillBallCount { badge(text: "\(balls) balls", color: Theme.amber) }
+                        if let count = session.drillBallCount { badge(text: template?.countText(count) ?? "\(count) reps", color: Theme.amber) }
                         if let target = session.drillTargetLabel { badge(text: target, color: Theme.green) }
                     }
                 }
@@ -289,7 +291,7 @@ struct SummaryView: View {
                     MiniStatCard(label: "Attempts", value: "\(attempts)")
                     MiniStatCard(label: "Success", value: "\(successes)")
                     MiniStatCard(label: "Miss", value: "\(misses)")
-                    MiniStatCard(label: "Avg potted", value: avgPotted)
+                    MiniStatCard(label: averageLabel, value: avgCompleted)
                 }
             }
         }
@@ -358,9 +360,9 @@ struct SummaryView: View {
         return SectionCard(title: "Unforced errors") {
             LazyVGrid(columns: Layout.fourColumn(), spacing: 8) {
                 MiniStatCard(label: "Miss", value: "\(rs.reduce(0) { $0 + $1.missCount })")
-                MiniStatCard(label: "Pos", value: "\(rs.reduce(0) { $0 + $1.positionalCount })")
+                MiniStatCard(label: "Pos", value: "\(rs.reduce(0) { $0 + $1.positionTrackingCount })")
                 MiniStatCard(label: "Safety", value: "\(rs.reduce(0) { $0 + $1.safetyCount })")
-                MiniStatCard(label: "Foul", value: "\(rs.reduce(0) { $0 + $1.foulCount })")
+                MiniStatCard(label: "Pattern", value: "\(rs.reduce(0) { $0 + $1.patternMistakeCount })")
             }
         }
     }

@@ -170,7 +170,7 @@ private struct ErrorSection: View {
                     store.updateRack { $0.missCount = max(0, $0.missCount - 1) }
                 }
 
-                ErrorCounterTile(label: "Positional", value: rack.positionalCount, color: Theme.amber) {
+                ErrorCounterTile(label: "Position", value: rack.positionTrackingCount, color: Theme.amber) {
                     store.updateRack { $0.badPosition += 1 }
                 } decrement: {
                     store.updateRack { $0.badPosition = max(0, $0.badPosition - 1) }
@@ -182,10 +182,10 @@ private struct ErrorSection: View {
                     store.updateRack { $0.badSafety = max(0, $0.badSafety - 1) }
                 }
 
-                ErrorCounterTile(label: "Foul", value: rack.foulCount, color: Theme.red) {
-                    store.updateRack { $0.fouls += 1 }
+                ErrorCounterTile(label: "Pattern", value: rack.patternMistakeCount, color: Theme.purple) {
+                    store.updateRack { $0.patternCount += 1 }
                 } decrement: {
-                    store.updateRack { $0.fouls = max(0, $0.fouls - 1) }
+                    store.updateRack { $0.patternCount = max(0, $0.patternCount - 1) }
                 }
             }
         }
@@ -293,7 +293,8 @@ private struct LogTimerRow: View {
             let bufferSeconds = Session.rackSetupBufferSeconds
             let inBuffer = rawRackElapsed < bufferSeconds
             let rackElapsed = max(0, rawRackElapsed - bufferSeconds)
-            let avgPerRack = session.bufferedAverageRackSeconds(totalSeconds: sessionElapsed)
+            let activeRackCount = max(session.racks.count + 1, 1)
+            let avgPerRack = session.bufferedAverageRackSeconds(totalSeconds: sessionElapsed, rackCount: activeRackCount)
             let rackProgress: Double = {
                 if inBuffer {
                     return min(rawRackElapsed / max(bufferSeconds, 1), 1)
@@ -411,7 +412,10 @@ private struct LandscapeScoreboardView: View {
     @State private var pulsingSide: Side? = nil
     @State private var pressingSide: Side? = nil
     @State private var pressProgress: CGFloat = 0
+    @State private var cancelReadySide: Side? = nil
+    @State private var scorePressTask: Task<Void, Never>? = nil
     @State private var showMenu: Bool = false
+    @State private var showTrackingControls: Bool = true
 
     private var userName: String { profileStore.profile.displayName }
     private var oppName: String {
@@ -421,15 +425,22 @@ private struct LandscapeScoreboardView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            layoutColumn
-                .frame(width: 92)
+            if showTrackingControls {
+                layoutColumn
+                    .frame(width: 92)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
+            }
 
             centerColumn
                 .frame(maxWidth: .infinity)
 
-            errorsColumn
-                .frame(width: 92)
+            if showTrackingControls {
+                errorsColumn
+                    .frame(width: 92)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
         }
+        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: showTrackingControls)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Theme.bg.ignoresSafeArea())
         .overlay(alignment: .top) {
@@ -447,14 +458,23 @@ private struct LandscapeScoreboardView: View {
     // MARK: center (names + score)
 
     private var centerColumn: some View {
-        HStack(alignment: .center, spacing: 16) {
-            playerPanel(name: userName, side: .me, color: Theme.green, score: session.wins)
-            Text(":")
-                .font(.system(size: 110, weight: .ultraLight, design: .rounded))
-                .foregroundColor(Theme.muted.opacity(0.3))
-                .offset(y: -20)
-            playerPanel(name: oppName, side: .opp, color: Theme.red, score: session.losses)
+        ZStack(alignment: .bottom) {
+            HStack(alignment: .center, spacing: 16) {
+                playerPanel(name: userName, side: .me, color: Theme.green, score: session.wins)
+                Text(":")
+                    .font(.system(size: 110, weight: .ultraLight, design: .rounded))
+                    .foregroundColor(Theme.muted.opacity(0.3))
+                    .offset(y: -20)
+                playerPanel(name: oppName, side: .opp, color: Theme.red, score: session.losses)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+
+            if store.sessionStart != nil {
+                LiteTimingStrip(session: session)
+                    .padding(.bottom, 4)
+            }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 12)
     }
 
@@ -489,7 +509,7 @@ private struct LandscapeScoreboardView: View {
             .buttonStyle(.plain)
 
             Text("\(score)")
-                .font(.system(size: 280, weight: .black, design: .rounded))
+                .font(.system(size: 292, weight: .black, design: .rounded))
                 .monospacedDigit()
                 .foregroundColor(color)
                 .lineLimit(1)
@@ -503,32 +523,59 @@ private struct LandscapeScoreboardView: View {
                         .trim(from: 0, to: isPressing ? pressProgress : 0)
                         .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 5, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .frame(width: 245, height: 245)
+                        .frame(width: 255, height: 255)
                         .opacity(isPressing || pressProgress > 0.02 ? 1 : 0)
                         .allowsHitTesting(false)
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { handleScoreTap(side: side) }
-                .onLongPressGesture(minimumDuration: 0.55, pressing: { pressing in
-                    if pressing {
-                        pressingSide = side
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.linear(duration: 0.55)) {
-                            pressProgress = 1.0
-                        }
-                    } else {
-                        pressingSide = nil
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            pressProgress = 0
-                        }
-                    }
-                }, perform: {
-                    handleLongPress()
-                    pressingSide = nil
-                    withAnimation(.easeOut(duration: 0.2)) {
-                        pressProgress = 0
-                    }
-                })
+                .gesture(scorePressGesture(side: side))
+        }
+    }
+
+    private func scorePressGesture(side: Side) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in
+                guard pressingSide == nil else { return }
+                beginScorePress(side: side)
+            }
+            .onEnded { _ in
+                let shouldCancelScore = cancelReadySide == side
+                endScorePress()
+                if shouldCancelScore {
+                    handleLongPress(side: side)
+                } else {
+                    handleScoreTap(side: side)
+                }
+            }
+    }
+
+    private func beginScorePress(side: Side) {
+        scorePressTask?.cancel()
+        pressingSide = side
+        cancelReadySide = nil
+        pressProgress = 0
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.linear(duration: 0.55)) {
+            pressProgress = 1.0
+        }
+        scorePressTask = Task {
+            try? await Task.sleep(nanoseconds: 550_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard pressingSide == side else { return }
+                cancelReadySide = side
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            }
+        }
+    }
+
+    private func endScorePress() {
+        scorePressTask?.cancel()
+        scorePressTask = nil
+        pressingSide = nil
+        cancelReadySide = nil
+        withAnimation(.easeOut(duration: 0.2)) {
+            pressProgress = 0
         }
     }
 
@@ -554,9 +601,66 @@ private struct LandscapeScoreboardView: View {
         }
     }
 
-    private func handleLongPress() {
-        if store.undoLastRack() {
+    private func handleLongPress(side: Side) {
+        let result = side == .me ? "won" : "lost"
+        if store.removeMostRecentRack(result: result) {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+    }
+
+    private struct LiteTimingStrip: View {
+        @EnvironmentObject private var store: SessionLogStore
+        let session: Session
+
+        var body: some View {
+            TimelineView(.periodic(from: Date(), by: 1)) { _ in
+                let now = Date()
+                let sessionElapsed = elapsedSince(store.sessionStart, now: now)
+                let rawRackElapsed = elapsedSince(store.rackStart, now: now)
+                let rackElapsed = max(0, rawRackElapsed - Session.rackSetupBufferSeconds)
+                let activeRackCount = max(session.racks.count + 1, 1)
+                let avgPerRack = session.bufferedAverageRackSeconds(totalSeconds: sessionElapsed, rackCount: activeRackCount)
+
+                HStack(spacing: 0) {
+                    timingMetric("Session", AppFormatters.elapsed(sessionElapsed))
+                    timingDivider
+                    timingMetric("Rack", AppFormatters.elapsed(rackElapsed), valueColor: Theme.green)
+                    timingDivider
+                    timingMetric("Avg", AppFormatters.elapsed(avgPerRack))
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Theme.panel.opacity(0.52))
+                .cornerRadius(14)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(Theme.border.opacity(0.65), lineWidth: 0.6)
+                )
+            }
+        }
+
+        private func elapsedSince(_ start: Date?, now: Date) -> TimeInterval {
+            guard let start else { return 0 }
+            return max(0, now.timeIntervalSince(start))
+        }
+
+        private func timingMetric(_ label: String, _ value: String, valueColor: Color = Theme.text2) -> some View {
+            VStack(spacing: 1) {
+                Text(label.uppercased())
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(Theme.muted.opacity(0.76))
+                Text(value)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundColor(valueColor.opacity(0.9))
+            }
+            .frame(width: 62)
+        }
+
+        private var timingDivider: some View {
+            Rectangle()
+                .fill(Theme.border.opacity(0.8))
+                .frame(width: 0.6, height: 24)
         }
     }
 
@@ -602,15 +706,15 @@ private struct LandscapeScoreboardView: View {
             errorCounter("Miss", count: rack.missCount, color: Theme.teal,
                          inc: { store.updateRack { $0.missCount += 1 } },
                          dec: { store.updateRack { $0.missCount = max(0, $0.missCount - 1) } })
-            errorCounter("Position", count: rack.positionalCount, color: Theme.amber,
+            errorCounter("Position", count: rack.positionTrackingCount, color: Theme.amber,
                          inc: { store.updateRack { $0.badPosition += 1 } },
                          dec: { store.updateRack { $0.badPosition = max(0, $0.badPosition - 1) } })
             errorCounter("Safety", count: rack.safetyCount, color: Theme.blue,
                          inc: { store.updateRack { $0.badSafety += 1 } },
                          dec: { store.updateRack { $0.badSafety = max(0, $0.badSafety - 1) } })
-            errorCounter("Foul", count: rack.foulCount, color: Theme.red,
-                         inc: { store.updateRack { $0.fouls += 1 } },
-                         dec: { store.updateRack { $0.fouls = max(0, $0.fouls - 1) } })
+            errorCounter("Pattern", count: rack.patternMistakeCount, color: Theme.purple,
+                         inc: { store.updateRack { $0.patternCount += 1 } },
+                         dec: { store.updateRack { $0.patternCount = max(0, $0.patternCount - 1) } })
         }
         .padding(.top, 28)
         .padding(.horizontal, 6)
@@ -689,6 +793,17 @@ private struct LandscapeScoreboardView: View {
                     if store.undoLastRack() {
                         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                     }
+                }
+                menuDivider
+                menuRow(
+                    icon: showTrackingControls ? "eye.slash" : "eye",
+                    label: showTrackingControls ? "Hide logging" : "Show logging",
+                    tint: Theme.text2
+                ) {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        showTrackingControls.toggle()
+                    }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }
                 menuDivider
                 menuRow(icon: "arrow.down.right.and.arrow.up.left", label: "Exit Lite view", tint: Theme.text2) {

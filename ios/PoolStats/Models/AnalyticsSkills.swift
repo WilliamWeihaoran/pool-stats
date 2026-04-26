@@ -3,9 +3,9 @@ import Foundation
 extension Analytics {
     static func radarScores(allSessions: [Session], filteredRacks: [Rack], mode: ModeFilter) -> [Int] {
         let n = Double(max(filteredRacks.count, 1))
-        let pos = Double(filteredRacks.reduce(0) { $0 + $1.badPosition })
+        let pos = Double(filteredRacks.reduce(0) { $0 + $1.positionTrackingCount })
         let saf = Double(filteredRacks.reduce(0) { $0 + $1.badSafety })
-        let fou = Double(filteredRacks.reduce(0) { $0 + $1.fouls })
+        let pat = Double(filteredRacks.reduce(0) { $0 + $1.patternMistakeCount })
 
         var tP: Double = 0
         var tA: Double = 0
@@ -24,11 +24,11 @@ extension Analytics {
         let expSafe = Double(r8.count) * 0.5 + Double(r9.count) * 1.25
         let safeRate = expSafe > 0 ? saf / expSafe : 0
         let sScore = Int(round(max(0, 100 * (1 - log(1 + safeRate) / log(1 + 2.3)))))
-        let fScore = Int(round(max(0, 100 * (1 - log(1 + fou / n) / log(4.5)))))
+        let patternScore = Int(round(max(0, 100 * (1 - log(1 + pat / n) / log(4.5)))))
 
         func errCV(_ racks: [Rack]) -> Double {
             guard racks.count >= 2 else { return 0 }
-            let errs = racks.map { $0.fouls + $0.badSafety + $0.badPosition + $0.missCount }
+            let errs = racks.map { $0.unforcedErrorCount }
             let mean = Double(errs.reduce(0, +)) / Double(errs.count)
             if mean == 0 { return 0 }
             let variance = errs.reduce(0.0) { $0 + pow(Double($1) - mean, 2) } / Double(errs.count)
@@ -98,7 +98,7 @@ extension Analytics {
             consScore = Int(round(Double(streakScore) * 0.5 + Double(stabScore) * 0.5))
         }
 
-        return [Int(round(pct * 100)), posScore, sScore, fScore, consScore]
+        return [Int(round(pct * 100)), posScore, sScore, patternScore, consScore]
     }
 
     static func ep(_ r: Rack, game: String) -> Int {

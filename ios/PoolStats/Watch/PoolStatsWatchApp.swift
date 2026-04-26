@@ -26,9 +26,6 @@ private struct WatchRootView: View {
     @EnvironmentObject private var sessionStore: WatchSessionStore
     @EnvironmentObject private var runtime: WatchRuntimeSession
 
-    @State private var game: String = "8ball"
-    @State private var type: String = "match"
-    @State private var opponent: String = ""
     @State private var finishedSession: WatchSession?
     @State private var isReviewingFinishedSession = false
     @State private var requestedRoute: WatchLaunchRoute?
@@ -74,7 +71,7 @@ private struct WatchRootView: View {
                     })
                     .id(active.session.sessionUUID)
                 } else {
-                    WatchSessionStartView(game: $game, type: $type, opponent: $opponent)
+                    WatchSessionStartView()
                 }
             }
             .onAppear {
@@ -117,4 +114,3 @@ private struct WatchRootView: View {
         }
     }
 }
-

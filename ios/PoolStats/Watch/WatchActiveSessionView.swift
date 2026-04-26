@@ -14,7 +14,7 @@ struct WatchActiveSessionView: View {
     @State private var missCount: Int = 0
     @State private var positionalCount: Int = 0
     @State private var safetyCount: Int = 0
-    @State private var foulCount: Int = 0
+    @State private var patternCount: Int = 0
     @State private var showEndRackSheet: Bool = false
     @State private var scoreFlash: ScoreFlash?
     @State private var hasRestoredSheetState = false
@@ -45,7 +45,7 @@ struct WatchActiveSessionView: View {
     private static let missColor     = Color(red: 0.37, green: 0.92, blue: 0.83)
     private static let positionColor = Color(red: 0.98, green: 0.75, blue: 0.25)
     private static let safetyColor   = Color(red: 0.38, green: 0.65, blue: 0.98)
-    private static let foulColor     = Color(red: 0.97, green: 0.44, blue: 0.44)
+    private static let patternColor  = Color(red: 0.66, green: 0.50, blue: 0.98)
 
     private static func breakColor(for balls: Int) -> Color {
         switch balls {
@@ -99,12 +99,12 @@ struct WatchActiveSessionView: View {
                     breakerIsMe: selectedBreaker == "me",
                     breakQualityBalls: selectedBreakBalls,
                     onSaveRack: { result, runout, breakAndRun in
+                        let patch = resultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                             showEndRackSheet = false
                         }
-                        sendResultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
                         showNextRackFlash(for: result)
-                        client.saveRack(sessionUUID: sessionUUID)
+                        client.saveRack(sessionUUID: sessionUUID, patch: patch)
                     },
                     onSaveAndExit: { result, runout, breakAndRun in
                         guard !isFinishingSession else { return }
@@ -301,7 +301,7 @@ struct WatchActiveSessionView: View {
                 }
                 HStack(spacing: 6) {
                     errorTile("Safety",   count: safetyCount,     color: Self.safetyColor)   { d in safetyCount     = max(0, safetyCount + d);     client.patch(.init(badSafety: safetyCount),           sessionUUID: sessionUUID) }
-                    errorTile("Foul",     count: foulCount,       color: Self.foulColor)     { d in foulCount       = max(0, foulCount + d);       client.patch(.init(fouls: foulCount),                 sessionUUID: sessionUUID) }
+                    errorTile("Pattern",  count: patternCount,    color: Self.patternColor)  { d in patternCount    = max(0, patternCount + d);    client.patch(.init(patternCount: patternCount),         sessionUUID: sessionUUID) }
                 }
             }
 
@@ -409,11 +409,16 @@ struct WatchActiveSessionView: View {
 
     // MARK: - Helpers
 
-    private func sendResultPatch(result: String?, runout: Bool, breakAndRun: Bool) {
-        guard let result else { return }
+    private func resultPatch(result: String?, runout: Bool, breakAndRun: Bool) -> WatchRackPatch? {
+        guard let result else { return nil }
         let outcome = result == "won" ? (runout ? "runout" : "noRunout") : "noRunout"
+        return .init(result: result, outcome: outcome, runoutFirst: runout, breakAndRun: breakAndRun)
+    }
+
+    private func sendResultPatch(result: String?, runout: Bool, breakAndRun: Bool) {
+        guard let patch = resultPatch(result: result, runout: runout, breakAndRun: breakAndRun) else { return }
         client.patch(
-            .init(result: result, outcome: outcome, runoutFirst: runout, breakAndRun: breakAndRun),
+            patch,
             sessionUUID: sessionUUID
         )
     }
@@ -424,12 +429,12 @@ struct WatchActiveSessionView: View {
         selectedBreakBalls = rack.breakBalls >= 0 ? min(max(rack.breakBalls, 0), 3) : 0
         breakFoul = rack.breakFoul
         let fresh = rack.breaker == "none" && rack.breakBalls < 0 && rack.result == nil
-            && rack.fouls == 0 && rack.badSafety == 0 && rack.badPosition == 0 && rack.missCount == 0
+            && rack.fouls == 0 && rack.badSafety == 0 && rack.badPosition == 0 && rack.patternCount == 0 && rack.missCount == 0
         selectedLayout = fresh ? nil : rack.layout
         missCount = rack.missCount
         positionalCount = rack.badPosition
         safetyCount = rack.badSafety
-        foulCount = rack.fouls
+        patternCount = rack.patternCount
 
         if selectedBreaker == nil { section = .breakSection }
         else if selectedLayout == nil { section = .layout }
@@ -540,12 +545,15 @@ struct WatchActiveSessionView: View {
 
 private struct WatchDrillActiveSessionView: View {
     @EnvironmentObject private var client: WatchConnectivityClient
+    @EnvironmentObject private var sessionStore: WatchSessionStore
     let active: ActiveSessionSnapshot
 
     @State private var difficulty: String = "standard"
     @State private var targetBallCount: Int = 0
     @State private var ballsMade: Double = 0
     @State private var selectedTags: Set<String> = []
+    @State private var page: DrillLogPage = .mistakes
+    @State private var lastHapticBallsMade: Int = 0
 
     private let mistakeOptions = ["Potting", "Position", "Pattern", "Runout"]
     private var sessionUUID: String { active.session.sessionUUID }
@@ -555,25 +563,79 @@ private struct WatchDrillActiveSessionView: View {
     private var canLogSuccess: Bool { Int(ballsMade) >= targetBallCount }
     private var canLogMiss: Bool { Int(ballsMade) < targetBallCount }
     private var title: String { active.session.drillTitle ?? active.session.label }
+    private var drillTemplates: [WatchDrillTemplatePayload] {
+        if let live = client.snapshot?.availableDrills, !live.isEmpty { return live }
+        if !sessionStore.cachedDrills.isEmpty { return sessionStore.cachedDrills }
+        return WatchDrillCatalog.fallbackTemplates
+    }
+    private var selectedTemplate: WatchDrillTemplatePayload? {
+        drillTemplates.first(where: { $0.id == active.session.drillID })
+    }
+    private var countUnit: WatchDrillCountUnit {
+        selectedTemplate?.resolvedCountUnit ?? .balls
+    }
+    private var progressTitle: String {
+        countUnit.progressTitle
+    }
+    private enum DrillLogPage: Int {
+        case mistakes
+        case potted
+        case actions
+    }
 
     var body: some View {
+        TabView(selection: $page) {
+            mistakesPage.tag(DrillLogPage.mistakes)
+            pottedPage.tag(DrillLogPage.potted)
+            actionsPage.tag(DrillLogPage.actions)
+        }
+        .tabViewStyle(.page(indexDisplayMode: .automatic))
+        .background(Color.black)
+        .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            hydrate()
+            lastHapticBallsMade = Int(ballsMade)
+        }
+        .onChange(of: active.session.drillDifficulty) { _, _ in hydrate() }
+        .onChange(of: active.session.drillBallCount) { _, _ in hydrate() }
+        .onChange(of: Int(ballsMade)) { oldValue, newValue in
+            guard newValue != oldValue else { return }
+            guard newValue != lastHapticBallsMade else { return }
+            lastHapticBallsMade = newValue
+            WKInterfaceDevice.current().play(.click)
+        }
+    }
+
+    private var mistakesPage: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            header
+            mistakes
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+    }
+
+    private var pottedPage: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            header
+            ballsSlider
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+    }
+
+    private var actionsPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 header
-                difficultyControls
-                ballsSlider
-                mistakes
                 actions
                 recentAttempts
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 4)
         }
-        .background(Color.black)
-        .toolbar(.hidden, for: .navigationBar)
-        .onAppear { hydrate() }
-        .onChange(of: active.session.drillDifficulty) { _, _ in hydrate() }
-        .onChange(of: active.session.drillBallCount) { _, _ in hydrate() }
     }
 
     private var header: some View {
@@ -601,37 +663,10 @@ private struct WatchDrillActiveSessionView: View {
         .background(RoundedRectangle(cornerRadius: 9).fill(Color.white.opacity(0.07)))
     }
 
-    private var difficultyControls: some View {
-        HStack(spacing: 7) {
-            Button { stepDifficulty(-1) } label: { Image(systemName: "minus") }
-                .buttonStyle(.bordered)
-                .tint(.white.opacity(0.22))
-                .disabled(currentDifficultyIndex <= 0)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Difficulty")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.45))
-                Text(WatchDrillCatalog.label(for: difficulty))
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(WatchDrillCatalog.color(for: difficulty))
-            }
-            Spacer(minLength: 0)
-            Text("\(targetBallCount) balls")
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(.white.opacity(0.72))
-            Button { stepDifficulty(1) } label: { Image(systemName: "plus") }
-                .buttonStyle(.bordered)
-                .tint(.white.opacity(0.22))
-                .disabled(currentDifficultyIndex >= maxDifficultyIndex)
-        }
-        .padding(8)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Color.white.opacity(0.06)))
-    }
-
     private var ballsSlider: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text("Potted")
+                Text(progressTitle)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.8))
                 Spacer()
@@ -654,8 +689,14 @@ private struct WatchDrillActiveSessionView: View {
                     .foregroundStyle(.white.opacity(0.8))
                 Spacer()
                 if !selectedTags.isEmpty {
-                    Button("Clear") { selectedTags.removeAll() }
+                    Button("Clear") {
+                        WKInterfaceDevice.current().play(.click)
+                        withAnimation(.spring(response: 0.26, dampingFraction: 0.72)) {
+                            selectedTags.removeAll()
+                        }
+                    }
                         .font(.caption2.weight(.bold))
+                        .buttonStyle(WatchLoggingTapStyle())
                 }
             }
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
@@ -663,7 +704,9 @@ private struct WatchDrillActiveSessionView: View {
                     let selected = selectedTags.contains(tag)
                     Button {
                         WKInterfaceDevice.current().play(.click)
-                        if selected { selectedTags.remove(tag) } else { selectedTags.insert(tag) }
+                        withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                            if selected { selectedTags.remove(tag) } else { selectedTags.insert(tag) }
+                        }
                     } label: {
                         Text(tag)
                             .font(.caption2.weight(.bold))
@@ -671,8 +714,15 @@ private struct WatchDrillActiveSessionView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
                             .background(RoundedRectangle(cornerRadius: 12).fill(selected ? WatchDrillCatalog.skillColor(tag) : WatchDrillCatalog.skillColor(tag).opacity(0.14)))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(selected ? WatchDrillCatalog.skillColor(tag).opacity(0.95) : WatchDrillCatalog.skillColor(tag).opacity(0.26), lineWidth: selected ? 1.2 : 1)
+                            )
+                            .shadow(color: selected ? WatchDrillCatalog.skillColor(tag).opacity(0.22) : .clear, radius: 5, y: 2)
+                            .scaleEffect(selected ? 1.02 : 1)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(WatchLoggingTapStyle())
+                    .animation(.spring(response: 0.26, dampingFraction: 0.68), value: selected)
                 }
             }
         }
@@ -696,7 +746,7 @@ private struct WatchDrillActiveSessionView: View {
                     .padding(.vertical, 9)
                     .background(RoundedRectangle(cornerRadius: 14).fill(Color(red: 0.68, green: 0.54, blue: 0.98).opacity(0.16)))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(WatchLoggingTapStyle())
         }
     }
 
@@ -709,7 +759,7 @@ private struct WatchDrillActiveSessionView: View {
                 .padding(.vertical, 12)
                 .background(RoundedRectangle(cornerRadius: 15).fill(disabled ? Color.white.opacity(0.08) : color))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(WatchLoggingTapStyle())
         .disabled(disabled)
     }
 
@@ -760,73 +810,23 @@ private struct WatchDrillActiveSessionView: View {
         if !exit {
             ballsMade = 0
             selectedTags.removeAll()
+            lastHapticBallsMade = 0
         }
     }
 
     private func hydrate() {
         difficulty = active.session.drillDifficulty ?? "standard"
-        targetBallCount = active.session.drillBallCount ?? WatchDrillCatalog.ballCount(drillID: active.session.drillID, difficulty: difficulty)
+        targetBallCount = active.session.drillBallCount ?? WatchDrillCatalog.ballCount(template: selectedTemplate, difficulty: difficulty)
         ballsMade = min(ballsMade, Double(max(targetBallCount, 0)))
     }
 
-    private func stepDifficulty(_ delta: Int) {
-        let levels = WatchDrillCatalog.levels
-        let nextIndex = min(max(currentDifficultyIndex + delta, 0), levels.count - 1)
-        difficulty = levels[nextIndex]
-        targetBallCount = WatchDrillCatalog.ballCount(drillID: active.session.drillID, difficulty: difficulty)
-        ballsMade = min(ballsMade, Double(targetBallCount))
-        WKInterfaceDevice.current().play(.click)
-        client.updateDrillDifficulty(.init(difficulty: difficulty, ballCount: targetBallCount), sessionUUID: sessionUUID)
-    }
-
-    private var currentDifficultyIndex: Int { WatchDrillCatalog.levels.firstIndex(of: difficulty) ?? 2 }
-    private var maxDifficultyIndex: Int { WatchDrillCatalog.levels.count - 1 }
 }
 
-private enum WatchDrillCatalog {
-    static let levels = ["beginner", "easy", "standard", "hard", "expert"]
-
-    static func label(for raw: String) -> String {
-        switch raw {
-        case "beginner": return "Beginner"
-        case "easy": return "Easy"
-        case "standard": return "Standard"
-        case "hard": return "Hard"
-        case "expert": return "Expert"
-        default: return "Drill"
-        }
-    }
-
-    static func color(for raw: String) -> Color {
-        switch raw {
-        case "beginner": return Color(red: 0.37, green: 0.92, blue: 0.83)
-        case "easy": return Color.teal
-        case "standard": return Color(red: 0.98, green: 0.75, blue: 0.25)
-        case "hard": return Color.orange
-        case "expert": return Color(red: 0.97, green: 0.44, blue: 0.44)
-        default: return .white.opacity(0.72)
-        }
-    }
-
-    static func skillColor(_ tag: String) -> Color {
-        switch tag.lowercased() {
-        case "potting": return Color(red: 0.97, green: 0.44, blue: 0.44)
-        case "position": return Color(red: 0.38, green: 0.65, blue: 0.98)
-        case "pattern": return Color(red: 0.37, green: 0.92, blue: 0.83)
-        case "runout": return Color(red: 0.68, green: 0.54, blue: 0.98)
-        default: return .white.opacity(0.72)
-        }
-    }
-
-    static func ballCount(drillID: String?, difficulty: String) -> Int {
-        let counts: [String: [String: Int]] = [
-            "l_drill": ["beginner": 4, "easy": 5, "standard": 7, "hard": 8, "expert": 9],
-            "one_side_pattern": ["beginner": 3, "easy": 4, "standard": 5, "hard": 6, "expert": 7],
-            "stop_shot_ladder": ["beginner": 3, "easy": 4, "standard": 5, "hard": 6, "expert": 7],
-            "centerline_control": ["beginner": 3, "easy": 4, "standard": 5, "hard": 6, "expert": 7],
-            "rail_avoidance": ["beginner": 3, "easy": 4, "standard": 5, "hard": 6, "expert": 7],
-            "open_table_runout": ["beginner": 4, "easy": 5, "standard": 6, "hard": 7, "expert": 8]
-        ]
-        return counts[drillID ?? ""]?[difficulty] ?? 5
+private struct WatchLoggingTapStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .opacity(configuration.isPressed ? 0.92 : 1)
+            .animation(.spring(response: 0.2, dampingFraction: 0.72), value: configuration.isPressed)
     }
 }

@@ -18,7 +18,7 @@ struct GoalCard: View {
         if goal.completedAt != nil { return Theme.green }
         if isComplete { return Theme.green }
         switch goal.metric {
-        case .missErrors, .positionalErrors, .safetyErrors, .foulErrors:
+        case .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
             return Theme.amber
         case .averagePerformance:
             return Theme.purple

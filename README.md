@@ -1,6 +1,6 @@
 # pool-stats
 
-Pool Stats is a native iOS app for logging pool sessions and turning them into actionable stats. It is built in SwiftUI and uses CloudKit plus a local JSON cache for persistence. The app now includes a custom bottom nav, a Goals tab, and a drill-in Settings page with theme choices.
+Pool Stats is a native iOS app for logging pool sessions and turning them into actionable stats. It is built in SwiftUI and uses CloudKit plus a local JSON cache for persistence. The app now includes a custom bottom nav, a Drills tab, Goals, and drill-in Settings pages with theme choices.
 
 ---
 
@@ -21,9 +21,10 @@ That gives you enough detail to improve your game without forcing you to record 
 ## Core Features
 
 **Session logging**
-- Supports 8-ball and 9-ball
-- Supports match and practice sessions
-- Opponent field supports typeahead + quick-pick from existing opponents
+- Supports 8-ball and 9-ball match sessions
+- Practice sessions are drill-based; a practice must choose a drill, difficulty, and target
+- Practice can be started from the Log tab or from a drill detail page
+- Opponent field supports typeahead + quick-pick from existing opponents for match sessions
 - You can create a new opponent inline directly from the log flow
 - Break section combines breaker and break outcome
 - Layout section is separate and uses the four layout states above
@@ -61,20 +62,32 @@ That gives you enough detail to improve your game without forcing you to record 
 - Training activity heatmap (18-week GitHub-style calendar, fills card width, active-day count in header)
 - Error composition trend (stacked area chart, 5-session rolling average)
 
+**Drills**
+- Top-level Drills tab replaces the old History tab
+- Search drills by name/description and filter by multiple skills; filters require drills to match all selected skills
+- Drill library ships with starter templates including L Drill, One-side pattern, Stop-shot ladder, Centerline control, Rail-avoidance pattern, and Open-table runout mini
+- Drill detail pages show fixed SwiftUI table diagrams, adaptive five-level difficulty, Fargo skill labels, secondary focus labels, rules, and a start action
+- Drill diagrams use standard pool-ball colors and selected difficulty ball counts; tapping the diagram opens a larger landscape-shaped layout view
+- Drill practice logging uses W:L success/miss score, compact difficulty controls, four mistake tags (`Potting`, `Position`, `Pattern`, `Runout`), a `Potted` slider, and a foldable attempt log
+- Practice targets can be total attempts or successful reps, such as 3 successful drills
+- Drill practices save as practice sessions with drill metadata; they do not affect match analytics, Fargo, match win rate, or normal rack conversion logic
+
 **History**
+- History now lives in Settings instead of the bottom tab
 - Clean session list with date, duration, and outcome styling
 - Empty session names now fall back to game+mode labels (for example: `8 ball match`)
 - Select mode for deleting sessions
-- Practice sessions and match draws are visually distinguished
+- Drill practice sessions show drill title, difficulty, attempts, success rate, and target context
 - Sync status indicator for local cache vs. iCloud
 - Import / export JSON
 - Built-in sample data can be restored
 
 **Navigation / Settings**
 - Custom bottom navigation bar
-- Dashboard, Log, History, Goals, and Settings tabs
+- Dashboard, Log, Drills, Goals, and Settings tabs
+- History is available from Settings
 - Four theme presets: two dark, two light
-- Settings is split into drill-in sections for Me, Stats, Recent form, Appearance, Data, and About
+- Settings is split into drill-in sections for Me, Stats, Recent form, History, Appearance, Data, and About
 - Me section includes a Nickname field used in the Lite scoreboard
 
 **Goals**
@@ -99,10 +112,10 @@ The app is distributed via TestFlight. Install the TestFlight app on your iPhone
 Open `ios/PoolStats/PoolStats.xcodeproj` in Xcode, select a simulator or device, then run the app.
 
 - **Dashboard** — stats and charts
-- **Log** — start a new session
-- **History** — browse and manage past sessions
+- **Log** — start a match or drill practice session
+- **Drills** — search drills, view layouts, choose difficulty, and start focused practice
 - **Goals** — track long-term training targets
-- **Settings** — personal summary, appearance, sync, and app actions
+- **Settings** — personal summary, history, appearance, sync, and app actions
 
 To move data between devices or keep a backup, use the JSON export/import flow.
 

@@ -13,6 +13,7 @@ struct Rack: Identifiable, Codable, Hashable {
     var fouls: Int
     var badSafety: Int
     var badPosition: Int
+    var patternCount: Int
     var missCount: Int
     var runoutFirst: Bool
     var breakAndRun: Bool
@@ -26,9 +27,11 @@ struct Rack: Identifiable, Codable, Hashable {
     var converted: Bool { outcome == "runout" }
     var isNoRunout: Bool { outcome == "noRunout" }
     var positionalCount: Int { badPosition }
+    var positionTrackingCount: Int { badPosition + fouls }
     var safetyCount: Int { badSafety }
+    var patternMistakeCount: Int { patternCount }
     var foulCount: Int { fouls }
-    var unforcedErrorCount: Int { foulCount + safetyCount + positionalCount + missCount }
+    var unforcedErrorCount: Int { missCount + positionTrackingCount + safetyCount + patternMistakeCount }
     var isDrillAttempt: Bool { drillOutcome != nil }
     var drillOutcomeLabel: String {
         switch drillOutcome {
@@ -51,6 +54,7 @@ struct Rack: Identifiable, Codable, Hashable {
         fouls: Int = 0,
         badSafety: Int = 0,
         badPosition: Int = 0,
+        patternCount: Int = 0,
         missCount: Int = 0,
         runoutFirst: Bool = false,
         breakAndRun: Bool = false,
@@ -73,6 +77,7 @@ struct Rack: Identifiable, Codable, Hashable {
         self.fouls = fouls
         self.badSafety = badSafety
         self.badPosition = badPosition
+        self.patternCount = patternCount
         self.missCount = missCount
         self.runoutFirst = runoutFirst
         self.breakAndRun = breakAndRun
@@ -97,6 +102,7 @@ struct Rack: Identifiable, Codable, Hashable {
         case fouls
         case badSafety
         case badPosition
+        case patternCount
         case missCount
         case runoutFirst
         case breakAndRun
@@ -122,6 +128,7 @@ struct Rack: Identifiable, Codable, Hashable {
         fouls = try c.decode(Int.self, forKey: .fouls)
         badSafety = try c.decode(Int.self, forKey: .badSafety)
         badPosition = try c.decode(Int.self, forKey: .badPosition)
+        patternCount = try c.decodeIfPresent(Int.self, forKey: .patternCount) ?? 0
         missCount = try c.decode(Int.self, forKey: .missCount)
         runoutFirst = try c.decode(Bool.self, forKey: .runoutFirst)
         breakAndRun = try c.decode(Bool.self, forKey: .breakAndRun)
@@ -147,6 +154,7 @@ struct Rack: Identifiable, Codable, Hashable {
         try c.encode(fouls, forKey: .fouls)
         try c.encode(badSafety, forKey: .badSafety)
         try c.encode(badPosition, forKey: .badPosition)
+        try c.encode(patternCount, forKey: .patternCount)
         try c.encode(missCount, forKey: .missCount)
         try c.encode(runoutFirst, forKey: .runoutFirst)
         try c.encode(breakAndRun, forKey: .breakAndRun)

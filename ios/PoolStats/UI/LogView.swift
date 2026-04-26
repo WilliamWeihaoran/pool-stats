@@ -20,7 +20,7 @@ struct LogView: View {
     @State private var suppressAutoLite: Bool = false
 
     private var showLite: Bool {
-        guard let session = logStore.currentSession, session.isDrillPractice == false else { return false }
+        guard logStore.currentSession != nil else { return false }
         if forceLiteScoreboard { return true }
         if suppressAutoLite { return false }
         return isLandscape || verticalSizeClass == .compact
@@ -29,20 +29,32 @@ struct LogView: View {
     var body: some View {
         Group {
             if showLite {
-                LogActiveView(
-                    showSaveToast: $showSaveToast,
-                    showEndConfirm: $showEndConfirm,
-                    showLiteScoreboard: true,
-                    onScoreCardTap: { exitLite() }
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                if logStore.currentSession?.isDrillPractice == true {
+                    DrillLogActiveView(
+                        showEndConfirm: $showEndConfirm,
+                        showLiteMode: true,
+                        onExitLite: { exitLite() }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                } else {
+                    LogActiveView(
+                        showSaveToast: $showSaveToast,
+                        showEndConfirm: $showEndConfirm,
+                        showLiteScoreboard: true,
+                        onScoreCardTap: { exitLite() }
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
             } else {
                 ScrollView {
                     VStack(spacing: 10) {
                         if logStore.currentSession == nil {
                             LogStartView(label: $label)
                         } else if logStore.currentSession?.isDrillPractice == true {
-                            DrillLogActiveView(showEndConfirm: $showEndConfirm)
+                            DrillLogActiveView(
+                                showEndConfirm: $showEndConfirm,
+                                onEnterLite: { enterLite() }
+                            )
                         } else {
                             LogActiveView(
                                 showSaveToast: $showSaveToast,

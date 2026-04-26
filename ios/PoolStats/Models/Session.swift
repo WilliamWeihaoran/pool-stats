@@ -215,21 +215,26 @@ extension Session {
         return (bufferFill, activeFill)
     }
 
+    func adjustedSessionSeconds(totalSeconds: TimeInterval, rackCount: Int? = nil) -> TimeInterval {
+        let count = max(rackCount ?? max(racks.count, 1), 1)
+        return max(0, totalSeconds - Self.rackSetupBufferSeconds * Double(count))
+    }
+
     func bufferedSessionSeconds(totalSeconds: TimeInterval) -> TimeInterval {
-        totalSeconds + Self.rackSetupBufferSeconds * Double(max(0, racks.count - 1))
+        adjustedSessionSeconds(totalSeconds: totalSeconds)
     }
 
     func bufferedPaceBufferPercent(targetPerRack: TimeInterval = 60) -> Int {
         Int(min(100, max(0, Self.rackSetupBufferSeconds / targetPerRack * 100)))
     }
 
-    func bufferedAverageRackSeconds(totalSeconds: TimeInterval) -> TimeInterval {
-        let rackCount = max(racks.count, 1)
-        return bufferedSessionSeconds(totalSeconds: totalSeconds) / Double(rackCount)
+    func bufferedAverageRackSeconds(totalSeconds: TimeInterval, rackCount: Int? = nil) -> TimeInterval {
+        let count = max(rackCount ?? max(racks.count, 1), 1)
+        return adjustedSessionSeconds(totalSeconds: totalSeconds, rackCount: count) / Double(count)
     }
 
-    func bufferedPacePercent(totalSeconds: TimeInterval, targetPerRack: TimeInterval = 60) -> Int {
-        let avg = bufferedAverageRackSeconds(totalSeconds: totalSeconds)
+    func bufferedPacePercent(totalSeconds: TimeInterval, targetPerRack: TimeInterval = 60, rackCount: Int? = nil) -> Int {
+        let avg = bufferedAverageRackSeconds(totalSeconds: totalSeconds, rackCount: rackCount)
         return Int(min(100, max(0, avg / targetPerRack * 100)))
     }
 }

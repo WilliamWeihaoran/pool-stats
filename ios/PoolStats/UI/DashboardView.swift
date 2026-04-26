@@ -29,6 +29,7 @@ struct DashboardView: View {
                     header
                     headerFilters
                     statGrid
+                    if !isPracticeMode { recentFormSection }
                     activitySection
                     if !isPracticeMode { trendSection }
                     mistakesSection
@@ -156,6 +157,48 @@ struct DashboardView: View {
         return HStack(spacing: 8) {
             DashboardKPI(label: "Sessions", value: sessionsCount == 0 ? "—" : String(sessionsCount))
             DashboardKPI(label: "Racks", value: racksCount == 0 ? "—" : String(racksCount))
+        }
+    }
+
+    private var recentFormSection: some View {
+        let recent = Array(filteredSessions.filter { $0.type == "match" }.sorted { $0.ts > $1.ts }.prefix(10))
+        let wins = recent.filter { $0.wins > $0.losses }.count
+        let draws = recent.filter { $0.wins == $0.losses }.count
+        let losses = recent.filter { $0.losses > $0.wins }.count
+        let recordText = recent.isEmpty ? "No matches yet" : "\(wins)W \(draws)D \(losses)L"
+        let subtitle = recent.isEmpty ? "No match results in current filters" : "Last \(recent.count) match results"
+
+        return SectionCard(title: "Recent form") {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+                    Spacer(minLength: 8)
+                    Text(recordText)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(recent.isEmpty ? Theme.muted : Theme.text2)
+                }
+
+                if recent.isEmpty {
+                    Text("Log a few matches and your form will appear here.")
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    RecentFormVisual(sessions: Array(recent.reversed()))
+                    RecentOutcomeMixBar(wins: wins, draws: draws, losses: losses)
+                    HStack {
+                        Text("Outcome mix")
+                            .font(.caption2)
+                            .foregroundColor(Theme.text2)
+                        Spacer(minLength: 8)
+                        Text("Wins · Draws · Losses")
+                            .font(.caption2.weight(.medium))
+                            .foregroundColor(Theme.text2)
+                    }
+                }
+            }
         }
     }
 
@@ -409,17 +452,17 @@ struct DashboardView: View {
         }
 
         let miss = rolling(recent.map { perRack(\.missCount, $0) })
-        let pos  = rolling(recent.map { perRack(\.positionalCount, $0) })
+        let pos  = rolling(recent.map { perRack(\.positionTrackingCount, $0) })
         let saf  = rolling(recent.map { perRack(\.safetyCount, $0) })
-        let foul = rolling(recent.map { perRack(\.foulCount, $0) })
+        let pattern = rolling(recent.map { perRack(\.patternMistakeCount, $0) })
 
         return recent.enumerated().flatMap { i, session in
-            let m = miss[i]; let p = pos[i]; let s = saf[i]; let f = foul[i]
+            let m = miss[i]; let p = pos[i]; let s = saf[i]; let pat = pattern[i]
             return [
                 ErrorStackPoint(id: "\(session.id)-m", sessionIndex: i, bottom: 0,         top: m,             type: "Miss"),
-                ErrorStackPoint(id: "\(session.id)-p", sessionIndex: i, bottom: m,         top: m + p,         type: "Positional"),
+                ErrorStackPoint(id: "\(session.id)-p", sessionIndex: i, bottom: m,         top: m + p,         type: "Position"),
                 ErrorStackPoint(id: "\(session.id)-s", sessionIndex: i, bottom: m + p,     top: m + p + s,     type: "Safety"),
-                ErrorStackPoint(id: "\(session.id)-f", sessionIndex: i, bottom: m + p + s, top: m + p + s + f, type: "Foul")
+                ErrorStackPoint(id: "\(session.id)-pat", sessionIndex: i, bottom: m + p + s, top: m + p + s + pat, type: "Pattern")
             ]
         }
     }
@@ -487,6 +530,92 @@ private struct DashboardKPI: View {
     }
 }
 
+private struct RecentFormVisual: View {
+    let sessions: [Session]
+
+    var body: some View {
+        HStack(alignment: .bottom, spacing: 6) {
+            ForEach(sessions, id: \.sessionUUID) { session in
+                VStack(spacing: 5) {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .fill(color(for: session).opacity(0.24))
+                        .frame(width: 26, height: height(for: session))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                .stroke(color(for: session).opacity(0.8), lineWidth: 1)
+                        )
+                        .overlay {
+                            Text(label(for: session))
+                                .font(.caption2.weight(.black))
+                                .foregroundColor(color(for: session))
+                        }
+                    Circle()
+                        .fill(color(for: session).opacity(0.9))
+                        .frame(width: 4, height: 4)
+                }
+                .frame(maxWidth: .infinity)
+                .accessibilityLabel(accessibilityLabel(for: session))
+            }
+        }
+        .padding(.top, 2)
+    }
+
+    private func label(for session: Session) -> String {
+        if session.wins == session.losses { return "D" }
+        return session.wins > session.losses ? "W" : "L"
+    }
+
+    private func color(for session: Session) -> Color {
+        if session.wins == session.losses { return Theme.amber }
+        return session.wins > session.losses ? Theme.green : Theme.red
+    }
+
+    private func height(for session: Session) -> CGFloat {
+        if session.wins == session.losses { return 32 }
+        let diff = min(abs(session.wins - session.losses), 5)
+        return CGFloat(32 + diff * 5)
+    }
+
+    private func accessibilityLabel(for session: Session) -> String {
+        let score = "\(session.wins) to \(session.losses)"
+        if session.wins == session.losses { return "Draw match, \(score)" }
+        return session.wins > session.losses ? "Match win, \(score)" : "Match loss, \(score)"
+    }
+}
+
+private struct RecentOutcomeMixBar: View {
+    let wins: Int
+    let draws: Int
+    let losses: Int
+
+    private var total: Int { wins + draws + losses }
+
+    var body: some View {
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                segment(count: wins, color: Theme.green, width: geo.size.width)
+                segment(count: draws, color: Theme.amber, width: geo.size.width)
+                segment(count: losses, color: Theme.red, width: geo.size.width)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .background(Theme.panel2.opacity(0.95))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Theme.border, lineWidth: 0.5))
+        }
+        .frame(height: 8)
+        .accessibilityLabel("\(wins) wins, \(draws) draws, \(losses) losses")
+    }
+
+    @ViewBuilder
+    private func segment(count: Int, color: Color, width: CGFloat) -> some View {
+        if total > 0, count > 0 {
+            Rectangle()
+                .fill(color.opacity(0.9))
+                .frame(width: width * CGFloat(count) / CGFloat(total))
+        }
+    }
+}
+
 private struct ErrorStackPoint: Identifiable {
     let id: String
     let sessionIndex: Int
@@ -523,7 +652,7 @@ private struct ErrorTrendChart: View {
             .interpolationMethod(.monotone)
         }
         .chartForegroundStyleScale(
-            domain: ["Miss", "Positional", "Safety", "Foul"],
+            domain: ["Miss", "Position", "Safety", "Pattern"],
             range: [Theme.red, Theme.amber, Theme.teal, Theme.purple]
         )
         .chartXAxis {

@@ -11,9 +11,10 @@ struct LogStartView: View {
     @State private var sessionMode: String = "match"
     @State private var selectedDrillID: String = DrillLibrary.templates.first?.id ?? ""
     @State private var selectedDifficulty: DrillDifficultyLevel = .standard
-    @State private var targetType: String = "successes"
     @State private var targetCount: Int = 3
     @State private var showOpponentPicker: Bool = false
+    @State private var showDrillSelector: Bool = false
+    @State private var drillSearchText: String = ""
     @FocusState private var opponentFocused: Bool
 
     private var selectedTemplate: DrillTemplate {
@@ -41,6 +42,12 @@ struct LogStartView: View {
         .onChange(of: selectedDrillID) { _ in
             selectedDifficulty = selectedTemplate.standardDifficulty.level
         }
+        .sheet(isPresented: $showDrillSelector) {
+            DrillSelectorSheet(
+                selectedDrillID: $selectedDrillID,
+                searchText: $drillSearchText
+            )
+        }
     }
 
     private var header: some View {
@@ -55,12 +62,21 @@ struct LogStartView: View {
     }
 
     private var modeCard: some View {
-        LogSectionCard(title: "Mode") {
-            HStack(spacing: 10) {
-                SessionChoiceCard(title: "Match", isOn: sessionMode == "match", color: Theme.blue) { sessionMode = "match" }
-                SessionChoiceCard(title: "Practice", isOn: sessionMode == "practice", color: Theme.teal) { sessionMode = "practice" }
+        HStack(spacing: 8) {
+            Text("Mode")
+                .font(.caption.weight(.semibold))
+                .foregroundColor(Theme.muted)
+            CompactModeButton(title: "Match", isOn: sessionMode == "match", color: Theme.blue) {
+                sessionMode = "match"
+            }
+            CompactModeButton(title: "Practice", isOn: sessionMode == "practice", color: Theme.teal) {
+                sessionMode = "practice"
             }
         }
+        .padding(8)
+        .background(Theme.panel)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border.opacity(0.75), lineWidth: 0.5))
     }
 
     private var detailsCard: some View {
@@ -85,47 +101,57 @@ struct LogStartView: View {
 
     private var practiceCard: some View {
         LogSectionCard(title: "Drill") {
-            VStack(alignment: .leading, spacing: 12) {
-                Picker("Drill", selection: $selectedDrillID) {
-                    ForEach(DrillLibrary.templates) { template in
-                        Text(template.title).tag(template.id)
+            VStack(alignment: .leading, spacing: 14) {
+                Button {
+                    showDrillSelector = true
+                } label: {
+                    SelectedDrillPickerCard(
+                        template: selectedTemplate,
+                        difficulty: selectedDrillDifficulty,
+                        accent: logStartDifficultyColor(selectedDrillDifficulty.level)
+                    )
+                }
+                .buttonStyle(.plain)
+
+                VStack(alignment: .leading, spacing: 9) {
+                    Text(selectedTemplate.description)
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 6) {
+                        ForEach(Array(selectedTemplate.primarySkills.prefix(3)), id: \.self) { skill in
+                            Text(skill)
+                                .font(.caption2.weight(.bold))
+                                .foregroundColor(logStartSkillColor(skill))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                                .background(logStartSkillColor(skill).opacity(0.14))
+                                .clipShape(Capsule())
+                                .overlay(Capsule().stroke(logStartSkillColor(skill).opacity(0.3), lineWidth: 0.6))
+                        }
+                        Spacer(minLength: 0)
+                        Text(selectedTemplate.difficultyRangeText)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundColor(Theme.text2)
                     }
                 }
-                .pickerStyle(.menu)
-                .tint(Theme.teal)
 
-                Text(selectedTemplate.description)
-                    .font(.caption)
-                    .foregroundColor(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 9) {
                     HStack {
                         Text("Difficulty")
                             .font(.caption.weight(.semibold))
                             .foregroundColor(Theme.text2)
                         Spacer()
-                        Text("\(selectedDrillDifficulty.level.label) · \(selectedDrillDifficulty.ballCount) balls")
+                        Text(selectedTemplate.difficultySummary(selectedDrillDifficulty))
                             .font(.caption.weight(.bold))
-                            .foregroundColor(difficultyColor(for: selectedDrillDifficulty.level))
+                            .foregroundColor(logStartDifficultyColor(selectedDrillDifficulty.level))
                     }
-                    HStack(spacing: 7) {
-                        ForEach(selectedTemplate.difficultyLevels) { difficulty in
-                            Button {
-                                selectedDifficulty = difficulty.level
-                            } label: {
-                                Text(difficulty.level.label.prefix(1))
-                                    .font(.caption.weight(.black))
-                                    .foregroundColor(selectedDifficulty == difficulty.level ? .black.opacity(0.82) : difficultyColor(for: difficulty.level))
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 34)
-                                    .background(selectedDifficulty == difficulty.level ? difficultyColor(for: difficulty.level) : difficultyColor(for: difficulty.level).opacity(0.12))
-                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(difficultyColor(for: difficulty.level).opacity(0.35), lineWidth: 0.7))
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
+                    DifficultyGradientSlider(levels: selectedTemplate.difficultyLevels, selectedLevel: $selectedDifficulty)
+                    Text(selectedDrillDifficulty.constraint)
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -133,26 +159,26 @@ struct LogStartView: View {
 
     private var targetCard: some View {
         LogSectionCard(title: "Target") {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
-                    SessionChoiceCard(title: "Successes", isOn: targetType == "successes", color: Theme.green) { targetType = "successes" }
-                    SessionChoiceCard(title: "Attempts", isOn: targetType == "attempts", color: Theme.amber) { targetType = "attempts" }
-                }
-                Stepper(value: $targetCount, in: 1...50) {
-                    HStack {
-                        Text(targetType == "successes" ? "Successful reps" : "Total attempts")
-                            .font(.caption)
-                            .foregroundColor(Theme.muted)
-                        Spacer()
-                        Text("\(targetCount)")
-                            .font(.headline.weight(.bold).monospacedDigit())
-                            .foregroundColor(targetType == "successes" ? Theme.green : Theme.amber)
+            HStack(alignment: .center, spacing: 14) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 7) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(Theme.green)
+                        Text("Successes")
+                            .font(.headline.weight(.bold))
+                            .foregroundColor(Theme.green)
                     }
+                    Text("Stop the drill when you make the selected number of successful reps.")
+                        .font(.caption)
+                        .foregroundColor(Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(targetSummary)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.green)
                 }
-                Text(targetSummary)
-                    .font(.caption)
-                    .foregroundColor(Theme.text2)
-                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+                SuccessRepWheel(value: $targetCount, range: 1...30)
             }
         }
     }
@@ -272,7 +298,7 @@ struct LogStartView: View {
                 store.startDrillPractice(
                     template: selectedTemplate,
                     difficulty: selectedDrillDifficulty,
-                    targetType: targetType,
+                    targetType: "successes",
                     targetCount: targetCount
                 )
             } else {
@@ -306,7 +332,7 @@ struct LogStartView: View {
 
     private var summaryText: String {
         if sessionMode == "practice" {
-            return [selectedTemplate.title, selectedDrillDifficulty.level.label, targetSummary].joined(separator: " · ")
+            return [selectedTemplate.title, selectedTemplate.difficultySummary(selectedDrillDifficulty), targetSummary].joined(separator: " · ")
         }
         let gameText = game == "8ball" ? "8-ball" : "9-ball"
         let segments = ["Match", gameText, trimmedOpponent.isEmpty ? nil : "vs \(trimmedOpponent)", dateSummary]
@@ -314,7 +340,7 @@ struct LogStartView: View {
     }
 
     private var targetSummary: String {
-        targetType == "successes" ? "\(targetCount) successful reps" : "\(targetCount) attempts"
+        "\(targetCount) successful reps"
     }
 
     private var dateSummary: String { AppFormatters.shortDate(sessionDate) }
@@ -348,41 +374,5 @@ struct LogStartView: View {
 
     private func isFavoriteOpponent(_ name: String) -> Bool {
         opponentStore.profile(for: name)?.isFavorite == true
-    }
-
-    private func difficultyColor(for level: DrillDifficultyLevel) -> Color {
-        switch level {
-        case .beginner: return Theme.green
-        case .easy: return Theme.teal
-        case .standard: return Theme.amber
-        case .hard: return Color.orange
-        case .expert: return Theme.red
-        }
-    }
-}
-
-private struct SessionChoiceCard: View {
-    let title: String
-    let isOn: Bool
-    let color: Color
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack {
-                Text(title)
-                    .font(.headline)
-                    .foregroundColor(isOn ? color : Theme.text)
-                Spacer()
-                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isOn ? color : Theme.muted)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-            .background(isOn ? color.opacity(0.15) : Theme.panel)
-            .cornerRadius(14)
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(isOn ? color : Theme.border, lineWidth: 0.8))
-        }
-        .buttonStyle(.plain)
     }
 }
