@@ -15,6 +15,8 @@ struct SummaryView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
+                AppBackButton(label: "Back")
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 header
                 timeSection
                 performanceSection
@@ -33,6 +35,8 @@ struct SummaryView: View {
         }
         .background(Theme.bg)
         .navigationTitle("Summary")
+        .toolbar(.hidden, for: .navigationBar)
+        .appBackSwipeEnabled()
         .onAppear {
             labelText = session.label
             opponentText = session.opponent

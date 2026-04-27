@@ -109,7 +109,8 @@ struct WatchActiveSessionView: View {
                     onSaveAndExit: { result, runout, breakAndRun in
                         guard !isFinishingSession else { return }
                         isFinishingSession = true
-                        sendResultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
+                        let patch = resultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
+                        client.saveRack(sessionUUID: sessionUUID, patch: patch)
                         let finished = finishedSession(result: result, runout: runout, breakAndRun: breakAndRun)
                         withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                             showEndRackSheet = false
@@ -412,14 +413,20 @@ struct WatchActiveSessionView: View {
     private func resultPatch(result: String?, runout: Bool, breakAndRun: Bool) -> WatchRackPatch? {
         guard let result else { return nil }
         let outcome = result == "won" ? (runout ? "runout" : "noRunout") : "noRunout"
-        return .init(result: result, outcome: outcome, runoutFirst: runout, breakAndRun: breakAndRun)
-    }
-
-    private func sendResultPatch(result: String?, runout: Bool, breakAndRun: Bool) {
-        guard let patch = resultPatch(result: result, runout: runout, breakAndRun: breakAndRun) else { return }
-        client.patch(
-            patch,
-            sessionUUID: sessionUUID
+        return .init(
+            result: result,
+            breaker: selectedBreaker,
+            breakBalls: selectedBreaker == nil ? nil : selectedBreakBalls,
+            breakFoul: selectedBreaker == nil ? nil : breakFoul,
+            layout: selectedLayout,
+            outcome: outcome,
+            fouls: rack?.fouls,
+            badSafety: safetyCount,
+            badPosition: positionalCount,
+            patternCount: patternCount,
+            missCount: missCount,
+            runoutFirst: runout,
+            breakAndRun: breakAndRun
         )
     }
 

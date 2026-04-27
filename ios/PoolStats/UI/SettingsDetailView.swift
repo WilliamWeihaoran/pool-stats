@@ -4,7 +4,6 @@ struct SettingsDetailView: View {
     let section: SettingsSection
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
-    @Environment(\.dismiss) private var dismiss
     private let tabBarClearance: CGFloat = 74
 
     var body: some View {
@@ -33,22 +32,12 @@ struct SettingsDetailView: View {
         .task {
             opponentStore.sync(with: store.sessions)
         }
+        .appBackSwipeEnabled()
     }
 
     private var detailHeader: some View {
         HStack(alignment: .top, spacing: 10) {
-            Button {
-                dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.caption.weight(.semibold))
-                    .foregroundColor(Theme.text)
-                    .frame(width: 32, height: 32)
-                    .background(Theme.panel2)
-                    .cornerRadius(10)
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
-            }
-            .buttonStyle(.plain)
+            AppBackButton(label: "Settings")
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Settings")

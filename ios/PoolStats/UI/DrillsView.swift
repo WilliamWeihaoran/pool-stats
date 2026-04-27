@@ -49,6 +49,7 @@ struct DrillsView: View {
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
+        .appBackSwipeEnabled()
     }
 
     private var searchAndFilters: some View {
@@ -181,6 +182,7 @@ private struct DrillDetailView: View {
         }
         .background(Theme.bg)
         .toolbar(.hidden, for: .navigationBar)
+        .appBackSwipeEnabled()
         .onAppear { selectedLevel = template.standardDifficulty.level }
         .fullScreenCover(isPresented: $showPicture) {
             DrillPictureExpandedView(template: template, difficulty: selectedDifficulty)
@@ -188,21 +190,7 @@ private struct DrillDetailView: View {
     }
 
     private var backButton: some View {
-        Button { dismiss() } label: {
-            HStack(spacing: 7) {
-                Image(systemName: "chevron.left")
-                    .font(.caption.weight(.bold))
-                Text("Drills")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .foregroundColor(Theme.text2)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(Theme.panel2.opacity(0.85))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(Theme.border, lineWidth: 0.5))
-        }
-        .buttonStyle(.plain)
+        AppBackButton(label: "Drills")
     }
 
     private var detailHeader: some View {

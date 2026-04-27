@@ -9,6 +9,7 @@ struct HistoryView: View {
     @State private var selection = Set<Int64>()
     @State private var isSelecting: Bool = false
     @State private var showDeleteConfirm: Bool = false
+    @State private var pendingDeleteIDs: [Int64] = []
     @State private var selectedSession: Session?
     @State private var activePickerID: String? = nil
 
@@ -89,6 +90,15 @@ struct HistoryView: View {
                                 }
                                 .buttonStyle(.plain)
                                 .listRowBackground(Theme.panel2)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: !isSelecting) {
+                                    if !isSelecting {
+                                        Button(role: .destructive) {
+                                            requestDelete(ids: [session.id])
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                                }
                             }
                         }
                         .listStyle(.plain)
@@ -108,13 +118,19 @@ struct HistoryView: View {
                 SummaryView(session: session)
             }
         }
-        .alert("Delete selected sessions?", isPresented: $showDeleteConfirm) {
+        .alert(deleteAlertTitle, isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
-                Task { await store.deleteSessions(ids: Array(selection)) }
+                let ids = pendingDeleteIDs
+                pendingDeleteIDs = []
                 selection.removeAll()
                 isSelecting = false
+                Task { await store.deleteSessions(ids: ids) }
             }
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {
+                pendingDeleteIDs = []
+            }
+        } message: {
+            Text(deleteAlertMessage)
         }
         .task {
             opponentStore.sync(with: store.sessions)
@@ -224,7 +240,7 @@ struct HistoryView: View {
 
             if isSelecting {
                 Button {
-                    showDeleteConfirm = true
+                    requestDelete(ids: Array(selection))
                 } label: {
                     Image(systemName: "trash")
                         .font(.caption.weight(.semibold))
@@ -259,6 +275,17 @@ struct HistoryView: View {
             rows = rows.filter { $0.label.lowercased().contains(searchText.lowercased()) }
         }
         return rows
+    }
+
+    private var deleteAlertTitle: String {
+        pendingDeleteIDs.count == 1 ? "Delete session?" : "Delete selected sessions?"
+    }
+
+    private var deleteAlertMessage: String {
+        if pendingDeleteIDs.count == 1 {
+            return "This session will be removed from History."
+        }
+        return "\(pendingDeleteIDs.count) sessions will be removed from History."
     }
 
     private func newestFirst(_ lhs: Session, _ rhs: Session) -> Bool {
@@ -302,5 +329,11 @@ struct HistoryView: View {
         } else {
             selection.insert(id)
         }
+    }
+
+    private func requestDelete(ids: [Int64]) {
+        guard ids.isEmpty == false else { return }
+        pendingDeleteIDs = ids
+        showDeleteConfirm = true
     }
 }

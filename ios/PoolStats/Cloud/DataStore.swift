@@ -486,6 +486,10 @@ final class WatchSyncStore: NSObject, ObservableObject {
                 pushSnapshot(message: "already_active")
                 return
             }
+            if logStore.currentSession != nil {
+                pushSnapshot(message: "active_session_exists")
+                return
+            }
             if start.type == "practice", let drillID = start.drillID, let template = DrillLibrary.template(id: drillID) {
                 let fallbackDifficulty = template.standardDifficulty
                 let resolvedDifficulty: DrillDifficulty = {

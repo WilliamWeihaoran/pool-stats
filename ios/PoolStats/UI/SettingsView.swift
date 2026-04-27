@@ -71,6 +71,7 @@ struct SettingsView: View {
                     .toolbar(.hidden, for: .navigationBar)
             }
         }
+        .appBackSwipeEnabled()
     }
 
     private var header: some View {

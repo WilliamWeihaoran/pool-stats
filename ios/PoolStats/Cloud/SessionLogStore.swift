@@ -124,6 +124,7 @@ final class SessionLogStore: ObservableObject {
 
     @discardableResult
     func saveRackFromRemote() -> Bool {
+        normalizeRemoteMatchRackForSave()
         let ok = saveRack()
         if ok { showExternalNotice("Rack saved on watch") }
         return ok
@@ -241,6 +242,7 @@ final class SessionLogStore: ObservableObject {
         guard var currentSession, currentSession.isDrillPractice == false else { return }
         currentSession.performanceRating = max(1, min(10, rating))
         self.currentSession = currentSession
+        normalizeRemoteMatchRackForSave()
         _ = saveRack()
         await endSession(savingTo: store)
         showExternalNotice("Session ended on watch")
@@ -256,6 +258,26 @@ final class SessionLogStore: ObservableObject {
         sessionStart = nil
         rackStart = nil
         externalUpdateNotice = nil
+    }
+
+    private func normalizeRemoteMatchRackForSave() {
+        guard currentSession?.isDrillPractice == false, var rack = currentRack else { return }
+        guard let result = rack.result else { return }
+
+        if rack.outcome == nil {
+            rack.outcome = rack.runoutFirst && result == "won" ? "runout" : "noRunout"
+        }
+        if rack.breaker == "none" || rack.breaker == "open" {
+            rack.breaker = result == "won" ? "me" : "opp"
+        }
+        if rack.breakBalls < 0 {
+            rack.breakBalls = 1
+        }
+        if rack.layout == "none" {
+            rack.layout = "open"
+        }
+        rack.breakAndRun = rack.runoutFirst && rack.breaker == "me" && rack.breakBalls >= 1
+        currentRack = rack
     }
 
     var activeSnapshot: ActiveSessionSnapshot? {
