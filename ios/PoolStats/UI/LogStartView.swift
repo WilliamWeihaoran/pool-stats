@@ -302,7 +302,7 @@ struct LogStartView: View {
                     targetCount: targetCount
                 )
             } else {
-                store.startSession(game: game, type: "match", label: trimmedLabel, opponent: trimmedOpponent, date: sessionDate)
+                store.startSession(game: game, label: trimmedLabel, opponent: trimmedOpponent, date: sessionDate)
             }
         } label: {
             HStack {

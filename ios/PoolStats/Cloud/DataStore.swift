@@ -352,6 +352,7 @@ struct WatchSessionSnapshot: Codable, Hashable {
     var active: ActiveSessionSnapshot?
     var availableOpponents: [String]
     var availableDrills: [WatchDrillTemplatePayload]
+    var clearedSessionUUID: String? = nil
     var acknowledgedAtMs: Int64
     var message: String?
 }
@@ -365,6 +366,7 @@ final class WatchSyncStore: NSObject, ObservableObject {
     private weak var opponentStore: OpponentStore?
     private var cancellables: Set<AnyCancellable> = []
     private var lastKnownActiveSessionUUID: String?
+    private var lastClearedSessionUUID: String?
 
     func bind(dataStore: DataStore, logStore: SessionLogStore, opponentStore: OpponentStore) {
         self.dataStore = dataStore
@@ -380,8 +382,10 @@ final class WatchSyncStore: NSObject, ObservableObject {
                 let message: String?
                 if let session {
                     self.lastKnownActiveSessionUUID = session.sessionUUID
+                    self.lastClearedSessionUUID = nil
                     message = nil
                 } else if self.lastKnownActiveSessionUUID != nil {
+                    self.lastClearedSessionUUID = self.lastKnownActiveSessionUUID
                     self.lastKnownActiveSessionUUID = nil
                     message = "session_cleared"
                 } else {
@@ -438,6 +442,7 @@ final class WatchSyncStore: NSObject, ObservableObject {
             active: logStore?.activeSnapshotForWatch,
             availableOpponents: availableOpponents(),
             availableDrills: availableDrills(),
+            clearedSessionUUID: logStore?.activeSnapshotForWatch == nil ? lastClearedSessionUUID : nil,
             acknowledgedAtMs: nowMs(),
             message: message
         )
@@ -460,15 +465,14 @@ final class WatchSyncStore: NSObject, ObservableObject {
         let snapshot = makeSnapshot(message: message)
         guard let payload = payload(for: snapshot) else { return }
         let session = WCSession.default
+        try? session.updateApplicationContext(
+            ["action": WatchSyncAction.sessionSnapshot.rawValue, "snapshot": payload]
+        )
         if session.isReachable {
             session.sendMessage(
                 ["action": WatchSyncAction.sessionSnapshot.rawValue, "snapshot": payload],
                 replyHandler: nil,
                 errorHandler: nil
-            )
-        } else {
-            try? session.updateApplicationContext(
-                ["action": WatchSyncAction.sessionSnapshot.rawValue, "snapshot": payload]
             )
         }
     }
@@ -514,7 +518,6 @@ final class WatchSyncStore: NSObject, ObservableObject {
                 let date = start.timestampMs.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
                 logStore.startSession(
                     game: start.game,
-                    type: "match",
                     label: "",
                     opponent: start.opponent,
                     date: date,

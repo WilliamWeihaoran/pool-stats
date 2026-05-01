@@ -415,7 +415,7 @@ private struct LandscapeScoreboardView: View {
     @State private var cancelReadySide: Side? = nil
     @State private var scorePressTask: Task<Void, Never>? = nil
     @State private var showMenu: Bool = false
-    @State private var showTrackingControls: Bool = true
+    @State private var showTrackingControls: Bool = false
 
     private var userName: String { profileStore.profile.displayName }
     private var oppName: String {
@@ -458,27 +458,32 @@ private struct LandscapeScoreboardView: View {
     // MARK: center (names + score)
 
     private var centerColumn: some View {
-        ZStack(alignment: .bottom) {
+        GeometryReader { geo in
+            let scoreFontSize = scoreFontSize(for: geo.size)
+
             HStack(alignment: .center, spacing: 16) {
-                playerPanel(name: userName, side: .me, color: Theme.green, score: session.wins)
+                playerPanel(name: userName, side: .me, color: Theme.green, score: session.wins, scoreFontSize: scoreFontSize)
                 Text(":")
-                    .font(.system(size: 110, weight: .ultraLight, design: .rounded))
+                    .font(.system(size: scoreFontSize * 0.38, weight: .ultraLight, design: .rounded))
                     .foregroundColor(Theme.muted.opacity(0.3))
-                    .offset(y: -20)
-                playerPanel(name: oppName, side: .opp, color: Theme.red, score: session.losses)
+                    .offset(y: -scoreFontSize * 0.07)
+                playerPanel(name: oppName, side: .opp, color: Theme.red, score: session.losses, scoreFontSize: scoreFontSize)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-
-            if store.sessionStart != nil {
-                LiteTimingStrip(session: session)
-                    .padding(.bottom, 4)
-            }
+            .animation(.spring(response: 0.28, dampingFraction: 0.82), value: showTrackingControls)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(.horizontal, 12)
     }
 
-    private func playerPanel(name: String, side: Side, color: Color, score: Int) -> some View {
+    private func scoreFontSize(for size: CGSize) -> CGFloat {
+        let heightLimit = size.height * (showTrackingControls ? 0.61 : 0.76)
+        let widthLimit = size.width * (showTrackingControls ? 0.34 : 0.40)
+        let maxSize: CGFloat = showTrackingControls ? 230 : 320
+        return min(maxSize, max(150, min(heightLimit, widthLimit)))
+    }
+
+    private func playerPanel(name: String, side: Side, color: Color, score: Int, scoreFontSize: CGFloat) -> some View {
         let isBreaker = (side == .me && rack.breaker == "me") || (side == .opp && rack.breaker == "opp")
         let isPulsing = pulsingSide == side
         let isPressing = pressingSide == side
@@ -509,7 +514,7 @@ private struct LandscapeScoreboardView: View {
             .buttonStyle(.plain)
 
             Text("\(score)")
-                .font(.system(size: 292, weight: .black, design: .rounded))
+                .font(.system(size: scoreFontSize, weight: .black, design: .rounded))
                 .monospacedDigit()
                 .foregroundColor(color)
                 .lineLimit(1)
@@ -523,7 +528,7 @@ private struct LandscapeScoreboardView: View {
                         .trim(from: 0, to: isPressing ? pressProgress : 0)
                         .stroke(color.opacity(0.6), style: StrokeStyle(lineWidth: 5, lineCap: .round))
                         .rotationEffect(.degrees(-90))
-                        .frame(width: 255, height: 255)
+                        .frame(width: scoreFontSize * 0.87, height: scoreFontSize * 0.87)
                         .opacity(isPressing || pressProgress > 0.02 ? 1 : 0)
                         .allowsHitTesting(false)
                 }
@@ -605,62 +610,6 @@ private struct LandscapeScoreboardView: View {
         let result = side == .me ? "won" : "lost"
         if store.removeMostRecentRack(result: result) {
             UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        }
-    }
-
-    private struct LiteTimingStrip: View {
-        @EnvironmentObject private var store: SessionLogStore
-        let session: Session
-
-        var body: some View {
-            TimelineView(.periodic(from: Date(), by: 1)) { _ in
-                let now = Date()
-                let sessionElapsed = elapsedSince(store.sessionStart, now: now)
-                let rawRackElapsed = elapsedSince(store.rackStart, now: now)
-                let rackElapsed = max(0, rawRackElapsed - Session.rackSetupBufferSeconds)
-                let activeRackCount = max(session.racks.count + 1, 1)
-                let avgPerRack = session.bufferedAverageRackSeconds(totalSeconds: sessionElapsed, rackCount: activeRackCount)
-
-                HStack(spacing: 0) {
-                    timingMetric("Session", AppFormatters.elapsed(sessionElapsed))
-                    timingDivider
-                    timingMetric("Rack", AppFormatters.elapsed(rackElapsed), valueColor: Theme.green)
-                    timingDivider
-                    timingMetric("Avg", AppFormatters.elapsed(avgPerRack))
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
-                .background(Theme.panel.opacity(0.52))
-                .cornerRadius(14)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(Theme.border.opacity(0.65), lineWidth: 0.6)
-                )
-            }
-        }
-
-        private func elapsedSince(_ start: Date?, now: Date) -> TimeInterval {
-            guard let start else { return 0 }
-            return max(0, now.timeIntervalSince(start))
-        }
-
-        private func timingMetric(_ label: String, _ value: String, valueColor: Color = Theme.text2) -> some View {
-            VStack(spacing: 1) {
-                Text(label.uppercased())
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundColor(Theme.muted.opacity(0.76))
-                Text(value)
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundColor(valueColor.opacity(0.9))
-            }
-            .frame(width: 62)
-        }
-
-        private var timingDivider: some View {
-            Rectangle()
-                .fill(Theme.border.opacity(0.8))
-                .frame(width: 0.6, height: 24)
         }
     }
 
@@ -797,7 +746,7 @@ private struct LandscapeScoreboardView: View {
                 menuDivider
                 menuRow(
                     icon: showTrackingControls ? "eye.slash" : "eye",
-                    label: showTrackingControls ? "Hide logging" : "Show logging",
+                    label: showTrackingControls ? "Hide tracking" : "Show tracking",
                     tint: Theme.text2
                 ) {
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {

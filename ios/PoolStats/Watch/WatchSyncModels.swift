@@ -315,6 +315,7 @@ struct WatchSession: Codable, Hashable {
 struct ActiveSessionSnapshot: Codable, Hashable {
     var session: WatchSession
     var rack: WatchRack?
+    var sessionStartedAt: Date?
     var rackStartedAt: Date?
 }
 
@@ -323,6 +324,7 @@ struct WatchSessionSnapshot: Codable, Hashable {
     var active: ActiveSessionSnapshot?
     var availableOpponents: [String]
     var availableDrills: [WatchDrillTemplatePayload]? = nil
+    var clearedSessionUUID: String? = nil
     var acknowledgedAtMs: Int64
     var message: String?
 }

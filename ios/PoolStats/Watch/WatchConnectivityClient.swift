@@ -32,14 +32,13 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
         send(WatchSyncEnvelope(action: .attachActiveSession, sentAtMs: nowMs()))
     }
 
-    func startSession(game: String, type: String, opponent: String) {
-        let normalizedType = "match"
-        let sessionUUID = sessionStore?.startSession(game: game, type: normalizedType, opponent: opponent)
+    func startSession(game: String, opponent: String) {
+        let sessionUUID = sessionStore?.startSession(game: game, opponent: opponent)
             ?? UUID().uuidString
         send(WatchSyncEnvelope(
             action: .startSession,
             sessionUUID: sessionUUID,
-            start: WatchSessionStartPayload(game: game, type: normalizedType, opponent: opponent, timestampMs: nowMs()),
+            start: WatchSessionStartPayload(game: game, type: "match", opponent: opponent, timestampMs: nowMs()),
             sentAtMs: nowMs()
         ))
     }
@@ -181,14 +180,21 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
             sessionStore?.updateDrillCatalog(drills)
         }
         // Phone is authoritative — adopt its active session if it has one.
-        // If it has none with an explicit clear message, remove any local active state too.
+        // If it has none with a matching clear marker, remove any local active state too.
         if let active = decoded.active {
             sessionStore?.applyRemote(active)
-        } else if isSessionClearMessage(decoded.message) {
+        } else if shouldClearLocalSession(for: decoded) {
             sessionStore?.clear()
         } else if sessionStore?.activeSnapshot == nil {
             WatchComplicationStateStore.clear()
         }
+    }
+
+    private func shouldClearLocalSession(for snapshot: WatchSessionSnapshot) -> Bool {
+        if let clearedUUID = snapshot.clearedSessionUUID {
+            return sessionStore?.activeSnapshot?.session.sessionUUID == clearedUUID
+        }
+        return isSessionClearMessage(snapshot.message)
     }
 
     private func isSessionClearMessage(_ message: String?) -> Bool {

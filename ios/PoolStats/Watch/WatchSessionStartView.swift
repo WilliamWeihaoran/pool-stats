@@ -110,7 +110,6 @@ struct WatchSessionStartView: View {
                 } else {
                     client.startSession(
                         game: selectedGame,
-                        type: "match",
                         opponent: selectedOpponent.isEmpty ? "Other" : selectedOpponent
                     )
                 }

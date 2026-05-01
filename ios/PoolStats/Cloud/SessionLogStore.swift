@@ -11,13 +11,11 @@ final class SessionLogStore: ObservableObject {
 
     func startSession(
         game: String,
-        type: String,
         label: String,
         opponent: String,
         date: Date,
         sessionUUID: String? = nil
     ) {
-        // Generic starts are match-only. Drill practices are created via startDrillPractice.
         let cal = Calendar.current
         let sessionDate = cal.startOfDay(for: date)
         currentSession = Session(
@@ -73,11 +71,19 @@ final class SessionLogStore: ObservableObject {
         currentSession = session
         currentRack = inProgressRack ?? Rack(index: session.racks.count + 1)
         if sessionStart == nil, Calendar.current.isDateInToday(session.ts) {
-            sessionStart = Date()
+            sessionStart = session.ts
         }
         if rackStart == nil {
-            rackStart = Date()
+            rackStart = sessionStart ?? session.ts
         }
+    }
+
+    func attachActiveSession(_ snapshot: ActiveSessionSnapshot) {
+        currentSession = snapshot.session
+        currentRack = snapshot.rack ?? Rack(index: snapshot.session.racks.count + 1)
+        sessionStart = snapshot.sessionStartedAt
+            ?? (Calendar.current.isDateInToday(snapshot.session.ts) ? snapshot.session.ts : nil)
+        rackStart = snapshot.rackStartedAt ?? sessionStart
     }
 
     func matchesActiveSession(_ sessionUUID: String?) -> Bool {
@@ -282,7 +288,7 @@ final class SessionLogStore: ObservableObject {
 
     var activeSnapshot: ActiveSessionSnapshot? {
         guard let currentSession else { return nil }
-        return ActiveSessionSnapshot(session: currentSession, rack: currentRack, rackStartedAt: rackStart)
+        return ActiveSessionSnapshot(session: currentSession, rack: currentRack, sessionStartedAt: sessionStart, rackStartedAt: rackStart)
     }
 
     var activeSnapshotForWatch: ActiveSessionSnapshot? {
@@ -319,5 +325,6 @@ struct WatchRackPatch: Codable, Hashable {
 struct ActiveSessionSnapshot: Codable, Hashable {
     var session: Session
     var rack: Rack?
+    var sessionStartedAt: Date?
     var rackStartedAt: Date?
 }

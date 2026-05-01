@@ -344,9 +344,7 @@ struct WatchActiveSessionView: View {
 
                 HStack(alignment: .center, spacing: 0) {
                     VStack(spacing: 2) {
-                        Text("\(flash.wins)")
-                            .font(.system(size: 64, weight: .black, design: .rounded).monospacedDigit())
-                            .foregroundStyle(Color(red: 0.37, green: 0.92, blue: 0.83))
+                        scoreFlashNumber(flash.wins, color: Color(red: 0.37, green: 0.92, blue: 0.83), flash: flash)
                         Text("Me")
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(Color(red: 0.37, green: 0.92, blue: 0.83).opacity(0.7))
@@ -358,9 +356,7 @@ struct WatchActiveSessionView: View {
                         .foregroundStyle(.white.opacity(0.3))
 
                     VStack(spacing: 2) {
-                        Text("\(flash.losses)")
-                            .font(.system(size: 64, weight: .black, design: .rounded).monospacedDigit())
-                            .foregroundStyle(Color(red: 0.97, green: 0.44, blue: 0.44))
+                        scoreFlashNumber(flash.losses, color: Color(red: 0.97, green: 0.44, blue: 0.44), flash: flash)
                         Text("Opp")
                             .font(.caption2.weight(.medium))
                             .foregroundStyle(Color(red: 0.97, green: 0.44, blue: 0.44).opacity(0.7))
@@ -387,6 +383,23 @@ struct WatchActiveSessionView: View {
         .onTapGesture {
             withAnimation(.easeOut(duration: 0.18)) { scoreFlash = nil }
         }
+    }
+
+    private func scoreFlashNumber(_ score: Int, color: Color, flash: ScoreFlash) -> some View {
+        Text("\(score)")
+            .font(.system(size: scoreFlashNumberSize(for: flash), weight: .black, design: .rounded).monospacedDigit())
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .minimumScaleFactor(0.48)
+            .allowsTightening(true)
+            .contentTransition(.numericText())
+    }
+
+    private func scoreFlashNumberSize(for flash: ScoreFlash) -> CGFloat {
+        let highScore = max(flash.wins, flash.losses)
+        if highScore >= 100 { return 38 }
+        if highScore >= 10 { return 50 }
+        return 64
     }
 
     private func showNextRackFlash(for result: String?) {

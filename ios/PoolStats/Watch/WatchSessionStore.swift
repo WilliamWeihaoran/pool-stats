@@ -14,7 +14,7 @@ final class WatchSessionStore: ObservableObject {
     }
 
     // Returns the generated sessionUUID so the caller can include it in the phone message.
-    func startSession(game: String, type: String, opponent: String) -> String {
+    func startSession(game: String, opponent: String) -> String {
         let sessionUUID = UUID().uuidString
         let session = WatchSession(
             id: 0,
@@ -39,7 +39,8 @@ final class WatchSessionStore: ObservableObject {
             drillTargetType: nil,
             drillTargetCount: nil
         )
-        activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: 1))
+        let now = Date()
+        activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: 1), sessionStartedAt: now, rackStartedAt: now)
         persist()
         return sessionUUID
     }
@@ -75,7 +76,8 @@ final class WatchSessionStore: ObservableObject {
             drillTargetType: targetType,
             drillTargetCount: targetCount
         )
-        activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: 1))
+        let now = Date()
+        activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: 1), sessionStartedAt: now, rackStartedAt: now)
         persist()
         return sessionUUID
     }
@@ -101,15 +103,15 @@ final class WatchSessionStore: ObservableObject {
     }
 
     func saveCurrentRack() {
-        guard var snap = activeSnapshot, let rack = snap.rack else { return }
+        guard let snap = activeSnapshot, let rack = snap.rack else { return }
         var session = snap.session
         session.racks.append(rack)
-        activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: rack.index + 1))
+        activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: rack.index + 1), sessionStartedAt: snap.sessionStartedAt, rackStartedAt: Date())
         persist()
     }
 
     func recordDrillAttempt(_ attempt: WatchDrillAttemptPayload) {
-        guard var snap = activeSnapshot, snap.session.isDrillPractice else { return }
+        guard let snap = activeSnapshot, snap.session.isDrillPractice else { return }
         var session = snap.session
         let rack = WatchRack(
             id: UUID().uuidString,
@@ -136,24 +138,24 @@ final class WatchSessionStore: ObservableObject {
             drillDifficulty: attempt.difficulty
         )
         session.racks.append(rack)
-        activeSnapshot = ActiveSessionSnapshot(session: session, rack: nil, rackStartedAt: snap.rackStartedAt)
+        activeSnapshot = ActiveSessionSnapshot(session: session, rack: nil, sessionStartedAt: snap.sessionStartedAt, rackStartedAt: snap.rackStartedAt)
         persist()
     }
 
     func updateDrillDifficulty(_ payload: WatchDrillDifficultyPayload) {
-        guard var snap = activeSnapshot, snap.session.isDrillPractice else { return }
+        guard let snap = activeSnapshot, snap.session.isDrillPractice else { return }
         var session = snap.session
         session.drillDifficulty = payload.difficulty
         session.drillBallCount = payload.ballCount
-        activeSnapshot = ActiveSessionSnapshot(session: session, rack: snap.rack, rackStartedAt: snap.rackStartedAt)
+        activeSnapshot = ActiveSessionSnapshot(session: session, rack: snap.rack, sessionStartedAt: snap.sessionStartedAt, rackStartedAt: snap.rackStartedAt)
         persist()
     }
 
     func undoLastRack() {
-        guard var snap = activeSnapshot, !snap.session.racks.isEmpty else { return }
+        guard let snap = activeSnapshot, !snap.session.racks.isEmpty else { return }
         var session = snap.session
         let restored = session.racks.removeLast()
-        activeSnapshot = ActiveSessionSnapshot(session: session, rack: restored)
+        activeSnapshot = ActiveSessionSnapshot(session: session, rack: restored, sessionStartedAt: snap.sessionStartedAt, rackStartedAt: snap.rackStartedAt)
         persist()
     }
 
