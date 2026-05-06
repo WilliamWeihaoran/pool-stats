@@ -11,6 +11,7 @@ struct PoolStatsApp: App {
     @StateObject private var opponentStore = OpponentStore()
     @StateObject private var authStore = AuthStore()
     @StateObject private var profileStore = PlayerProfileStore()
+    @StateObject private var socialProfileStore = SocialProfileStore()
     @StateObject private var watchSyncStore = WatchSyncStore()
 
     var body: some Scene {
@@ -23,6 +24,7 @@ struct PoolStatsApp: App {
                 .environmentObject(opponentStore)
                 .environmentObject(authStore)
                 .environmentObject(profileStore)
+                .environmentObject(socialProfileStore)
                 .environmentObject(watchSyncStore)
                 .task {
                     watchSyncStore.bind(dataStore: store, logStore: logStore, opponentStore: opponentStore)

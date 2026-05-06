@@ -83,6 +83,7 @@
 		D4E5F6A7B8C9D0E1F2A3B4C5 /* WatchSessionFinishView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F5A6B7C8D9E0F1A2B3C4D5 /* WatchSessionFinishView.swift */; };
 		D6781C13732D22A412AD7F22 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9E92BF268E25DB78D0CA99 /* Foundation.framework */; };
 		E183CB44E38FEC4329C81E35 /* WatchSyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DB8CB67DEEF7C32E13365F /* WatchSyncModels.swift */; };
+		E63058D818592AB17D246454 /* SocialProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29CA7AB8BF15DCF9B893FCB7 /* SocialProfileStore.swift */; };
 		FE7501CD9D3A4E8E9C1B2F00 /* WatchRuntimeSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE8402DE8B5F3F7DAE0C3001 /* WatchRuntimeSession.swift */; };
 		FE9503EF7C6B5A8BD1E0400A /* WatchSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEA604F08D7C6B9CE2F1501B /* WatchSessionStore.swift */; };
 		WA1000010000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
@@ -131,6 +132,7 @@
 		09DDE2033C526CE78DAEBC92 /* WatchQueueStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchQueueStore.swift; sourceTree = "<group>"; };
 		0C9A91B9066103F654E63871 /* PoolStatsWatchComplications.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PoolStatsWatchComplications.swift; sourceTree = "<group>"; };
 		20DB8CB67DEEF7C32E13365F /* WatchSyncModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSyncModels.swift; sourceTree = "<group>"; };
+		29CA7AB8BF15DCF9B893FCB7 /* SocialProfileStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SocialProfileStore.swift; sourceTree = "<group>"; };
 		2E2CC21B0A18309FA9BDCF2E /* PoolStatsWatchComplications.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = PoolStatsWatchComplications.entitlements; sourceTree = "<group>"; };
 		304A8C77D82733F0C7CB230C /* WatchConnectivityClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchConnectivityClient.swift; sourceTree = "<group>"; };
 		4918DD309E6478BF48903FDF /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -158,7 +160,7 @@
 		AA200001000000000000000F /* SummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000010 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AA2000010000000000000012 /* Resources/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
+		AA2000010000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
 		AA2000010000000000000013 /* PoolStats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = PoolStats.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA2000010000000000000014 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		AA2000010000000000000015 /* LogStartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStartView.swift; sourceTree = "<group>"; };
@@ -292,7 +294,7 @@
 			isa = PBXGroup;
 			children = (
 				886D45192F89469F00338AC1 /* PoolStats.entitlements */,
-				AA4000010000000000000002,
+				AA4000010000000000000002 /*  */,
 				AA2000010000000000000013 /* PoolStats.app */,
 				664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */,
 				86F38CDB3C596F2CD2F91064 /* Frameworks */,
@@ -301,7 +303,7 @@
 			);
 			sourceTree = "<group>";
 		};
-		AA4000010000000000000002 = {
+		AA4000010000000000000002 /*  */ = {
 			isa = PBXGroup;
 			children = (
 				AA2000010000000000000001 /* PoolStatsApp.swift */,
@@ -310,7 +312,7 @@
 				AA4000010000000000000004 /* Models */,
 				AA4000010000000000000005 /* UI */,
 				AA4000010000000000000006 /* Resources */,
-				AA2000010000000000000012 /* Resources/Info.plist */,
+				AA2000010000000000000012 /* Info.plist */,
 				2F588EC825C4C4E826362F45 /* Watch */,
 				00CAC026206F8DCB79AD2F72 /* WatchComplications */,
 			);
@@ -323,6 +325,7 @@
 				AA2000010000000000000003 /* DataStore.swift */,
 				AA200001000000000000002F /* SessionLogStore.swift */,
 				AA2000010000000000000030 /* AuthStore.swift */,
+				29CA7AB8BF15DCF9B893FCB7 /* SocialProfileStore.swift */,
 				AA200001000000000000001D /* SessionService.swift */,
 			);
 			path = Cloud;
@@ -665,6 +668,7 @@
 				AA100001000000000000003A /* DrillControls.swift in Sources */,
 				AA100001000000000000003B /* LogStartComponents.swift in Sources */,
 				AA100001000000000000003C /* DrillLibraryCatalog.swift in Sources */,
+				E63058D818592AB17D246454 /* SocialProfileStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -705,7 +709,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
@@ -731,7 +735,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -761,7 +765,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -784,7 +788,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -807,7 +811,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchComplications/Info.plist;
@@ -839,7 +843,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -869,7 +873,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -921,7 +925,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";

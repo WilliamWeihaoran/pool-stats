@@ -4,6 +4,7 @@ import UIKit
 struct SummaryView: View {
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
+    @EnvironmentObject private var socialProfileStore: SocialProfileStore
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
     let session: Session
@@ -11,6 +12,7 @@ struct SummaryView: View {
     @State private var opponentText: String = ""
     @State private var performanceRating: Int? = nil
     @State private var performanceValue: Int = 5
+    @State private var selectedFriendCode: String = ""
 
     var body: some View {
         ScrollView {
@@ -20,6 +22,9 @@ struct SummaryView: View {
                 header
                 timeSection
                 performanceSection
+                if shouldShowMatchShare {
+                    matchShareSection
+                }
                 if session.isDrillPractice {
                     drillSummaryCards
                     drillAttemptLogSection
@@ -42,6 +47,9 @@ struct SummaryView: View {
             opponentText = session.opponent
             performanceRating = session.performanceRating
             performanceValue = session.performanceRating ?? 5
+            if selectedFriendCode.isEmpty {
+                selectedFriendCode = socialProfileStore.friends.first?.friendCode ?? ""
+            }
         }
     }
 
@@ -204,6 +212,180 @@ struct SummaryView: View {
     private var performanceSliderColor: Color {
         guard performanceRating != nil else { return Theme.purple }
         return ratingColor(for: performanceValue, lowerBound: 1, upperBound: 10)
+    }
+
+    private var shouldShowMatchShare: Bool {
+        !session.isPractice && !session.isDrillPractice && !session.racks.isEmpty
+    }
+
+    private var matchShareSection: some View {
+        SectionCard(title: "Share match") {
+            VStack(alignment: .leading, spacing: 12) {
+                if socialProfileStore.profile == nil {
+                    shareHint(
+                        title: "Create your public profile first",
+                        message: "Settings > Me has the friend code setup. After that, you can send this match to a saved friend."
+                    )
+                } else if socialProfileStore.friends.isEmpty {
+                    shareHint(
+                        title: "No friends yet",
+                        message: "Add a friend by code in Settings > Me, then come back here to share this match."
+                    )
+                } else {
+                    friendSelector
+                    selectedFriendShareControls
+                }
+            }
+        }
+    }
+
+    private var friendSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(socialProfileStore.friends) { friend in
+                    let isSelected = selectedFriend?.friendCode == friend.friendCode
+                    Button {
+                        selectedFriendCode = friend.friendCode
+                        socialProfileStore.resetMatchShareState()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(friend.displayName)
+                                .font(.caption.weight(.bold))
+                                .lineLimit(1)
+                            Text(friend.friendCode)
+                                .font(.caption2.monospaced())
+                                .lineLimit(1)
+                        }
+                        .foregroundColor(isSelected ? Theme.text : Theme.text2)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(isSelected ? Theme.purple.opacity(0.22) : Theme.panel2.opacity(0.7))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(isSelected ? Theme.purple.opacity(0.65) : Theme.border, lineWidth: 0.8)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var selectedFriendShareControls: some View {
+        if let friend = selectedFriend {
+            let latestShare = socialProfileStore.latestOutgoingShare(for: session, friendCode: friend.friendCode)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    shareStatusChip(for: latestShare)
+                    Spacer(minLength: 0)
+                    Text("\(session.wins):\(session.losses)")
+                        .font(.caption.weight(.black).monospacedDigit())
+                        .foregroundColor(Theme.text)
+                }
+
+                Button {
+                    Task { await socialProfileStore.shareMatch(session, with: friend) }
+                } label: {
+                    HStack(spacing: 8) {
+                        if case .sending(let code) = socialProfileStore.matchShareState, code == friend.friendCode {
+                            ProgressView()
+                                .tint(Theme.text)
+                        }
+                        Text(shareButtonTitle(for: latestShare))
+                            .font(.subheadline.weight(.bold))
+                    }
+                    .foregroundColor(Theme.bg)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(shareButtonColor(for: latestShare))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(isShareButtonDisabled(for: friend, latestShare: latestShare))
+
+                if let message = shareMessage(for: friend, latestShare: latestShare) {
+                    Text(message)
+                        .font(.caption2)
+                        .foregroundColor(message.hasPrefix("Could") ? Theme.red : Theme.muted)
+                }
+            }
+        }
+    }
+
+    private func shareHint(title: String, message: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundColor(Theme.text2)
+            Text(message)
+                .font(.caption2)
+                .foregroundColor(Theme.muted)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.panel2.opacity(0.55))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func shareStatusChip(for share: OutgoingMatchShare?) -> some View {
+        let label: String
+        let color: Color
+        if let share, share.isPending {
+            label = "Pending acceptance"
+            color = Theme.amber
+        } else if let share, share.isFailed {
+            label = "Failed"
+            color = Theme.red
+        } else {
+            label = "Ready to share"
+            color = Theme.teal
+        }
+
+        return Text(label)
+            .font(.caption2.weight(.bold))
+            .foregroundColor(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(color.opacity(0.12))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(color.opacity(0.35), lineWidth: 0.6))
+    }
+
+    private func shareButtonTitle(for share: OutgoingMatchShare?) -> String {
+        if let share, share.isPending { return "Shared with friend" }
+        if let share, share.isFailed { return "Try sharing again" }
+        return "Share with \(selectedFriend?.displayName ?? "friend")"
+    }
+
+    private func shareButtonColor(for share: OutgoingMatchShare?) -> Color {
+        if let share, share.isPending { return Theme.muted }
+        if let share, share.isFailed { return Theme.amber }
+        return Theme.teal
+    }
+
+    private func isShareButtonDisabled(for friend: SocialFriend, latestShare: OutgoingMatchShare?) -> Bool {
+        if let latestShare, latestShare.isPending { return true }
+        if case .sending(let code) = socialProfileStore.matchShareState, code == friend.friendCode { return true }
+        return false
+    }
+
+    private func shareMessage(for friend: SocialFriend, latestShare: OutgoingMatchShare?) -> String? {
+        if case .failed(let message) = socialProfileStore.matchShareState { return message }
+        if let latestShare, latestShare.isPending {
+            return "\(friend.displayName) will be able to accept this match in the next friends phase."
+        }
+        if let latestShare, latestShare.isFailed {
+            return latestShare.failureMessage ?? "Could not share this match."
+        }
+        return "Phase 3 sends the match invite. Acceptance and mirrored history come next."
+    }
+
+    private var selectedFriend: SocialFriend? {
+        let code = selectedFriendCode.isEmpty ? socialProfileStore.friends.first?.friendCode : selectedFriendCode
+        guard let code else { return nil }
+        return socialProfileStore.friends.first { $0.friendCode == code } ?? socialProfileStore.friends.first
     }
 
     private func ratingColor(for value: Int, lowerBound: Int, upperBound: Int) -> Color {

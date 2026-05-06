@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MeSettingsView: View {
     @EnvironmentObject private var profileStore: PlayerProfileStore
+    @EnvironmentObject private var socialProfileStore: SocialProfileStore
     @EnvironmentObject private var goalsStore: GoalsStore
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
@@ -10,6 +11,7 @@ struct MeSettingsView: View {
     @State private var baselineFargoText: String = ""
     @State private var pendingDedication: DedicationLevel?
     @State private var nicknameText: String = ""
+    @State private var didCopyFriendCode: Bool = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -32,6 +34,8 @@ struct MeSettingsView: View {
                         .foregroundColor(Theme.muted)
                 }
             }
+
+            publicProfileCard
 
             // Skill level
             SectionCard(title: "Skill level") {
@@ -225,6 +229,10 @@ struct MeSettingsView: View {
         .task {
             baselineFargoText = "\(profileStore.profile.clampedBaseline)"
             nicknameText = profileStore.profile.nickname
+            if socialProfileStore.displayName.isEmpty {
+                socialProfileStore.displayName = profileStore.profile.nickname
+            }
+            await socialProfileStore.refresh()
         }
         .alert("Regenerate starter goals?", isPresented: Binding(
             get: { pendingDedication != nil },
@@ -256,6 +264,366 @@ struct MeSettingsView: View {
         case .neutral: return Theme.teal
         case .yes: return Theme.green
         case .veryMuch: return Theme.purple
+        }
+    }
+
+    private var publicProfileCard: some View {
+        SectionCard(title: "Public profile") {
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Display name")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.muted)
+                    TextField("e.g. Haoran", text: $socialProfileStore.displayName)
+                        .font(.subheadline)
+                        .foregroundColor(Theme.text)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Theme.panel2)
+                        .cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border, lineWidth: 0.5))
+                }
+
+                if let profile = socialProfileStore.profile {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Friend code")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(Theme.muted)
+
+                        HStack(spacing: 10) {
+                            Text(profile.friendCode)
+                                .font(.title3.weight(.bold).monospaced())
+                                .foregroundColor(Theme.teal)
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Button {
+                                socialProfileStore.copyFriendCode()
+                                showCopiedState()
+                            } label: {
+                                Text(didCopyFriendCode ? "Copied" : "Copy")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(didCopyFriendCode ? Theme.green : Theme.teal)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background((didCopyFriendCode ? Theme.green : Theme.teal).opacity(0.12))
+                                    .cornerRadius(8)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(10)
+                        .background(Theme.panel2)
+                        .cornerRadius(10)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.teal.opacity(0.4), lineWidth: 0.7))
+
+                        infoRow(label: "Public record", value: profile.maskedOwnerRecordName)
+                    }
+                } else {
+                    Text("Create a public display name and friend code. Friend lookup and match sharing come in the next phases.")
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+                }
+
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(publicProfileStatusColor)
+                        .frame(width: 7, height: 7)
+                    Text(socialProfileStore.statusText)
+                        .font(.caption2)
+                        .foregroundColor(Theme.muted)
+                        .lineLimit(2)
+                    Spacer(minLength: 0)
+                }
+
+                if let error = socialProfileStore.lastError, !error.isEmpty {
+                    Text(error)
+                        .font(.caption2)
+                        .foregroundColor(Theme.red)
+                        .lineLimit(3)
+                }
+
+                Button {
+                    Task {
+                        await socialProfileStore.createOrUpdateProfile(displayName: socialProfileStore.displayName)
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        if case .saving = socialProfileStore.publishState {
+                            ProgressView()
+                                .tint(Theme.text)
+                        }
+                        Text(socialProfileStore.profile == nil ? "Create friend code" : "Publish changes")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundColor(Theme.text)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(socialProfileStore.canPublish ? Theme.teal.opacity(0.24) : Theme.panel2)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(socialProfileStore.canPublish ? Theme.teal.opacity(0.75) : Theme.border, lineWidth: 0.8)
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!socialProfileStore.canPublish)
+
+                Divider().overlay(Theme.border.opacity(0.8))
+
+                friendLookupSection
+
+                friendsListSection
+            }
+        }
+    }
+
+    private var friendLookupSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Add friend")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Theme.muted)
+                Spacer(minLength: 0)
+                if !socialProfileStore.friendCodeQuery.isEmpty {
+                    Button {
+                        socialProfileStore.resetFriendLookup()
+                    } label: {
+                        Text("Clear")
+                            .font(.caption2.weight(.semibold))
+                            .foregroundColor(Theme.muted)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            HStack(spacing: 8) {
+                TextField("PS-ABC-123", text: $socialProfileStore.friendCodeQuery)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .font(.subheadline.monospaced())
+                    .foregroundColor(Theme.text)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 9)
+                    .background(Theme.panel2)
+                    .cornerRadius(10)
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
+                    .onChange(of: socialProfileStore.friendCodeQuery) { value in
+                        let compact = value.uppercased().filter { $0.isLetter || $0.isNumber || $0 == "-" }
+                        if compact != value { socialProfileStore.friendCodeQuery = compact }
+                    }
+
+                Button {
+                    Task {
+                        await socialProfileStore.lookupFriendByCode()
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        if case .searching = socialProfileStore.friendLookupState {
+                            ProgressView()
+                                .tint(Theme.text)
+                        }
+                        Text("Search")
+                            .font(.caption.weight(.semibold))
+                    }
+                    .foregroundColor(Theme.text)
+                    .padding(.horizontal, 12)
+                    .frame(height: 38)
+                    .background(canSearchFriend ? Theme.purple.opacity(0.24) : Theme.panel2)
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(canSearchFriend ? Theme.purple.opacity(0.7) : Theme.border, lineWidth: 0.8)
+                    )
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSearchFriend)
+            }
+
+            friendLookupResult
+        }
+    }
+
+    @ViewBuilder
+    private var friendLookupResult: some View {
+        switch socialProfileStore.friendLookupState {
+        case .idle:
+            Text("Search by friend code to save a player locally. Match sharing comes in a later phase.")
+                .font(.caption2)
+                .foregroundColor(Theme.muted)
+        case .searching:
+            EmptyView()
+        case .found(let found):
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(found.displayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(Theme.text)
+                    Text(found.friendCode)
+                        .font(.caption2.monospaced())
+                        .foregroundColor(Theme.muted)
+                }
+                Spacer(minLength: 0)
+                Button {
+                    if let friend = socialProfileStore.addFoundFriend() {
+                        opponentStore.addOpponent(name: friend.displayName)
+                    }
+                } label: {
+                    Text("Add")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.green)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(Theme.green.opacity(0.12))
+                        .cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.green.opacity(0.5), lineWidth: 0.7))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(10)
+            .background(Theme.panel2)
+            .cornerRadius(10)
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.teal.opacity(0.35), lineWidth: 0.7))
+        case .added(let friend):
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(Theme.green)
+                Text("Added \(friend.displayName)")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Theme.green)
+                Spacer(minLength: 0)
+            }
+        case .failed(let message):
+            Text(message)
+                .font(.caption2)
+                .foregroundColor(Theme.red)
+                .lineLimit(3)
+        }
+    }
+
+    private var friendsListSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Friends")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Theme.muted)
+                Spacer(minLength: 0)
+                if !socialProfileStore.friends.isEmpty {
+                    Button {
+                        Task {
+                            await socialProfileStore.refreshFriends()
+                        }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(Theme.teal)
+                            .frame(width: 28, height: 28)
+                            .background(Theme.teal.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            if socialProfileStore.friends.isEmpty {
+                Text("No friends saved yet.")
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Theme.panel2.opacity(0.7))
+                    .cornerRadius(10)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(socialProfileStore.friends) { friend in
+                        friendRow(friend)
+                    }
+                }
+            }
+        }
+    }
+
+    private func friendRow(_ friend: SocialFriend) -> some View {
+        HStack(spacing: 10) {
+            Circle()
+                .fill(Theme.teal.opacity(0.18))
+                .frame(width: 34, height: 34)
+                .overlay(
+                    Text(friend.displayName.prefix(1).uppercased())
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(Theme.teal)
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(friend.displayName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Theme.text)
+                    .lineLimit(1)
+                Text(friend.friendCode)
+                    .font(.caption2.monospaced())
+                    .foregroundColor(Theme.muted)
+            }
+
+            Spacer(minLength: 0)
+
+            Button {
+                opponentStore.addOpponent(name: friend.displayName)
+            } label: {
+                Image(systemName: "person.badge.plus")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(Theme.green)
+                    .frame(width: 30, height: 30)
+                    .background(Theme.green.opacity(0.1))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                socialProfileStore.removeFriend(friendCode: friend.friendCode)
+            } label: {
+                Image(systemName: "trash")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(Theme.red)
+                    .frame(width: 30, height: 30)
+                    .background(Theme.red.opacity(0.1))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(10)
+        .background(Theme.panel2)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+    }
+
+    private var canSearchFriend: Bool {
+        SocialProfileStore.isValidFriendCode(socialProfileStore.friendCodeQuery)
+        && socialProfileStore.friendLookupState != .searching
+    }
+
+    private var publicProfileStatusColor: Color {
+        switch socialProfileStore.publishState {
+        case .synced:
+            return Theme.green
+        case .saving, .loading:
+            return Theme.amber
+        case .localOnly:
+            return Theme.amber
+        case .failed:
+            return Theme.red
+        case .idle:
+            return socialProfileStore.profile == nil ? Theme.muted : Theme.teal
+        }
+    }
+
+    private func showCopiedState() {
+        withAnimation(.easeInOut(duration: 0.15)) {
+            didCopyFriendCode = true
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            withAnimation(.easeInOut(duration: 0.15)) {
+                didCopyFriendCode = false
+            }
         }
     }
 

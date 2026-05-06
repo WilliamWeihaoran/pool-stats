@@ -1,0 +1,663 @@
+import CloudKit
+import Foundation
+import UIKit
+
+struct PublicPlayerProfile: Codable, Equatable, Identifiable {
+    var id: String { friendCode }
+    var displayName: String
+    var friendCode: String
+    var recordName: String?
+    var ownerRecordName: String?
+    var updatedAt: Date
+
+    var maskedOwnerRecordName: String {
+        guard let ownerRecordName, !ownerRecordName.isEmpty else { return "—" }
+        if ownerRecordName.count <= 10 { return ownerRecordName }
+        return "\(ownerRecordName.prefix(4))…\(ownerRecordName.suffix(4))"
+    }
+}
+
+struct SocialFriend: Codable, Equatable, Identifiable {
+    var id: String { friendCode }
+    var displayName: String
+    var friendCode: String
+    var recordName: String?
+    var ownerRecordName: String?
+    var addedAt: Date
+    var updatedAt: Date
+
+    var publicProfile: PublicPlayerProfile {
+        PublicPlayerProfile(
+            displayName: displayName,
+            friendCode: friendCode,
+            recordName: recordName,
+            ownerRecordName: ownerRecordName,
+            updatedAt: updatedAt
+        )
+    }
+}
+
+struct OutgoingMatchShare: Codable, Equatable, Identifiable {
+    var id: String { inviteUUID }
+    var inviteUUID: String
+    var recordName: String?
+    var senderFriendCode: String
+    var senderDisplayName: String
+    var recipientFriendCode: String
+    var recipientDisplayName: String
+    var recipientOwnerRecordName: String?
+    var sessionUUID: String
+    var sessionJSON: String
+    var sessionLabel: String
+    var game: String
+    var type: String
+    var opponent: String
+    var wins: Int
+    var losses: Int
+    var createdAt: Date
+    var status: String
+    var failureMessage: String?
+
+    var scoreText: String { "\(wins):\(losses)" }
+    var isPending: Bool { status == "pending" }
+    var isFailed: Bool { status == "failed" }
+}
+
+@MainActor
+final class SocialProfileStore: ObservableObject {
+    enum PublishState: Equatable {
+        case idle
+        case loading
+        case saving
+        case synced(Date)
+        case localOnly(String)
+        case failed(String)
+    }
+
+    enum FriendLookupState: Equatable {
+        case idle
+        case searching
+        case found(PublicPlayerProfile)
+        case added(SocialFriend)
+        case failed(String)
+    }
+
+    enum MatchShareState: Equatable {
+        case idle
+        case sending(String)
+        case sent(OutgoingMatchShare)
+        case failed(String)
+    }
+
+    @Published private(set) var profile: PublicPlayerProfile?
+    @Published private(set) var publishState: PublishState = .idle
+    @Published private(set) var friends: [SocialFriend] = []
+    @Published private(set) var friendLookupState: FriendLookupState = .idle
+    @Published private(set) var outgoingShares: [OutgoingMatchShare] = []
+    @Published private(set) var matchShareState: MatchShareState = .idle
+    @Published var displayName: String = ""
+    @Published var friendCodeQuery: String = ""
+    @Published var lastError: String?
+
+    private enum Constants {
+        static let recordType = "PublicPlayerProfile"
+        static let matchShareRecordType = "FriendMatchShare"
+        static let displayName = "displayName"
+        static let friendCode = "friendCode"
+        static let ownerRecordName = "ownerRecordName"
+        static let updatedAt = "updatedAt"
+        static let localFilename = "social-profile.json"
+        static let friendsFilename = "social-friends.json"
+        static let outgoingSharesFilename = "social-outgoing-shares.json"
+
+        static let inviteUUID = "inviteUUID"
+        static let senderFriendCode = "senderFriendCode"
+        static let senderDisplayName = "senderDisplayName"
+        static let recipientFriendCode = "recipientFriendCode"
+        static let recipientDisplayName = "recipientDisplayName"
+        static let recipientOwnerRecordName = "recipientOwnerRecordName"
+        static let sessionUUID = "sessionUUID"
+        static let sessionJSON = "sessionJSON"
+        static let sessionLabel = "sessionLabel"
+        static let game = "game"
+        static let type = "type"
+        static let opponent = "opponent"
+        static let wins = "wins"
+        static let losses = "losses"
+        static let createdAt = "createdAt"
+        static let status = "status"
+    }
+
+    private let container: CKContainer
+    private let db: CKDatabase
+    private let localURL: URL
+    private let friendsURL: URL
+    private let outgoingSharesURL: URL
+
+    init(container: CKContainer = .default()) {
+        self.container = container
+        self.db = container.publicCloudDatabase
+
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
+        localURL = dir.appendingPathComponent(Constants.localFilename)
+        friendsURL = dir.appendingPathComponent(Constants.friendsFilename)
+        outgoingSharesURL = dir.appendingPathComponent(Constants.outgoingSharesFilename)
+
+        loadLocal()
+        loadFriendsLocal()
+        loadOutgoingSharesLocal()
+    }
+
+    func refresh() async {
+        guard let current = profile, let recordName = current.recordName else { return }
+        publishState = .loading
+        do {
+            let record = try await db.record(for: CKRecord.ID(recordName: recordName))
+            let updated = profile(from: record, fallback: current)
+            apply(updated)
+            publishState = .synced(Date())
+            lastError = nil
+        } catch {
+            publishState = .localOnly("Using the profile saved on this device.")
+            lastError = readableMessage(for: error)
+        }
+    }
+
+    func createOrUpdateProfile(displayName rawDisplayName: String) async {
+        let cleaned = rawDisplayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty else {
+            lastError = "Enter a display name first."
+            publishState = .failed("Enter a display name first.")
+            return
+        }
+
+        publishState = .saving
+        lastError = nil
+
+        var draft = profile ?? PublicPlayerProfile(
+            displayName: cleaned,
+            friendCode: Self.generateFriendCode(),
+            recordName: nil,
+            ownerRecordName: nil,
+            updatedAt: Date()
+        )
+        draft.displayName = cleaned
+        draft.updatedAt = Date()
+        if draft.recordName == nil {
+            draft.recordName = Self.recordName(for: draft.friendCode)
+        }
+
+        // Keep a local profile immediately, even if the public publish fails.
+        apply(draft)
+
+        do {
+            let saved = try await saveToPublicCloud(draft)
+            apply(saved)
+            publishState = .synced(Date())
+        } catch {
+            publishState = .localOnly("Saved locally. Tap publish again when iCloud is available.")
+            lastError = readableMessage(for: error)
+        }
+    }
+
+    func copyFriendCode() {
+        guard let code = profile?.friendCode else { return }
+        UIPasteboard.general.string = code
+    }
+
+    func lookupFriendByCode(_ rawCode: String? = nil) async {
+        let normalized = Self.normalizeFriendCode(rawCode ?? friendCodeQuery)
+        friendCodeQuery = normalized
+
+        guard Self.isValidFriendCode(normalized) else {
+            friendLookupState = .failed("Enter a code like PS-ABC-123.")
+            return
+        }
+
+        if normalized == profile?.friendCode {
+            friendLookupState = .failed("That is your own friend code.")
+            return
+        }
+
+        if let existing = friends.first(where: { $0.friendCode == normalized }) {
+            friendLookupState = .added(existing)
+            return
+        }
+
+        friendLookupState = .searching
+        do {
+            let recordName = Self.recordName(for: normalized)
+            let record = try await db.record(for: CKRecord.ID(recordName: recordName))
+            let fallback = PublicPlayerProfile(
+                displayName: "Pool player",
+                friendCode: normalized,
+                recordName: recordName,
+                ownerRecordName: nil,
+                updatedAt: Date()
+            )
+            let found = profile(from: record, fallback: fallback)
+            friendLookupState = .found(found)
+            lastError = nil
+        } catch let error as CKError where error.code == .unknownItem {
+            friendLookupState = .failed("No player found for \(normalized).")
+        } catch {
+            friendLookupState = .failed(readableMessage(for: error))
+        }
+    }
+
+    @discardableResult
+    func addFoundFriend() -> SocialFriend? {
+        guard case .found(let found) = friendLookupState else { return nil }
+        return addFriend(found)
+    }
+
+    @discardableResult
+    func addFriend(_ publicProfile: PublicPlayerProfile) -> SocialFriend? {
+        let normalized = Self.normalizeFriendCode(publicProfile.friendCode)
+        guard Self.isValidFriendCode(normalized) else {
+            friendLookupState = .failed("That friend code is not valid.")
+            return nil
+        }
+        guard normalized != profile?.friendCode else {
+            friendLookupState = .failed("That is your own friend code.")
+            return nil
+        }
+
+        let friend = SocialFriend(
+            displayName: publicProfile.displayName,
+            friendCode: normalized,
+            recordName: publicProfile.recordName ?? Self.recordName(for: normalized),
+            ownerRecordName: publicProfile.ownerRecordName,
+            addedAt: friends.first(where: { $0.friendCode == normalized })?.addedAt ?? Date(),
+            updatedAt: publicProfile.updatedAt
+        )
+
+        if let idx = friends.firstIndex(where: { $0.friendCode == normalized }) {
+            friends[idx] = friend
+        } else {
+            friends.insert(friend, at: 0)
+        }
+
+        sortFriends()
+        saveFriendsLocal()
+        friendLookupState = .added(friend)
+        friendCodeQuery = ""
+        return friend
+    }
+
+    func removeFriend(friendCode: String) {
+        let normalized = Self.normalizeFriendCode(friendCode)
+        friends.removeAll { $0.friendCode == normalized }
+        saveFriendsLocal()
+    }
+
+    func resetFriendLookup() {
+        friendLookupState = .idle
+        friendCodeQuery = ""
+    }
+
+    func resetMatchShareState() {
+        matchShareState = .idle
+    }
+
+    func latestOutgoingShare(for session: Session, friendCode: String) -> OutgoingMatchShare? {
+        let normalized = Self.normalizeFriendCode(friendCode)
+        return outgoingShares
+            .filter { $0.sessionUUID == session.sessionUUID && $0.recipientFriendCode == normalized }
+            .sorted { $0.createdAt > $1.createdAt }
+            .first
+    }
+
+    func shareMatch(_ session: Session, with friend: SocialFriend) async {
+        guard !session.isPractice, !session.isDrillPractice else {
+            matchShareState = .failed("Only match sessions can be shared with friends.")
+            return
+        }
+        guard !session.racks.isEmpty else {
+            matchShareState = .failed("Log at least one rack before sharing this match.")
+            return
+        }
+        guard let profile else {
+            matchShareState = .failed("Create your public profile in Settings > Me first.")
+            return
+        }
+
+        let normalizedFriendCode = Self.normalizeFriendCode(friend.friendCode)
+        if let existing = latestOutgoingShare(for: session, friendCode: normalizedFriendCode), existing.isPending {
+            matchShareState = .sent(existing)
+            return
+        }
+
+        matchShareState = .sending(normalizedFriendCode)
+
+        do {
+            var share = try makeOutgoingShare(session: session, friend: friend, sender: profile)
+            let recordID = CKRecord.ID(recordName: matchShareRecordName(for: share.inviteUUID))
+            let record = CKRecord(recordType: Constants.matchShareRecordType, recordID: recordID)
+            record[Constants.inviteUUID] = share.inviteUUID as CKRecordValue
+            record[Constants.senderFriendCode] = share.senderFriendCode as CKRecordValue
+            record[Constants.senderDisplayName] = share.senderDisplayName as CKRecordValue
+            record[Constants.recipientFriendCode] = share.recipientFriendCode as CKRecordValue
+            record[Constants.recipientDisplayName] = share.recipientDisplayName as CKRecordValue
+            if let recipientOwnerRecordName = share.recipientOwnerRecordName {
+                record[Constants.recipientOwnerRecordName] = recipientOwnerRecordName as CKRecordValue
+            }
+            record[Constants.sessionUUID] = share.sessionUUID as CKRecordValue
+            record[Constants.sessionJSON] = share.sessionJSON as CKRecordValue
+            record[Constants.sessionLabel] = share.sessionLabel as CKRecordValue
+            record[Constants.game] = share.game as CKRecordValue
+            record[Constants.type] = share.type as CKRecordValue
+            record[Constants.opponent] = share.opponent as CKRecordValue
+            record[Constants.wins] = Int64(share.wins) as CKRecordValue
+            record[Constants.losses] = Int64(share.losses) as CKRecordValue
+            record[Constants.createdAt] = share.createdAt as CKRecordValue
+            record[Constants.status] = share.status as CKRecordValue
+
+            let saved = try await db.save(record)
+            share.recordName = saved.recordID.recordName
+            upsertOutgoingShare(share)
+            matchShareState = .sent(share)
+            lastError = nil
+        } catch {
+            do {
+                var failed = try makeOutgoingShare(session: session, friend: friend, sender: profile)
+                failed.status = "failed"
+                failed.failureMessage = readableMessage(for: error)
+                upsertOutgoingShare(failed)
+                matchShareState = .failed(failed.failureMessage ?? "Could not share this match.")
+            } catch {
+                matchShareState = .failed(readableMessage(for: error))
+            }
+        }
+    }
+
+    func refreshFriends() async {
+        guard !friends.isEmpty else { return }
+        var next = friends
+
+        for friend in friends {
+            let recordName = friend.recordName ?? Self.recordName(for: friend.friendCode)
+            do {
+                let record = try await db.record(for: CKRecord.ID(recordName: recordName))
+                let profile = profile(from: record, fallback: friend.publicProfile)
+                if let idx = next.firstIndex(where: { $0.friendCode == friend.friendCode }) {
+                    next[idx].displayName = profile.displayName
+                    next[idx].recordName = profile.recordName
+                    next[idx].ownerRecordName = profile.ownerRecordName
+                    next[idx].updatedAt = profile.updatedAt
+                }
+            } catch {
+                continue
+            }
+        }
+
+        friends = next
+        sortFriends()
+        saveFriendsLocal()
+    }
+
+    var statusText: String {
+        switch publishState {
+        case .idle:
+            return profile == nil ? "No public profile yet" : "Profile saved locally"
+        case .loading:
+            return "Checking public profile…"
+        case .saving:
+            return "Publishing friend code…"
+        case .synced(let date):
+            return "Published \(AppFormatters.shortDate(date))"
+        case .localOnly(let message):
+            return message
+        case .failed(let message):
+            return message
+        }
+    }
+
+    var canPublish: Bool {
+        !displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && publishState != .saving
+    }
+
+    private func saveToPublicCloud(_ draft: PublicPlayerProfile) async throws -> PublicPlayerProfile {
+        let ownerRecordName = try await currentOwnerRecordName()
+        var candidate = draft
+        candidate.ownerRecordName = ownerRecordName
+
+        for _ in 0..<6 {
+            let recordName = candidate.recordName ?? Self.recordName(for: candidate.friendCode)
+            candidate.recordName = recordName
+            let recordID = CKRecord.ID(recordName: recordName)
+            let existing = try await fetchRecordIfExists(recordID)
+
+            if let existing, isCollision(existing: existing, currentOwnerRecordName: ownerRecordName, localProfile: draft) {
+                candidate.friendCode = Self.generateFriendCode()
+                candidate.recordName = Self.recordName(for: candidate.friendCode)
+                continue
+            }
+
+            let record = existing ?? CKRecord(recordType: Constants.recordType, recordID: recordID)
+            record[Constants.displayName] = candidate.displayName as CKRecordValue
+            record[Constants.friendCode] = candidate.friendCode as CKRecordValue
+            record[Constants.ownerRecordName] = ownerRecordName as CKRecordValue
+            record[Constants.updatedAt] = candidate.updatedAt as CKRecordValue
+
+            let saved = try await db.save(record)
+            return profile(from: saved, fallback: candidate)
+        }
+
+        throw SocialProfileError.couldNotAllocateFriendCode
+    }
+
+    private func currentOwnerRecordName() async throws -> String {
+        let id = try await container.userRecordID()
+        return id.recordName
+    }
+
+    private func fetchRecordIfExists(_ recordID: CKRecord.ID) async throws -> CKRecord? {
+        do {
+            return try await db.record(for: recordID)
+        } catch let error as CKError where error.code == .unknownItem {
+            return nil
+        }
+    }
+
+    private func isCollision(existing: CKRecord, currentOwnerRecordName: String, localProfile: PublicPlayerProfile) -> Bool {
+        let existingOwner = existing[Constants.ownerRecordName] as? String
+        if existingOwner == currentOwnerRecordName { return false }
+
+        // If this device already had the record name saved, assume it is an update path
+        // unless CloudKit clearly says the record belongs to another owner.
+        if localProfile.recordName == existing.recordID.recordName && existingOwner == nil { return false }
+        if localProfile.recordName == existing.recordID.recordName && localProfile.ownerRecordName == currentOwnerRecordName { return false }
+
+        return true
+    }
+
+    private func profile(from record: CKRecord, fallback: PublicPlayerProfile) -> PublicPlayerProfile {
+        PublicPlayerProfile(
+            displayName: record[Constants.displayName] as? String ?? fallback.displayName,
+            friendCode: record[Constants.friendCode] as? String ?? fallback.friendCode,
+            recordName: record.recordID.recordName,
+            ownerRecordName: record[Constants.ownerRecordName] as? String ?? fallback.ownerRecordName,
+            updatedAt: record[Constants.updatedAt] as? Date ?? fallback.updatedAt
+        )
+    }
+
+    private func apply(_ next: PublicPlayerProfile) {
+        profile = next
+        displayName = next.displayName
+        saveLocal()
+    }
+
+    private func loadLocal() {
+        guard let data = try? Data(contentsOf: localURL),
+              let decoded = try? JSONDecoder().decode(PublicPlayerProfile.self, from: data) else { return }
+        profile = decoded
+        displayName = decoded.displayName
+    }
+
+    private func saveLocal() {
+        guard let profile else { return }
+        do {
+            try FileManager.default.createDirectory(at: localURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(profile)
+            try data.write(to: localURL, options: [.atomic])
+        } catch {
+            lastError = "Could not save public profile locally."
+        }
+    }
+
+    private func loadFriendsLocal() {
+        guard let data = try? Data(contentsOf: friendsURL),
+              let decoded = try? JSONDecoder().decode([SocialFriend].self, from: data) else { return }
+        friends = decoded
+        sortFriends()
+    }
+
+    private func saveFriendsLocal() {
+        do {
+            try FileManager.default.createDirectory(at: friendsURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(friends)
+            try data.write(to: friendsURL, options: [.atomic])
+        } catch {
+            lastError = "Could not save friends locally."
+        }
+    }
+
+    private func loadOutgoingSharesLocal() {
+        guard let data = try? Data(contentsOf: outgoingSharesURL),
+              let decoded = try? JSONDecoder().decode([OutgoingMatchShare].self, from: data) else { return }
+        outgoingShares = decoded.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func saveOutgoingSharesLocal() {
+        do {
+            try FileManager.default.createDirectory(at: outgoingSharesURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(outgoingShares)
+            try data.write(to: outgoingSharesURL, options: [.atomic])
+        } catch {
+            lastError = "Could not save shared match status locally."
+        }
+    }
+
+    private func upsertOutgoingShare(_ share: OutgoingMatchShare) {
+        if let idx = outgoingShares.firstIndex(where: { $0.inviteUUID == share.inviteUUID }) {
+            outgoingShares[idx] = share
+        } else {
+            outgoingShares.removeAll {
+                $0.sessionUUID == share.sessionUUID &&
+                $0.recipientFriendCode == share.recipientFriendCode &&
+                $0.isFailed
+            }
+            outgoingShares.insert(share, at: 0)
+        }
+        outgoingShares.sort { $0.createdAt > $1.createdAt }
+        saveOutgoingSharesLocal()
+    }
+
+    private func sortFriends() {
+        friends.sort { lhs, rhs in
+            if lhs.addedAt != rhs.addedAt { return lhs.addedAt > rhs.addedAt }
+            return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
+        }
+    }
+
+    private func readableMessage(for error: Error) -> String {
+        if let ckError = error as? CKError {
+            switch ckError.code {
+            case .notAuthenticated:
+                return "Sign in to iCloud to publish your friend code."
+            case .networkUnavailable, .networkFailure:
+                return "Network unavailable. Your profile is saved locally."
+            case .quotaExceeded:
+                return "iCloud storage is full, so the friend code was not published."
+            default:
+                return ckError.localizedDescription
+            }
+        }
+        return error.localizedDescription
+    }
+
+    private static func recordName(for friendCode: String) -> String {
+        "PublicPlayerProfile-\(normalizeFriendCode(friendCode).replacingOccurrences(of: " ", with: ""))"
+    }
+
+    private func matchShareRecordName(for inviteUUID: String) -> String {
+        "FriendMatchShare-\(inviteUUID)"
+    }
+
+    private func makeOutgoingShare(session: Session, friend: SocialFriend, sender: PublicPlayerProfile) throws -> OutgoingMatchShare {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let data = try encoder.encode(session)
+        guard let json = String(data: data, encoding: .utf8) else {
+            throw SocialProfileError.couldNotEncodeMatch
+        }
+
+        return OutgoingMatchShare(
+            inviteUUID: UUID().uuidString,
+            recordName: nil,
+            senderFriendCode: sender.friendCode,
+            senderDisplayName: sender.displayName,
+            recipientFriendCode: Self.normalizeFriendCode(friend.friendCode),
+            recipientDisplayName: friend.displayName,
+            recipientOwnerRecordName: friend.ownerRecordName,
+            sessionUUID: session.sessionUUID,
+            sessionJSON: json,
+            sessionLabel: session.displayLabel,
+            game: session.game,
+            type: session.type,
+            opponent: session.opponent,
+            wins: session.wins,
+            losses: session.losses,
+            createdAt: Date(),
+            status: "pending",
+            failureMessage: nil
+        )
+    }
+
+    static func normalizeFriendCode(_ raw: String) -> String {
+        let compact = raw.uppercased().filter { $0.isLetter || $0.isNumber }
+        let body = compact.hasPrefix("PS") ? String(compact.dropFirst(2)) : compact
+        guard body.count >= 6 else {
+            return raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+        }
+        let prefix = body.prefix(3)
+        let suffix = body.dropFirst(3).prefix(3)
+        return "PS-\(prefix)-\(suffix)"
+    }
+
+    static func isValidFriendCode(_ raw: String) -> Bool {
+        let normalized = normalizeFriendCode(raw)
+        let compact = normalized.uppercased().filter { $0.isLetter || $0.isNumber }
+        guard compact.hasPrefix("PS") else { return false }
+        return compact.dropFirst(2).count == 6
+    }
+
+    private static func generateFriendCode() -> String {
+        let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
+        let first = String((0..<3).map { _ in alphabet.randomElement()! })
+        let second = String((0..<3).map { _ in alphabet.randomElement()! })
+        return "PS-\(first)-\(second)"
+    }
+}
+
+private enum SocialProfileError: LocalizedError {
+    case couldNotAllocateFriendCode
+    case couldNotEncodeMatch
+
+    var errorDescription: String? {
+        switch self {
+        case .couldNotAllocateFriendCode:
+            return "Could not create a unique friend code. Please try again."
+        case .couldNotEncodeMatch:
+            return "Could not prepare this match for sharing."
+        }
+    }
+}
