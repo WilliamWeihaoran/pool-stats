@@ -23,12 +23,17 @@ final class DataStore: ObservableObject {
     private let service = SessionService()
     private let seedFlagKey = "didSeedSampleData"
     private let localURL: URL
+    private let deletedSessionIDsURL: URL
+    private var deletedSessionIDs: Set<Int64> = []
 
     init() {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
         localURL = dir.appendingPathComponent("sessions.json")
+        deletedSessionIDsURL = dir.appendingPathComponent("deleted-session-ids.json")
+        loadDeletedSessionIDs()
         loadLocal()
+        sessions.removeAll { deletedSessionIDs.contains($0.id) }
         syncStatus = sessions.isEmpty ? .loading : .localOnly("Loaded local cache")
         Task { await refresh() }
     }
@@ -38,10 +43,12 @@ final class DataStore: ObservableObject {
         isLoading = true
         syncStatus = .syncing
         defer { isLoading = false }
-        let localSnapshot = sessions
+        let localSnapshot = sessions.filter { !deletedSessionIDs.contains($0.id) }
         do {
+            await retryPendingCloudDeletes()
             let fetched = try await service.fetchAllSessions()
-            if fetched.isEmpty && !localSnapshot.isEmpty {
+            let visibleFetched = fetched.filter { !deletedSessionIDs.contains($0.id) }
+            if visibleFetched.isEmpty && !localSnapshot.isEmpty {
                 sessions = localSnapshot
                 do {
                     try await service.replaceAllSessions(existingIDs: [], with: localSnapshot)
@@ -52,7 +59,7 @@ final class DataStore: ObservableObject {
                     markSyncFailure("Saved locally. iCloud sync failed.")
                 }
             } else {
-                sessions = fetched
+                sessions = mergeCloudAndLocal(cloud: visibleFetched, local: localSnapshot)
                 syncStatus = .synced
                 markSyncSuccess()
             }
@@ -147,11 +154,15 @@ final class DataStore: ObservableObject {
     func deleteSessions(ids: [Int64]) async {
         guard !ids.isEmpty else { return }
         markSyncAttempt()
+        deletedSessionIDs.formUnion(ids)
+        saveDeletedSessionIDs()
         // Apply delete locally first so History reflects user intent immediately.
         sessions.removeAll { ids.contains($0.id) }
         saveLocal()
         do {
             try await service.deleteSessions(ids)
+            deletedSessionIDs.subtract(ids)
+            saveDeletedSessionIDs()
             lastError = nil
             syncStatus = .synced
             markSyncSuccess()
@@ -185,8 +196,9 @@ final class DataStore: ObservableObject {
         markSyncAttempt()
         let sample = SampleData.makeSessions()
         do {
-            let existingIDs = sessions.map { $0.id }
+            let existingIDs = existingIDsIncludingPendingDeletes()
             try await service.replaceAllSessions(existingIDs: existingIDs, with: sample)
+            clearDeletedSessionIDs()
             sessions = sample
             saveLocal()
             UserDefaults.standard.set(true, forKey: seedFlagKey)
@@ -194,6 +206,7 @@ final class DataStore: ObservableObject {
             syncStatus = .synced
             markSyncSuccess()
         } catch {
+            clearDeletedSessionIDs()
             sessions = sample
             saveLocal()
             UserDefaults.standard.set(true, forKey: seedFlagKey)
@@ -204,8 +217,9 @@ final class DataStore: ObservableObject {
     }
 
     private func replaceAllSessions(_ newSessions: [Session]) async throws {
-        let existingIDs = sessions.map { $0.id }
+        let existingIDs = existingIDsIncludingPendingDeletes()
         try await service.replaceAllSessions(existingIDs: existingIDs, with: newSessions)
+        clearDeletedSessionIDs()
         sessions = newSessions
         saveLocal()
     }
@@ -247,6 +261,58 @@ final class DataStore: ObservableObject {
         let dir = localURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try? data.write(to: localURL, options: .atomic)
+    }
+
+    private func loadDeletedSessionIDs() {
+        guard let data = try? Data(contentsOf: deletedSessionIDsURL),
+              let ids = try? JSONDecoder().decode([Int64].self, from: data) else { return }
+        deletedSessionIDs = Set(ids)
+    }
+
+    private func saveDeletedSessionIDs() {
+        let dir = deletedSessionIDsURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        guard !deletedSessionIDs.isEmpty else {
+            try? FileManager.default.removeItem(at: deletedSessionIDsURL)
+            return
+        }
+        let ids = Array(deletedSessionIDs).sorted()
+        guard let data = try? JSONEncoder().encode(ids) else { return }
+        try? data.write(to: deletedSessionIDsURL, options: .atomic)
+    }
+
+    private func clearDeletedSessionIDs() {
+        deletedSessionIDs.removeAll()
+        saveDeletedSessionIDs()
+    }
+
+    private func retryPendingCloudDeletes() async {
+        guard !deletedSessionIDs.isEmpty else { return }
+        let ids = Array(deletedSessionIDs)
+        do {
+            try await service.deleteSessions(ids)
+            deletedSessionIDs.removeAll()
+            saveDeletedSessionIDs()
+        } catch {
+            // Keep tombstones so failed cloud deletes do not reappear locally on refresh.
+        }
+    }
+
+    private func mergeCloudAndLocal(cloud: [Session], local: [Session]) -> [Session] {
+        var merged = cloud
+        for session in local where !deletedSessionIDs.contains(session.id) {
+            let alreadyFetched = merged.contains {
+                $0.sessionUUID == session.sessionUUID || $0.id == session.id
+            }
+            if !alreadyFetched {
+                merged.append(session)
+            }
+        }
+        return merged.sorted { $0.ts < $1.ts }
+    }
+
+    private func existingIDsIncludingPendingDeletes() -> [Int64] {
+        Array(Set(sessions.map { $0.id }).union(deletedSessionIDs))
     }
 
     private func upsertSession(_ session: Session) {

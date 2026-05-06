@@ -51,6 +51,10 @@ struct SummaryView: View {
                 selectedFriendCode = socialProfileStore.friends.first?.friendCode ?? ""
             }
         }
+        .task(id: selectedFriendCode) {
+            guard shouldShowMatchShare, socialProfileStore.profile != nil else { return }
+            await socialProfileStore.refreshOutgoingShares(for: session.sessionUUID)
+        }
     }
 
     private var header: some View {
@@ -224,7 +228,7 @@ struct SummaryView: View {
                 if socialProfileStore.profile == nil {
                     shareHint(
                         title: "Create your public profile first",
-                        message: "Settings > Me has the friend code setup. After that, you can send this match to a saved friend."
+                        message: "Create a public profile in Settings > Me, then send this match to a saved friend."
                     )
                 } else if socialProfileStore.friends.isEmpty {
                     shareHint(
@@ -283,6 +287,19 @@ struct SummaryView: View {
                     Text("\(session.wins):\(session.losses)")
                         .font(.caption.weight(.black).monospacedDigit())
                         .foregroundColor(Theme.text)
+
+                    Button {
+                        Task { await socialProfileStore.refreshOutgoingShares(for: session.sessionUUID) }
+                    } label: {
+                        Image(systemName: outgoingSharesAreRefreshing ? "hourglass" : "arrow.clockwise")
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(Theme.teal)
+                            .frame(width: 28, height: 28)
+                            .background(Theme.teal.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(outgoingSharesAreRefreshing)
                 }
 
                 Button {
@@ -335,6 +352,12 @@ struct SummaryView: View {
         if let share, share.isPending {
             label = "Pending acceptance"
             color = Theme.amber
+        } else if let share, share.isAccepted {
+            label = "Accepted"
+            color = Theme.green
+        } else if let share, share.isDeclined {
+            label = "Declined"
+            color = Theme.red
         } else if let share, share.isFailed {
             label = "Failed"
             color = Theme.red
@@ -355,31 +378,51 @@ struct SummaryView: View {
 
     private func shareButtonTitle(for share: OutgoingMatchShare?) -> String {
         if let share, share.isPending { return "Shared with friend" }
+        if let share, share.isAccepted { return "Shared and accepted" }
+        if let share, share.isDeclined { return "Share again" }
         if let share, share.isFailed { return "Try sharing again" }
         return "Share with \(selectedFriend?.displayName ?? "friend")"
     }
 
     private func shareButtonColor(for share: OutgoingMatchShare?) -> Color {
         if let share, share.isPending { return Theme.muted }
+        if let share, share.isAccepted { return Theme.green }
+        if let share, share.isDeclined { return Theme.amber }
         if let share, share.isFailed { return Theme.amber }
         return Theme.teal
     }
 
     private func isShareButtonDisabled(for friend: SocialFriend, latestShare: OutgoingMatchShare?) -> Bool {
         if let latestShare, latestShare.isPending { return true }
+        if let latestShare, latestShare.isAccepted { return true }
         if case .sending(let code) = socialProfileStore.matchShareState, code == friend.friendCode { return true }
-        return false
+        return outgoingSharesAreRefreshing
     }
 
     private func shareMessage(for friend: SocialFriend, latestShare: OutgoingMatchShare?) -> String? {
         if case .failed(let message) = socialProfileStore.matchShareState { return message }
+        if case .failed(let message) = socialProfileStore.outgoingShareRefreshState { return message }
         if let latestShare, latestShare.isPending {
-            return "\(friend.displayName) will be able to accept this match in the next friends phase."
+            return "\(friend.displayName) can accept this in Settings > Me."
+        }
+        if let latestShare, latestShare.isAccepted {
+            let acceptedText = latestShare.acceptedAt.map { " on \(AppFormatters.sessionDate($0))" } ?? ""
+            return "\(friend.displayName) accepted this match into their history\(acceptedText)."
+        }
+        if let latestShare, latestShare.isDeclined {
+            return "\(friend.displayName) declined this shared match. You can share it again if needed."
         }
         if let latestShare, latestShare.isFailed {
             return latestShare.failureMessage ?? "Could not share this match."
         }
-        return "Phase 3 sends the match invite. Acceptance and mirrored history come next."
+        return "Send a match invite your friend can accept into their history."
+    }
+
+    private var outgoingSharesAreRefreshing: Bool {
+        if case .loading(let refreshingSessionUUID) = socialProfileStore.outgoingShareRefreshState {
+            return refreshingSessionUUID == nil || refreshingSessionUUID == session.sessionUUID
+        }
+        return false
     }
 
     private var selectedFriend: SocialFriend? {

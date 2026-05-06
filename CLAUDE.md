@@ -279,6 +279,31 @@ All interactive controls on the logging page have haptic and animation feedback:
 - Goal editor metrics are split into Grow and Trim groups.
 - Rolling goal windows use a slider with quick-set chips; due dates use a graphical date picker.
 
+## Friends And Shared Matches
+
+- Friend/social state is owned by `SocialProfileStore` in `ios/PoolStats/Cloud/SocialProfileStore.swift`.
+- Friend profiles use CloudKit public database records:
+  - `PublicPlayerProfile` for public display name + friend code lookup
+  - `FriendMatchShare` for completed-match handoff between friends
+- This is intentionally a lightweight Apple-only handoff layer, not a custom backend and not live match sync.
+- Settings → Me contains:
+  - public display name + friend code creation/publishing
+  - friend lookup by code
+  - local saved friends
+  - incoming shared matches with Accept/Decline
+  - sent matches with Pending/Accepted/Declined/Failed statuses
+- The Settings section list shows a badge on `Me` when pending incoming shared matches exist.
+- The post-session/history `SummaryView` can share completed match sessions to saved friends.
+- Accepting an incoming match:
+  - decodes the shared session JSON
+  - mirrors it into the recipient's History
+  - flips won/lost perspective
+  - flips `breaker` values between `me` and `opp`
+  - uses the sender as the recipient-side opponent
+- Declining a match removes it from the pending incoming list and updates the CloudKit share record status.
+- Outgoing status refresh is available from both Summary and Settings → Me; do not rely on push notifications for v1.
+- If CloudKit public database permissions or indexes fail, the UI should surface the readable error and keep local friend/session data intact.
+
 ## Onboarding
 
 - Onboarding is optional and non-blocking.

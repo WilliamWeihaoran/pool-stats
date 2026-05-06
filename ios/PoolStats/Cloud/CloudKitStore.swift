@@ -15,6 +15,7 @@ final class CloudKitStore {
         static let rack = "Rack"
 
         static let sessionId = "sessionId"
+        static let sessionUUID = "sessionUUID"
         static let label = "label"
         static let game = "game"
         static let type = "type"
@@ -183,6 +184,7 @@ final class CloudKitStore {
         let recordID = CKRecord.ID(recordName: String(session.id))
         let record = CKRecord(recordType: RecordKeys.session, recordID: recordID)
         record[RecordKeys.sessionId] = NSNumber(value: session.id)
+        record[RecordKeys.sessionUUID] = session.sessionUUID
         record[RecordKeys.label] = session.label
         record[RecordKeys.opponent] = session.opponent
         record[RecordKeys.game] = session.game
@@ -237,6 +239,7 @@ final class CloudKitStore {
 
     private func sessionFromRecord(_ record: CKRecord, racks: [Rack]) -> Session {
         let id = (record[RecordKeys.sessionId] as? NSNumber)?.int64Value ?? Int64(record.recordID.recordName) ?? 0
+        let sessionUUID = record[RecordKeys.sessionUUID] as? String ?? "session-\(id)"
         let label = record[RecordKeys.label] as? String ?? ""
         let opponent = record[RecordKeys.opponent] as? String ?? ""
         let game = record[RecordKeys.game] as? String ?? "8ball"
@@ -255,7 +258,7 @@ final class CloudKitStore {
             ?? []
         return Session(
             id: id,
-            sessionUUID: "session-\(id)",
+            sessionUUID: sessionUUID,
             label: label,
             opponent: opponent,
             game: game,

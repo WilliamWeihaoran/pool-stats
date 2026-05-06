@@ -57,10 +57,39 @@ struct OutgoingMatchShare: Codable, Equatable, Identifiable {
     var createdAt: Date
     var status: String
     var failureMessage: String?
+    var acceptedAt: Date? = nil
 
     var scoreText: String { "\(wins):\(losses)" }
     var isPending: Bool { status == "pending" }
+    var isAccepted: Bool { status == "accepted" }
+    var isDeclined: Bool { status == "declined" }
     var isFailed: Bool { status == "failed" }
+}
+
+struct IncomingMatchShare: Codable, Equatable, Identifiable {
+    var id: String { inviteUUID }
+    var inviteUUID: String
+    var recordName: String?
+    var senderFriendCode: String
+    var senderDisplayName: String
+    var recipientFriendCode: String
+    var sessionUUID: String
+    var sessionJSON: String
+    var sessionLabel: String
+    var game: String
+    var type: String
+    var opponent: String
+    var wins: Int
+    var losses: Int
+    var createdAt: Date
+    var acceptedAt: Date?
+    var status: String
+    var failureMessage: String?
+
+    var scoreText: String { "\(wins):\(losses)" }
+    var isPending: Bool { status == "pending" }
+    var isAccepted: Bool { status == "accepted" }
+    var isDeclined: Bool { status == "declined" }
 }
 
 @MainActor
@@ -89,12 +118,32 @@ final class SocialProfileStore: ObservableObject {
         case failed(String)
     }
 
+    enum IncomingShareState: Equatable {
+        case idle
+        case loading
+        case accepting(String)
+        case declining(String)
+        case accepted(IncomingMatchShare)
+        case declined(IncomingMatchShare)
+        case failed(String)
+    }
+
+    enum OutgoingShareRefreshState: Equatable {
+        case idle
+        case loading(String?)
+        case synced(Date)
+        case failed(String)
+    }
+
     @Published private(set) var profile: PublicPlayerProfile?
     @Published private(set) var publishState: PublishState = .idle
     @Published private(set) var friends: [SocialFriend] = []
     @Published private(set) var friendLookupState: FriendLookupState = .idle
     @Published private(set) var outgoingShares: [OutgoingMatchShare] = []
+    @Published private(set) var incomingShares: [IncomingMatchShare] = []
     @Published private(set) var matchShareState: MatchShareState = .idle
+    @Published private(set) var incomingShareState: IncomingShareState = .idle
+    @Published private(set) var outgoingShareRefreshState: OutgoingShareRefreshState = .idle
     @Published var displayName: String = ""
     @Published var friendCodeQuery: String = ""
     @Published var lastError: String?
@@ -109,6 +158,7 @@ final class SocialProfileStore: ObservableObject {
         static let localFilename = "social-profile.json"
         static let friendsFilename = "social-friends.json"
         static let outgoingSharesFilename = "social-outgoing-shares.json"
+        static let incomingSharesFilename = "social-incoming-shares.json"
 
         static let inviteUUID = "inviteUUID"
         static let senderFriendCode = "senderFriendCode"
@@ -125,6 +175,7 @@ final class SocialProfileStore: ObservableObject {
         static let wins = "wins"
         static let losses = "losses"
         static let createdAt = "createdAt"
+        static let acceptedAt = "acceptedAt"
         static let status = "status"
     }
 
@@ -133,6 +184,7 @@ final class SocialProfileStore: ObservableObject {
     private let localURL: URL
     private let friendsURL: URL
     private let outgoingSharesURL: URL
+    private let incomingSharesURL: URL
 
     init(container: CKContainer = .default()) {
         self.container = container
@@ -143,10 +195,12 @@ final class SocialProfileStore: ObservableObject {
         localURL = dir.appendingPathComponent(Constants.localFilename)
         friendsURL = dir.appendingPathComponent(Constants.friendsFilename)
         outgoingSharesURL = dir.appendingPathComponent(Constants.outgoingSharesFilename)
+        incomingSharesURL = dir.appendingPathComponent(Constants.incomingSharesFilename)
 
         loadLocal()
         loadFriendsLocal()
         loadOutgoingSharesLocal()
+        loadIncomingSharesLocal()
     }
 
     func refresh() async {
@@ -301,12 +355,43 @@ final class SocialProfileStore: ObservableObject {
         matchShareState = .idle
     }
 
+    func resetIncomingShareState() {
+        incomingShareState = .idle
+    }
+
     func latestOutgoingShare(for session: Session, friendCode: String) -> OutgoingMatchShare? {
         let normalized = Self.normalizeFriendCode(friendCode)
         return outgoingShares
             .filter { $0.sessionUUID == session.sessionUUID && $0.recipientFriendCode == normalized }
             .sorted { $0.createdAt > $1.createdAt }
             .first
+    }
+
+    func refreshOutgoingShares(for sessionUUID: String? = nil) async {
+        guard let profile else { return }
+
+        outgoingShareRefreshState = .loading(sessionUUID)
+        do {
+            let senderPredicate = NSPredicate(format: "%K == %@", Constants.senderFriendCode, profile.friendCode)
+            let predicate: NSPredicate
+            if let sessionUUID {
+                let sessionPredicate = NSPredicate(format: "%K == %@", Constants.sessionUUID, sessionUUID)
+                predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [senderPredicate, sessionPredicate])
+            } else {
+                predicate = senderPredicate
+            }
+
+            let query = CKQuery(recordType: Constants.matchShareRecordType, predicate: predicate)
+            query.sortDescriptors = [NSSortDescriptor(key: Constants.createdAt, ascending: false)]
+            let records = try await fetchAllPublicRecords(query: query)
+            for share in records.compactMap(outgoingShare(from:)) {
+                upsertOutgoingShare(share)
+            }
+            outgoingShareRefreshState = .synced(Date())
+            lastError = nil
+        } catch {
+            outgoingShareRefreshState = .failed(readableMessage(for: error))
+        }
     }
 
     func shareMatch(_ session: Session, with friend: SocialFriend) async {
@@ -369,6 +454,71 @@ final class SocialProfileStore: ObservableObject {
             } catch {
                 matchShareState = .failed(readableMessage(for: error))
             }
+        }
+    }
+
+    func refreshIncomingShares() async {
+        guard let profile else { return }
+
+        incomingShareState = .loading
+        do {
+            let predicate = NSPredicate(format: "%K == %@", Constants.recipientFriendCode, profile.friendCode)
+            let query = CKQuery(recordType: Constants.matchShareRecordType, predicate: predicate)
+            query.sortDescriptors = [NSSortDescriptor(key: Constants.createdAt, ascending: false)]
+            let records = try await fetchAllPublicRecords(query: query)
+            let remoteShares = records
+                .compactMap(incomingShare(from:))
+                .sorted { $0.createdAt > $1.createdAt }
+            incomingShares = mergedIncomingShares(remoteShares)
+            saveIncomingSharesLocal()
+            incomingShareState = .idle
+            lastError = nil
+        } catch {
+            incomingShareState = .failed(readableMessage(for: error))
+        }
+    }
+
+    func acceptIncomingShare(_ share: IncomingMatchShare, savingTo store: DataStore) async {
+        guard share.isPending else { return }
+        incomingShareState = .accepting(share.inviteUUID)
+
+        do {
+            let session = try acceptedSession(from: share)
+            await store.saveSession(session)
+
+            var accepted = share
+            accepted.status = "accepted"
+            accepted.acceptedAt = Date()
+            accepted.failureMessage = nil
+
+            try await updateIncomingShareRecord(accepted)
+            upsertIncomingShare(accepted)
+            incomingShareState = .accepted(accepted)
+            lastError = nil
+        } catch {
+            var failed = share
+            failed.failureMessage = readableMessage(for: error)
+            upsertIncomingShare(failed)
+            incomingShareState = .failed(failed.failureMessage ?? "Could not accept this shared match.")
+        }
+    }
+
+    func declineIncomingShare(_ share: IncomingMatchShare) async {
+        guard share.isPending else { return }
+        incomingShareState = .declining(share.inviteUUID)
+
+        do {
+            var declined = share
+            declined.status = "declined"
+            declined.failureMessage = nil
+            try await updateIncomingShareRecord(declined)
+            upsertIncomingShare(declined)
+            incomingShares.removeAll { $0.inviteUUID == declined.inviteUUID }
+            saveIncomingSharesLocal()
+            incomingShareState = .declined(declined)
+            lastError = nil
+        } catch {
+            incomingShareState = .failed(readableMessage(for: error))
         }
     }
 
@@ -546,6 +696,26 @@ final class SocialProfileStore: ObservableObject {
         }
     }
 
+    private func loadIncomingSharesLocal() {
+        guard let data = try? Data(contentsOf: incomingSharesURL),
+              let decoded = try? JSONDecoder().decode([IncomingMatchShare].self, from: data) else { return }
+        incomingShares = decoded
+            .filter { !$0.isDeclined }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func saveIncomingSharesLocal() {
+        do {
+            try FileManager.default.createDirectory(at: incomingSharesURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(incomingShares)
+            try data.write(to: incomingSharesURL, options: [.atomic])
+        } catch {
+            lastError = "Could not save incoming match invites locally."
+        }
+    }
+
     private func upsertOutgoingShare(_ share: OutgoingMatchShare) {
         if let idx = outgoingShares.firstIndex(where: { $0.inviteUUID == share.inviteUUID }) {
             outgoingShares[idx] = share
@@ -559,6 +729,38 @@ final class SocialProfileStore: ObservableObject {
         }
         outgoingShares.sort { $0.createdAt > $1.createdAt }
         saveOutgoingSharesLocal()
+    }
+
+    private func upsertIncomingShare(_ share: IncomingMatchShare) {
+        if let idx = incomingShares.firstIndex(where: { $0.inviteUUID == share.inviteUUID }) {
+            incomingShares[idx] = share
+        } else {
+            incomingShares.insert(share, at: 0)
+        }
+        incomingShares.sort { $0.createdAt > $1.createdAt }
+        saveIncomingSharesLocal()
+    }
+
+    private func mergedIncomingShares(_ remoteShares: [IncomingMatchShare]) -> [IncomingMatchShare] {
+        var merged: [String: IncomingMatchShare] = [:]
+        for share in remoteShares where !share.isDeclined {
+            merged[share.inviteUUID] = share
+        }
+
+        for local in incomingShares {
+            if local.isDeclined {
+                merged.removeValue(forKey: local.inviteUUID)
+            } else if local.isAccepted {
+                let remoteIsStillPending = merged[local.inviteUUID]?.isPending ?? false
+                if remoteIsStillPending || merged[local.inviteUUID] == nil {
+                    merged[local.inviteUUID] = local
+                }
+            }
+        }
+
+        return merged.values
+            .filter { !$0.isDeclined }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     private func sortFriends() {
@@ -590,6 +792,183 @@ final class SocialProfileStore: ObservableObject {
 
     private func matchShareRecordName(for inviteUUID: String) -> String {
         "FriendMatchShare-\(inviteUUID)"
+    }
+
+    private func fetchAllPublicRecords(query: CKQuery) async throws -> [CKRecord] {
+        var records: [CKRecord] = []
+        var cursor: CKQueryOperation.Cursor?
+        repeat {
+            let (batch, nextCursor) = try await fetchPublicBatch(query: query, cursor: cursor)
+            records.append(contentsOf: batch)
+            cursor = nextCursor
+        } while cursor != nil
+        return records
+    }
+
+    private func fetchPublicBatch(query: CKQuery, cursor: CKQueryOperation.Cursor?) async throws -> ([CKRecord], CKQueryOperation.Cursor?) {
+        try await withCheckedThrowingContinuation { cont in
+            let op: CKQueryOperation = {
+                if let cursor { return CKQueryOperation(cursor: cursor) }
+                return CKQueryOperation(query: query)
+            }()
+            var batch: [CKRecord] = []
+            op.recordMatchedBlock = { _, result in
+                if case .success(let record) = result {
+                    batch.append(record)
+                }
+            }
+            op.queryResultBlock = { result in
+                switch result {
+                case .success(let cursor):
+                    cont.resume(returning: (batch, cursor))
+                case .failure(let error):
+                    cont.resume(throwing: error)
+                }
+            }
+            db.add(op)
+        }
+    }
+
+    private func updateIncomingShareRecord(_ share: IncomingMatchShare) async throws {
+        let recordName = share.recordName ?? matchShareRecordName(for: share.inviteUUID)
+        let record = try await db.record(for: CKRecord.ID(recordName: recordName))
+        record[Constants.status] = share.status as CKRecordValue
+        if let acceptedAt = share.acceptedAt {
+            record[Constants.acceptedAt] = acceptedAt as CKRecordValue
+        }
+        _ = try await db.save(record)
+    }
+
+    private func outgoingShare(from record: CKRecord) -> OutgoingMatchShare? {
+        guard let inviteUUID = record[Constants.inviteUUID] as? String,
+              let senderFriendCode = record[Constants.senderFriendCode] as? String,
+              let senderDisplayName = record[Constants.senderDisplayName] as? String,
+              let recipientFriendCode = record[Constants.recipientFriendCode] as? String,
+              let recipientDisplayName = record[Constants.recipientDisplayName] as? String,
+              let sessionUUID = record[Constants.sessionUUID] as? String,
+              let sessionJSON = record[Constants.sessionJSON] as? String else {
+            return nil
+        }
+
+        return OutgoingMatchShare(
+            inviteUUID: inviteUUID,
+            recordName: record.recordID.recordName,
+            senderFriendCode: Self.normalizeFriendCode(senderFriendCode),
+            senderDisplayName: senderDisplayName,
+            recipientFriendCode: Self.normalizeFriendCode(recipientFriendCode),
+            recipientDisplayName: recipientDisplayName,
+            recipientOwnerRecordName: record[Constants.recipientOwnerRecordName] as? String,
+            sessionUUID: sessionUUID,
+            sessionJSON: sessionJSON,
+            sessionLabel: record[Constants.sessionLabel] as? String ?? "Shared match",
+            game: record[Constants.game] as? String ?? "8ball",
+            type: record[Constants.type] as? String ?? "match",
+            opponent: record[Constants.opponent] as? String ?? "",
+            wins: intValue(record[Constants.wins]),
+            losses: intValue(record[Constants.losses]),
+            createdAt: record[Constants.createdAt] as? Date ?? Date(),
+            status: record[Constants.status] as? String ?? "pending",
+            failureMessage: nil,
+            acceptedAt: record[Constants.acceptedAt] as? Date
+        )
+    }
+
+    private func incomingShare(from record: CKRecord) -> IncomingMatchShare? {
+        guard let inviteUUID = record[Constants.inviteUUID] as? String,
+              let senderFriendCode = record[Constants.senderFriendCode] as? String,
+              let senderDisplayName = record[Constants.senderDisplayName] as? String,
+              let recipientFriendCode = record[Constants.recipientFriendCode] as? String,
+              let sessionUUID = record[Constants.sessionUUID] as? String,
+              let sessionJSON = record[Constants.sessionJSON] as? String else {
+            return nil
+        }
+
+        return IncomingMatchShare(
+            inviteUUID: inviteUUID,
+            recordName: record.recordID.recordName,
+            senderFriendCode: Self.normalizeFriendCode(senderFriendCode),
+            senderDisplayName: senderDisplayName,
+            recipientFriendCode: Self.normalizeFriendCode(recipientFriendCode),
+            sessionUUID: sessionUUID,
+            sessionJSON: sessionJSON,
+            sessionLabel: record[Constants.sessionLabel] as? String ?? "Shared match",
+            game: record[Constants.game] as? String ?? "8ball",
+            type: record[Constants.type] as? String ?? "match",
+            opponent: record[Constants.opponent] as? String ?? "",
+            wins: intValue(record[Constants.wins]),
+            losses: intValue(record[Constants.losses]),
+            createdAt: record[Constants.createdAt] as? Date ?? Date(),
+            acceptedAt: record[Constants.acceptedAt] as? Date,
+            status: record[Constants.status] as? String ?? "pending",
+            failureMessage: nil
+        )
+    }
+
+    private func acceptedSession(from share: IncomingMatchShare) throws -> Session {
+        guard let data = share.sessionJSON.data(using: .utf8) else {
+            throw SocialProfileError.couldNotDecodeMatch
+        }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let original = try decoder.decode(Session.self, from: data)
+        return mirroredSession(original, from: share)
+    }
+
+    private func mirroredSession(_ original: Session, from share: IncomingMatchShare) -> Session {
+        let mirroredRacks = original.racks.map { rack in
+            Rack(
+                index: rack.index,
+                result: mirroredResult(rack.result),
+                breaker: mirroredBreaker(rack.breaker),
+                breakBalls: rack.breakBalls,
+                breakFoul: rack.breakFoul,
+                layout: rack.layout,
+                outcome: nil,
+                fouls: 0,
+                badSafety: 0,
+                badPosition: 0,
+                patternCount: 0,
+                missCount: 0,
+                runoutFirst: false,
+                breakAndRun: false
+            )
+        }
+
+        return Session(
+            id: Self.stableSharedSessionID(for: share.inviteUUID),
+            sessionUUID: "shared-\(share.inviteUUID)",
+            label: original.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Shared match" : original.label,
+            opponent: share.senderDisplayName,
+            game: original.game,
+            type: original.type,
+            ts: original.ts,
+            racks: mirroredRacks,
+            durationSeconds: original.durationSeconds,
+            performanceRating: nil
+        )
+    }
+
+    private func mirroredResult(_ result: String?) -> String? {
+        switch result {
+        case "won": return "lost"
+        case "lost": return "won"
+        default: return result
+        }
+    }
+
+    private func mirroredBreaker(_ breaker: String) -> String {
+        switch breaker {
+        case "me": return "opp"
+        case "opp": return "me"
+        default: return breaker
+        }
+    }
+
+    private func intValue(_ value: Any?) -> Int {
+        if let int = value as? Int { return int }
+        if let int64 = value as? Int64 { return Int(int64) }
+        if let number = value as? NSNumber { return number.intValue }
+        return 0
     }
 
     private func makeOutgoingShare(session: Session, friend: SocialFriend, sender: PublicPlayerProfile) throws -> OutgoingMatchShare {
@@ -646,11 +1025,22 @@ final class SocialProfileStore: ObservableObject {
         let second = String((0..<3).map { _ in alphabet.randomElement()! })
         return "PS-\(first)-\(second)"
     }
+
+    private static func stableSharedSessionID(for inviteUUID: String) -> Int64 {
+        var hash: UInt64 = 14_695_981_039_346_656_037
+        for byte in inviteUUID.utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        let stable = hash & 0x7FFF_FFFF_FFFF_FFFF
+        return Int64(stable == 0 ? 1 : stable)
+    }
 }
 
 private enum SocialProfileError: LocalizedError {
     case couldNotAllocateFriendCode
     case couldNotEncodeMatch
+    case couldNotDecodeMatch
 
     var errorDescription: String? {
         switch self {
@@ -658,6 +1048,8 @@ private enum SocialProfileError: LocalizedError {
             return "Could not create a unique friend code. Please try again."
         case .couldNotEncodeMatch:
             return "Could not prepare this match for sharing."
+        case .couldNotDecodeMatch:
+            return "Could not read this shared match."
         }
     }
 }

@@ -25,7 +25,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
 
     var subtitle: String {
         switch self {
-        case .me: return "Your profile, best opponent, and biggest leak"
+        case .me: return "Profile, friend code, and shared matches"
         case .account: return "iCloud sync and Sign in with Apple"
         case .opponents: return "Add, edit, favorite, and compare opponents"
         case .history: return "Review past sessions and summaries"
@@ -51,6 +51,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
 }
 
 struct SettingsView: View {
+    @EnvironmentObject private var socialProfileStore: SocialProfileStore
     private let tabBarClearance: CGFloat = 74
 
     var body: some View {
@@ -72,6 +73,10 @@ struct SettingsView: View {
             }
         }
         .appBackSwipeEnabled()
+        .task {
+            guard socialProfileStore.profile != nil else { return }
+            await socialProfileStore.refreshIncomingShares()
+        }
     }
 
     private var header: some View {
@@ -95,7 +100,7 @@ struct SettingsView: View {
                     VStack(spacing: 8) {
                         ForEach(group.sections, id: \.self) { section in
                             NavigationLink(value: section) {
-                                SettingsSectionRow(section: section)
+                                SettingsSectionRow(section: section, badgeText: badgeText(for: section))
                             }
                             .buttonStyle(.plain)
                         }
@@ -113,6 +118,12 @@ struct SettingsView: View {
             SettingsGroup(title: "App", sections: [.appearance, .data, .about])
         ]
     }
+
+    private func badgeText(for section: SettingsSection) -> String? {
+        guard section == .me else { return nil }
+        let pending = socialProfileStore.incomingShares.filter(\.isPending).count
+        return pending > 0 ? "\(pending)" : nil
+    }
 }
 
 private struct SettingsGroup: Identifiable {
@@ -123,6 +134,7 @@ private struct SettingsGroup: Identifiable {
 
 private struct SettingsSectionRow: View {
     let section: SettingsSection
+    let badgeText: String?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -146,6 +158,17 @@ private struct SettingsSectionRow: View {
             }
 
             Spacer(minLength: 10)
+
+            if let badgeText {
+                Text(badgeText)
+                    .font(.caption2.weight(.black).monospacedDigit())
+                    .foregroundColor(Theme.bg)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Theme.amber)
+                    .clipShape(Capsule())
+                    .accessibilityLabel("\(badgeText) pending shared matches")
+            }
 
             Image(systemName: "chevron.right")
                 .font(.caption.weight(.semibold))

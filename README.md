@@ -90,6 +90,16 @@ That gives you enough detail to improve your game without forcing you to record 
 - Settings is split into drill-in sections for Me, Stats, Recent form, History, Appearance, Data, and About
 - Me section includes a Nickname field used in the Lite scoreboard
 
+**Friends / shared matches**
+- Settings → Me supports an optional public player profile with a display name and friend code
+- Friends can be added by code and are saved locally for quick match sharing
+- Match summaries can be shared to a saved friend after a session
+- Incoming shared matches can be accepted or declined from Settings → Me
+- Accepted shared matches are mirrored into History with the score/opponent perspective flipped for the recipient
+- Sent matches show Pending, Accepted, Declined, or Failed status in both the summary share panel and Settings → Me
+- The Settings list badges Me when incoming shared matches are waiting
+- This feature uses CloudKit public records for friend codes and match handoff; it is not live score sync and does not require a custom backend
+
 **Goals**
 - Custom goal cards with completion, archive, edit, delete, and reset actions
 - Grow vs Trim metric grouping

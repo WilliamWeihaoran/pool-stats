@@ -233,6 +233,8 @@ struct MeSettingsView: View {
                 socialProfileStore.displayName = profileStore.profile.nickname
             }
             await socialProfileStore.refresh()
+            await socialProfileStore.refreshIncomingShares()
+            await socialProfileStore.refreshOutgoingShares()
         }
         .alert("Regenerate starter goals?", isPresented: Binding(
             get: { pendingDedication != nil },
@@ -318,7 +320,7 @@ struct MeSettingsView: View {
                         infoRow(label: "Public record", value: profile.maskedOwnerRecordName)
                     }
                 } else {
-                    Text("Create a public display name and friend code. Friend lookup and match sharing come in the next phases.")
+                    Text("Create a public display name and friend code so friends can find you and send shared matches.")
                         .font(.caption)
                         .foregroundColor(Theme.muted)
                 }
@@ -373,6 +375,14 @@ struct MeSettingsView: View {
                 friendLookupSection
 
                 friendsListSection
+
+                Divider().overlay(Theme.border.opacity(0.8))
+
+                incomingMatchSharesSection
+
+                Divider().overlay(Theme.border.opacity(0.8))
+
+                outgoingMatchSharesSection
             }
         }
     }
@@ -448,7 +458,7 @@ struct MeSettingsView: View {
     private var friendLookupResult: some View {
         switch socialProfileStore.friendLookupState {
         case .idle:
-            Text("Search by friend code to save a player locally. Match sharing comes in a later phase.")
+            Text("Search by friend code to save a player and share completed matches.")
                 .font(.caption2)
                 .foregroundColor(Theme.muted)
         case .searching:
@@ -596,9 +606,376 @@ struct MeSettingsView: View {
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
     }
 
+    private var incomingMatchSharesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Shared matches")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.muted)
+                    Text("Accept matches friends send to your history.")
+                        .font(.caption2)
+                        .foregroundColor(Theme.muted.opacity(0.85))
+                }
+
+                Spacer(minLength: 0)
+
+                if pendingIncomingShareCount > 0 {
+                    Text("\(pendingIncomingShareCount)")
+                        .font(.caption2.weight(.black).monospacedDigit())
+                        .foregroundColor(Theme.bg)
+                        .frame(minWidth: 20, minHeight: 20)
+                        .background(Theme.amber)
+                        .clipShape(Capsule())
+                }
+
+                Button {
+                    Task {
+                        await socialProfileStore.refreshIncomingShares()
+                    }
+                } label: {
+                    Image(systemName: incomingSharesAreLoading ? "hourglass" : "arrow.clockwise")
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(Theme.teal)
+                        .frame(width: 28, height: 28)
+                        .background(Theme.teal.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(incomingSharesAreLoading)
+            }
+
+            if socialProfileStore.profile == nil {
+                Text("Create your public profile first so friends know where to send matches.")
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Theme.panel2.opacity(0.7))
+                    .cornerRadius(10)
+            } else if socialProfileStore.incomingShares.isEmpty {
+                Text("No shared matches waiting.")
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Theme.panel2.opacity(0.7))
+                    .cornerRadius(10)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(socialProfileStore.incomingShares.prefix(6)) { share in
+                        incomingShareRow(share)
+                    }
+                }
+            }
+
+            incomingShareStateMessage
+        }
+    }
+
+    private var outgoingMatchSharesSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Sent matches")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.muted)
+                    Text("Track whether friends accepted your shared matches.")
+                        .font(.caption2)
+                        .foregroundColor(Theme.muted.opacity(0.85))
+                }
+
+                Spacer(minLength: 0)
+
+                Button {
+                    Task {
+                        await socialProfileStore.refreshOutgoingShares()
+                    }
+                } label: {
+                    Image(systemName: outgoingSharesAreLoading ? "hourglass" : "arrow.clockwise")
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(Theme.teal)
+                        .frame(width: 28, height: 28)
+                        .background(Theme.teal.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(socialProfileStore.profile == nil || outgoingSharesAreLoading)
+            }
+
+            if socialProfileStore.profile == nil {
+                Text("Create your public profile first before sending matches.")
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Theme.panel2.opacity(0.7))
+                    .cornerRadius(10)
+            } else if socialProfileStore.outgoingShares.isEmpty {
+                Text("No sent matches yet.")
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+                    .background(Theme.panel2.opacity(0.7))
+                    .cornerRadius(10)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(socialProfileStore.outgoingShares.prefix(6)) { share in
+                        outgoingShareRow(share)
+                    }
+                }
+            }
+
+            outgoingShareStateMessage
+        }
+    }
+
+    private func outgoingShareRow(_ share: OutgoingMatchShare) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(outgoingShareAccent(share).opacity(0.16))
+                .frame(width: 34, height: 34)
+                .overlay(
+                    Image(systemName: outgoingShareIcon(share))
+                        .font(.caption.weight(.black))
+                        .foregroundColor(outgoingShareAccent(share))
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(share.recipientDisplayName)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Theme.text)
+                    .lineLimit(1)
+                Text(share.sessionLabel)
+                    .font(.caption2)
+                    .foregroundColor(Theme.text2)
+                    .lineLimit(1)
+                Text("\(AppFormatters.sessionDate(share.createdAt)) · \(share.scoreText)")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundColor(Theme.muted)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            Text(outgoingShareStatusText(share))
+                .font(.caption2.weight(.bold))
+                .foregroundColor(outgoingShareAccent(share))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(outgoingShareAccent(share).opacity(0.12))
+                .clipShape(Capsule())
+        }
+        .padding(10)
+        .background(Theme.panel2)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+    }
+
+    private func incomingShareRow(_ share: IncomingMatchShare) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Circle()
+                    .fill(incomingShareAccent(share).opacity(0.16))
+                    .frame(width: 34, height: 34)
+                    .overlay(
+                        Image(systemName: share.isAccepted ? "checkmark" : "person.2")
+                            .font(.caption.weight(.black))
+                            .foregroundColor(incomingShareAccent(share))
+                    )
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(share.senderDisplayName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(Theme.text)
+                        .lineLimit(1)
+                    Text(share.sessionLabel)
+                        .font(.caption2)
+                        .foregroundColor(Theme.text2)
+                        .lineLimit(1)
+                    Text("\(AppFormatters.sessionDate(share.createdAt)) · Your score \(share.losses):\(share.wins)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundColor(Theme.muted)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                Text(incomingShareStatusText(share))
+                    .font(.caption2.weight(.bold))
+                    .foregroundColor(incomingShareAccent(share))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(incomingShareAccent(share).opacity(0.12))
+                    .clipShape(Capsule())
+            }
+
+            if share.isPending {
+                HStack(spacing: 8) {
+                    Button {
+                        Task {
+                            await socialProfileStore.acceptIncomingShare(share, savingTo: store)
+                            opponentStore.addOpponent(name: share.senderDisplayName)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if incomingShareIsAccepting(share) {
+                                ProgressView()
+                                    .tint(Theme.bg)
+                            }
+                            Text("Accept")
+                                .font(.caption.weight(.bold))
+                        }
+                        .foregroundColor(Theme.bg)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(Theme.green)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(incomingShareIsBusy(share))
+
+                    Button {
+                        Task {
+                            await socialProfileStore.declineIncomingShare(share)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if incomingShareIsDeclining(share) {
+                                ProgressView()
+                                    .tint(Theme.red)
+                            }
+                            Text("Decline")
+                                .font(.caption.weight(.bold))
+                        }
+                        .foregroundColor(Theme.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 9)
+                        .background(Theme.red.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(Theme.red.opacity(0.5), lineWidth: 0.7)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(incomingShareIsBusy(share))
+                }
+            }
+        }
+        .padding(10)
+        .background(Theme.panel2)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+    }
+
+    @ViewBuilder
+    private var incomingShareStateMessage: some View {
+        switch socialProfileStore.incomingShareState {
+        case .accepted(let share):
+            Text("Accepted \(share.sessionLabel). It is now in History.")
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(Theme.green)
+        case .declined(let share):
+            Text("Declined match from \(share.senderDisplayName).")
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(Theme.muted)
+        case .failed(let message):
+            Text(message)
+                .font(.caption2)
+                .foregroundColor(Theme.red)
+                .lineLimit(3)
+        default:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var outgoingShareStateMessage: some View {
+        switch socialProfileStore.outgoingShareRefreshState {
+        case .synced(let date):
+            Text("Sent status refreshed \(AppFormatters.shortDate(date)).")
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(Theme.green)
+        case .failed(let message):
+            Text(message)
+                .font(.caption2)
+                .foregroundColor(Theme.red)
+                .lineLimit(3)
+        default:
+            EmptyView()
+        }
+    }
+
     private var canSearchFriend: Bool {
         SocialProfileStore.isValidFriendCode(socialProfileStore.friendCodeQuery)
         && socialProfileStore.friendLookupState != .searching
+    }
+
+    private var pendingIncomingShareCount: Int {
+        socialProfileStore.incomingShares.filter(\.isPending).count
+    }
+
+    private var incomingSharesAreLoading: Bool {
+        if case .loading = socialProfileStore.incomingShareState { return true }
+        return false
+    }
+
+    private var outgoingSharesAreLoading: Bool {
+        if case .loading = socialProfileStore.outgoingShareRefreshState { return true }
+        return false
+    }
+
+    private func incomingShareIsAccepting(_ share: IncomingMatchShare) -> Bool {
+        if case .accepting(let id) = socialProfileStore.incomingShareState {
+            return id == share.inviteUUID
+        }
+        return false
+    }
+
+    private func incomingShareIsDeclining(_ share: IncomingMatchShare) -> Bool {
+        if case .declining(let id) = socialProfileStore.incomingShareState {
+            return id == share.inviteUUID
+        }
+        return false
+    }
+
+    private func incomingShareIsBusy(_ share: IncomingMatchShare) -> Bool {
+        incomingShareIsAccepting(share) || incomingShareIsDeclining(share)
+    }
+
+    private func incomingShareStatusText(_ share: IncomingMatchShare) -> String {
+        if share.isAccepted { return "Accepted" }
+        if share.isDeclined { return "Declined" }
+        return "Pending"
+    }
+
+    private func incomingShareAccent(_ share: IncomingMatchShare) -> Color {
+        if share.isAccepted { return Theme.green }
+        if share.isDeclined { return Theme.muted }
+        return Theme.amber
+    }
+
+    private func outgoingShareStatusText(_ share: OutgoingMatchShare) -> String {
+        if share.isAccepted { return "Accepted" }
+        if share.isDeclined { return "Declined" }
+        if share.isFailed { return "Failed" }
+        return "Pending"
+    }
+
+    private func outgoingShareAccent(_ share: OutgoingMatchShare) -> Color {
+        if share.isAccepted { return Theme.green }
+        if share.isDeclined { return Theme.red }
+        if share.isFailed { return Theme.red }
+        return Theme.amber
+    }
+
+    private func outgoingShareIcon(_ share: OutgoingMatchShare) -> String {
+        if share.isAccepted { return "checkmark" }
+        if share.isDeclined { return "xmark" }
+        if share.isFailed { return "exclamationmark" }
+        return "paperplane.fill"
     }
 
     private var publicProfileStatusColor: Color {
