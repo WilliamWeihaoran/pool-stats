@@ -13,6 +13,10 @@
 		2F49D5E4D60378BD12355782 /* WatchSyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DB8CB67DEEF7C32E13365F /* WatchSyncModels.swift */; };
 		361A8B865609ADA31C805909 /* PoolStatsWatchExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 6796882EB3A1DC2039DB20C0 /* PoolStatsWatchExtension.appex */; };
 		40576368ACA893DFB77B1E88 /* WatchConnectivityClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304A8C77D82733F0C7CB230C /* WatchConnectivityClient.swift */; };
+		AB1000010000000000000001 /* GoalMetricTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000001 /* GoalMetricTests.swift */; };
+		AB1000010000000000000002 /* GoalWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000002 /* GoalWindowTests.swift */; };
+		AB1000010000000000000003 /* DrillSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000003 /* DrillSessionTests.swift */; };
+		AB1000010000000000000004 /* TestFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000004 /* TestFixtures.swift */; };
 		4F615CB5132527D2AF44A03F /* PoolStatsWatchComplications.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 9EB5F481BF3F9925C1F51611 /* PoolStatsWatchComplications.appex */; };
 		9096B1DCDF86CDC5B03B5B1B /* PoolStatsWatchComplications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9A91B9066103F654E63871 /* PoolStatsWatchComplications.swift */; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* WatchSessionStartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */; };
@@ -111,6 +115,13 @@
 			remoteGlobalIDString = 32129069343BA03C31C114B6;
 			remoteInfo = PoolStatsWatchExtension;
 		};
+		AB1000020000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AA6000010000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA5000010000000000000001;
+			remoteInfo = PoolStats;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -203,6 +214,11 @@
 		AA200001000000000000003A /* DrillControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillControls.swift; sourceTree = "<group>"; };
 		AA200001000000000000003B /* LogStartComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStartComponents.swift; sourceTree = "<group>"; };
 		AA200001000000000000003C /* DrillLibraryCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillLibraryCatalog.swift; sourceTree = "<group>"; };
+		AB2000010000000000000001 /* GoalMetricTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalMetricTests.swift; sourceTree = "<group>"; };
+		AB2000010000000000000002 /* GoalWindowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalWindowTests.swift; sourceTree = "<group>"; };
+		AB2000010000000000000003 /* DrillSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillSessionTests.swift; sourceTree = "<group>"; };
+		AB2000010000000000000004 /* TestFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestFixtures.swift; sourceTree = "<group>"; };
+		AB2000010000000000000005 /* PoolStatsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PoolStatsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionStartView.swift; sourceTree = "<group>"; };
 		B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "WatchExtension-Info.plist"; sourceTree = "<group>"; };
 		C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchActiveSessionView.swift; sourceTree = "<group>"; };
@@ -237,6 +253,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				D6781C13732D22A412AD7F22 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AB3000010000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -295,7 +318,9 @@
 			children = (
 				886D45192F89469F00338AC1 /* PoolStats.entitlements */,
 				AA4000010000000000000002 /*  */,
+				AB4000010000000000000001 /* PoolStatsTests */,
 				AA2000010000000000000013 /* PoolStats.app */,
+				AB2000010000000000000005 /* PoolStatsTests.xctest */,
 				664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */,
 				86F38CDB3C596F2CD2F91064 /* Frameworks */,
 				6796882EB3A1DC2039DB20C0 /* PoolStatsWatchExtension.appex */,
@@ -403,6 +428,17 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		AB4000010000000000000001 /* PoolStatsTests */ = {
+			isa = PBXGroup;
+			children = (
+				AB2000010000000000000003 /* DrillSessionTests.swift */,
+				AB2000010000000000000001 /* GoalMetricTests.swift */,
+				AB2000010000000000000002 /* GoalWindowTests.swift */,
+				AB2000010000000000000004 /* TestFixtures.swift */,
+			);
+			path = ../PoolStatsTests;
+			sourceTree = "<group>";
+		};
 		CBD044E3B51CCCAE273A72CF /* watchOS */ = {
 			isa = PBXGroup;
 			children = (
@@ -470,6 +506,24 @@
 			productReference = AA2000010000000000000013 /* PoolStats.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AB5000010000000000000001 /* PoolStatsTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AB7000010000000000000001 /* Build configuration list for PBXNativeTarget "PoolStatsTests" */;
+			buildPhases = (
+				AB3000020000000000000001 /* Sources */,
+				AB3000010000000000000001 /* Frameworks */,
+				AB3000030000000000000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				AB9000010000000000000001 /* PBXTargetDependency */,
+			);
+			name = PoolStatsTests;
+			productName = PoolStatsTests;
+			productReference = AB2000010000000000000005 /* PoolStatsTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		C00D05DCA8A06095BCC74361 /* PoolStatsWatchComplications */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = B1AD57BF8B2208AF42C5D698 /* Build configuration list for PBXNativeTarget "PoolStatsWatchComplications" */;
@@ -500,6 +554,10 @@
 					AA5000010000000000000001 = {
 						CreatedOnToolsVersion = 16.0;
 					};
+					AB5000010000000000000001 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = AA5000010000000000000001;
+					};
 				};
 			};
 			buildConfigurationList = AA7000020000000000000001 /* Build configuration list for PBXProject "PoolStats" */;
@@ -516,6 +574,7 @@
 			projectRoot = "";
 			targets = (
 				AA5000010000000000000001 /* PoolStats */,
+				AB5000010000000000000001 /* PoolStatsTests */,
 				322A82D7DD5380894A1D5DA1 /* PoolStatsWatchApp */,
 				32129069343BA03C31C114B6 /* PoolStatsWatchExtension */,
 				C00D05DCA8A06095BCC74361 /* PoolStatsWatchComplications */,
@@ -547,6 +606,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AB3000030000000000000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		FB2741286BEE867408EC388B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -570,10 +636,11 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(WRAPPER_NAME)/Watch/PoolStatsWatchApp.app",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\nWATCH_APP_NAME=\"PoolStatsWatchApp.app\"\nWATCH_DIR=\"$(dirname \"$BUILT_PRODUCTS_DIR\")/Release-watchos\"\nWATCH_APP=\"${WATCH_DIR}/${WATCH_APP_NAME}\"\nif [ ! -d \"$WATCH_APP\" ]; then\n  echo \"warning: Watch app not found at $WATCH_APP\"\n  exit 0\nfi\nDEST=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Watch\"\nmkdir -p \"$DEST\"\nrsync -a --delete \"${WATCH_APP}/\" \"${DEST}/${WATCH_APP_NAME}/\"\necho \"Embedded ${WATCH_APP_NAME} into ${DEST}\"\n";
+			shellScript = "set -e\nWATCH_APP_NAME=\"PoolStatsWatchApp.app\"\nCANDIDATES=\"$(dirname \"$BUILT_PRODUCTS_DIR\")/${CONFIGURATION}-watchsimulator $(dirname \"$BUILT_PRODUCTS_DIR\")/${CONFIGURATION}-watchos $(dirname \"$BUILT_PRODUCTS_DIR\")/Release-watchos\"\nWATCH_APP=\"\"\nfor WATCH_DIR in $CANDIDATES; do\n  if [ -d \"${WATCH_DIR}/${WATCH_APP_NAME}\" ]; then\n    WATCH_APP=\"${WATCH_DIR}/${WATCH_APP_NAME}\"\n    break\n  fi\ndone\nif [ -z \"$WATCH_APP\" ]; then\n  echo \"warning: Watch app not found in expected build products\"\n  exit 0\nfi\nDEST=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}/Watch\"\nmkdir -p \"$DEST\"\nrsync -a --delete \"${WATCH_APP}/\" \"${DEST}/${WATCH_APP_NAME}/\"\necho \"Embedded ${WATCH_APP_NAME} into ${DEST}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -672,6 +739,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AB3000020000000000000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AB1000010000000000000003 /* DrillSessionTests.swift in Sources */,
+				AB1000010000000000000001 /* GoalMetricTests.swift in Sources */,
+				AB1000010000000000000002 /* GoalWindowTests.swift in Sources */,
+				AB1000010000000000000004 /* TestFixtures.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D48596C618415F1648551F23 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -693,6 +771,12 @@
 			name = PoolStatsWatchExtension;
 			target = 32129069343BA03C31C114B6 /* PoolStatsWatchExtension */;
 			targetProxy = 9B165BBFE3C4136164BDBC83 /* PBXContainerItemProxy */;
+		};
+		AB9000010000000000000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = PoolStats;
+			target = AA5000010000000000000001 /* PoolStats */;
+			targetProxy = AB1000020000000000000001 /* PBXContainerItemProxy */;
 		};
 		F33589E27DDB78B40B9EA489 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -846,6 +930,7 @@
 				CURRENT_PROJECT_VERSION = 11;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
@@ -919,6 +1004,60 @@
 			};
 			name = Release;
 		};
+		AB8000010000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 11;
+				DEVELOPMENT_TEAM = SM6Y3D2D55;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.poolstats.appiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PoolStats.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PoolStats";
+			};
+			name = Debug;
+		};
+		AB8000020000000000000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 11;
+				DEVELOPMENT_TEAM = SM6Y3D2D55;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.poolstats.appiTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PoolStats.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PoolStats";
+			};
+			name = Release;
+		};
 		FBA554871BAF58F1D76859CC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -968,6 +1107,15 @@
 			buildConfigurations = (
 				AA8000030000000000000001 /* Debug */,
 				AA8000040000000000000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AB7000010000000000000001 /* Build configuration list for PBXNativeTarget "PoolStatsTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AB8000010000000000000001 /* Debug */,
+				AB8000020000000000000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

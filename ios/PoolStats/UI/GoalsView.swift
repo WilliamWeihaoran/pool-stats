@@ -2,6 +2,7 @@ import SwiftUI
 
 struct GoalsView: View {
     @EnvironmentObject private var store: DataStore
+    @EnvironmentObject private var logStore: SessionLogStore
     @EnvironmentObject private var goalsStore: GoalsStore
     @State private var editorDraft: GoalDraft?
     @State private var showArchived = false
@@ -90,20 +91,31 @@ struct GoalsView: View {
 
     private var header: some View {
         HStack {
-            Text("Goals")
-                .font(.title.bold())
-                .foregroundColor(Theme.text)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Goals")
+                    .font(.title.bold())
+                    .foregroundColor(Theme.text)
+                Text("Track the habits and outcomes you want to move, not just the sessions you log.")
+                    .font(.caption)
+                    .foregroundColor(Theme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Spacer(minLength: 0)
             Button {
                 editorDraft = GoalDraft()
             } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Theme.text)
-                    .frame(width: 34, height: 34)
-                    .background(Theme.panel2)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Theme.border, lineWidth: 0.5))
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 12, weight: .bold))
+                    Text("New")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundColor(Theme.text)
+                .padding(.horizontal, 12)
+                .frame(height: 34)
+                .background(Theme.panel2)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(Theme.border, lineWidth: 0.5))
             }
             .buttonStyle(.plain)
         }
@@ -114,19 +126,29 @@ struct GoalsView: View {
     private var overviewSection: some View {
         let active = activeGoals
         let complete = active.filter { isComplete($0) }.count
-        return HStack(spacing: Layout.gridSpacing) {
-            StatCard(label: "Active", value: "\(active.count)")
-            StatCard(label: "Complete", value: "\(complete)")
-            StatCard(label: "Archived", value: "\(archivedGoals.count)")
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: Layout.gridSpacing) {
+                StatCard(label: "Active", value: "\(active.count)")
+                StatCard(label: "Complete", value: "\(complete)")
+                StatCard(label: "Archived", value: "\(archivedGoals.count)")
+            }
+
+            Text(overviewMessage(activeCount: active.count, completeCount: complete))
+                .font(.caption)
+                .foregroundColor(Theme.muted)
+                .padding(.horizontal, 2)
         }
     }
 
     private var activeGoalsSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Active goals")
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(Theme.text2)
-                .padding(.horizontal, 2)
+            sectionHeader(
+                title: "Active goals",
+                subtitle: activeGoals.isEmpty
+                    ? "Start with one focused metric and let the app track the trend for you."
+                    : "\(activeGoals.filter { isComplete($0) }.count) currently at target",
+                count: activeGoals.count
+            )
             VStack(spacing: 10) {
                 if activeGoals.isEmpty {
                     emptyState
@@ -150,14 +172,26 @@ struct GoalsView: View {
                     showArchived.toggle()
                 }
             } label: {
-                HStack(spacing: 10) {
-                    Text("Archived goals")
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(Theme.text2)
+                HStack(alignment: .center, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Archived goals")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(Theme.text2)
+                        Text("Completed or paused goals you still want to keep around.")
+                            .font(.caption2)
+                            .foregroundColor(Theme.muted)
+                    }
+
                     Spacer(minLength: 0)
+
                     Text("\(archivedGoals.count)")
                         .font(.caption.weight(.semibold))
                         .foregroundColor(Theme.text2)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Theme.panel)
+                        .clipShape(Capsule())
+
                     Image(systemName: showArchived ? "chevron.up" : "chevron.down")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(Theme.text2)
@@ -165,7 +199,7 @@ struct GoalsView: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.bg)
+                .background(Theme.panel2.opacity(0.78))
                 .cornerRadius(12)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
             }
@@ -191,6 +225,29 @@ struct GoalsView: View {
             Text("No active goals yet.")
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(Theme.text)
+            Text("Create one target for matches or practice so your progress has something concrete to chase.")
+                .font(.caption)
+                .foregroundColor(Theme.muted)
+            Button {
+                editorDraft = GoalDraft()
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "plus")
+                        .font(.caption.weight(.bold))
+                    Text("Create first goal")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundColor(Theme.text)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(Theme.purple.opacity(0.18))
+                .clipShape(Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(Theme.purple.opacity(0.5), lineWidth: 0.8)
+                )
+            }
+            .buttonStyle(.plain)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(14)
@@ -208,7 +265,7 @@ struct GoalsView: View {
     }
 
     private func currentValue(for goal: Goal) -> Double {
-        goal.currentValue(from: store.sessions)
+        goal.currentValue(from: sessionsForGoalTracking(goal))
     }
 
     private func isComplete(_ goal: Goal) -> Bool {
@@ -228,6 +285,57 @@ struct GoalsView: View {
                 resetPromptGoal = goal
             }
         }
+    }
+
+    private func sectionHeader(title: String, subtitle: String, count: Int) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Theme.text2)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+            }
+            Spacer(minLength: 0)
+            Text("\(count)")
+                .font(.caption.weight(.semibold))
+                .foregroundColor(Theme.text2)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Theme.panel2)
+                .clipShape(Capsule())
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private func overviewMessage(activeCount: Int, completeCount: Int) -> String {
+        if activeCount == 0 {
+            return "Start with one realistic goal and adjust it once you have a few sessions of data."
+        }
+        if completeCount == activeCount {
+            return "Every active goal is currently on target."
+        }
+        if completeCount == 0 {
+            return "None of your active goals are at target yet, which is a good signal that the bar is doing real work."
+        }
+        return "\(completeCount) of \(activeCount) active goals are currently at target."
+    }
+
+    private func sessionsForGoalTracking(_ goal: Goal) -> [Session] {
+        guard goal.metric.updatesFromInProgressSession, let activeSession = logStore.currentSession else {
+            return store.sessions
+        }
+
+        var merged = store.sessions
+        if let index = merged.firstIndex(where: {
+            $0.sessionUUID == activeSession.sessionUUID || $0.id == activeSession.id
+        }) {
+            merged[index] = activeSession
+        } else {
+            merged.append(activeSession)
+        }
+        return merged
     }
 
 }

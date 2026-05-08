@@ -308,7 +308,7 @@ final class DataStore: ObservableObject {
                 merged.append(session)
             }
         }
-        return merged.sorted { $0.ts < $1.ts }
+        return merged.sorted(by: Session.oldestFirst)
     }
 
     private func existingIDsIncludingPendingDeletes() -> [Int64] {

@@ -56,56 +56,47 @@ struct CompactModeButton: View {
 
 struct SelectedDrillPickerCard: View {
     let template: DrillTemplate
-    let difficulty: DrillDifficulty
     let accent: Color
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 7) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(template.title)
-                        .font(.headline.weight(.bold))
-                        .foregroundColor(Theme.text)
-                        .lineLimit(1)
-                    Text(template.difficultySummary(difficulty))
-                        .font(.caption.weight(.bold))
-                        .foregroundColor(accent)
-                        .lineLimit(1)
-                }
-                Text(template.description)
-                    .font(.caption)
+        HStack(spacing: 10) {
+            Image(systemName: "scope")
+                .font(.headline.weight(.bold))
+                .foregroundColor(accent)
+                .frame(width: 34, height: 34)
+                .background(accent.opacity(0.15))
+                .clipShape(Circle())
+                .overlay(Circle().stroke(accent.opacity(0.38), lineWidth: 0.7))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Selected drill")
+                    .font(.caption2.weight(.bold))
                     .foregroundColor(Theme.muted)
-                    .lineLimit(2)
-                HStack(spacing: 6) {
-                    ForEach(Array(template.primarySkills.prefix(3)), id: \.self) { skill in
-                        Text(skill)
-                            .font(.caption2.weight(.bold))
-                            .foregroundColor(logStartSkillColor(skill))
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
-                            .background(logStartSkillColor(skill).opacity(0.14))
-                            .clipShape(Capsule())
-                    }
-                }
+                Text(template.title)
+                    .font(.headline.weight(.bold))
+                    .foregroundColor(Theme.text)
+                    .lineLimit(1)
             }
             Spacer(minLength: 0)
-            VStack(spacing: 6) {
+
+            HStack(spacing: 6) {
                 Image(systemName: "magnifyingglass")
-                    .font(.callout.weight(.bold))
-                Text("Find")
+                    .font(.caption.weight(.bold))
+                Text("Change")
                     .font(.caption2.weight(.bold))
             }
             .foregroundColor(Theme.text)
-            .frame(width: 48, height: 58)
+            .padding(.horizontal, 10)
+            .frame(height: 34)
             .background(Theme.panel2)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 0.7))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Theme.border, lineWidth: 0.7))
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(accent.opacity(0.12))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(accent.opacity(0.55), lineWidth: 0.9))
+        .background(Theme.panel2.opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(accent.opacity(0.5), lineWidth: 0.8))
     }
 }
 
@@ -244,53 +235,122 @@ struct SuccessRepWheel: View {
     @Binding var value: Int
     let range: ClosedRange<Int>
 
-    private var values: [Int] { Array(range) }
+    @State private var dragStartValue: Int?
+    @State private var lastFeedbackValue: Int?
+    @State private var dragOffset: CGFloat = 0
+
+    private let itemSpacing: CGFloat = 50
+    private let wheelHeight: CGFloat = 150
+
+    private var visibleNumbers: [Int] {
+        let lower = max(range.lowerBound, value - 3)
+        let upper = min(range.upperBound, value + 3)
+        return Array(lower...upper)
+    }
 
     var body: some View {
         VStack(spacing: 5) {
             Image(systemName: "chevron.up")
                 .font(.caption2.weight(.bold))
                 .foregroundColor(Theme.muted)
-            ScrollViewReader { proxy in
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 9) {
-                        ForEach(values, id: \.self) { number in
-                            Button {
-                                value = number
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            } label: {
-                                Text("\(number)")
-                                    .font(.system(size: number == value ? 24 : 15, weight: .black, design: .rounded))
-                                    .monospacedDigit()
-                                    .foregroundColor(number == value ? .black.opacity(0.85) : Theme.text2)
-                                    .frame(width: number == value ? 58 : 42, height: number == value ? 58 : 42)
-                                    .background(number == value ? Theme.green : Theme.panel2)
-                                    .clipShape(Circle())
-                                    .overlay(Circle().stroke(number == value ? Theme.green.opacity(0.7) : Theme.border, lineWidth: 0.8))
-                            }
-                            .buttonStyle(.plain)
-                            .id(number)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                }
-                .frame(width: 76, height: 150)
-                .background(Theme.panel2.opacity(0.6))
-                .clipShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 38).stroke(Theme.border, lineWidth: 0.7))
-                .onAppear {
-                    DispatchQueue.main.async { proxy.scrollTo(value, anchor: .center) }
-                }
-                .onChange(of: value) { newValue in
-                    withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
-                        proxy.scrollTo(newValue, anchor: .center)
-                    }
+
+            ZStack {
+                RoundedRectangle(cornerRadius: 38, style: .continuous)
+                    .fill(Theme.panel2.opacity(0.6))
+                    .overlay(RoundedRectangle(cornerRadius: 38).stroke(Theme.border, lineWidth: 0.7))
+
+                Capsule()
+                    .stroke(Theme.green.opacity(0.28), lineWidth: 1.2)
+                    .frame(width: 62, height: 62)
+
+                ForEach(visibleNumbers, id: \.self) { number in
+                    let isSelected = number == value
+                    Text("\(number)")
+                        .font(.system(size: isSelected ? 24 : 15, weight: .black, design: .rounded))
+                        .monospacedDigit()
+                        .foregroundColor(isSelected ? .black.opacity(0.85) : Theme.text2)
+                        .frame(width: isSelected ? 58 : 42, height: isSelected ? 58 : 42)
+                        .background(isSelected ? Theme.green : Theme.panel2)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(isSelected ? Theme.green.opacity(0.7) : Theme.border, lineWidth: 0.8))
+                        .shadow(color: isSelected ? Theme.green.opacity(0.28) : .clear, radius: 8, y: 3)
+                        .contentShape(Circle())
+                    .offset(y: CGFloat(number - value) * itemSpacing + dragOffset)
+                    .opacity(opacity(for: number))
+                    .zIndex(isSelected ? 1 : 0)
                 }
             }
+            .frame(width: 76, height: wheelHeight)
+            .clipShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 38, style: .continuous))
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged(handleDragChanged)
+                    .onEnded { drag in
+                        endDrag(drag)
+                    }
+            )
+            .animation(.spring(response: 0.22, dampingFraction: 0.82), value: value)
+
             Image(systemName: "chevron.down")
                 .font(.caption2.weight(.bold))
                 .foregroundColor(Theme.muted)
+        }
+    }
+
+    private func choose(_ number: Int) {
+        let nextValue = clamped(number)
+        guard value != nextValue else { return }
+        value = nextValue
+        dragOffset = 0
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private func handleDragChanged(_ drag: DragGesture.Value) {
+        if dragStartValue == nil {
+            dragStartValue = value
+            lastFeedbackValue = value
+        }
+
+        let start = dragStartValue ?? value
+        let steps = Int((-drag.translation.height / itemSpacing).rounded())
+        let nextValue = clamped(start + steps)
+        let appliedSteps = nextValue - start
+        let residualOffset = drag.translation.height + CGFloat(appliedSteps) * itemSpacing
+        dragOffset = min(itemSpacing, max(-itemSpacing, residualOffset))
+
+        guard value != nextValue else { return }
+        withAnimation(.spring(response: 0.18, dampingFraction: 0.86)) {
+            value = nextValue
+        }
+        if lastFeedbackValue != nextValue {
+            UISelectionFeedbackGenerator().selectionChanged()
+            lastFeedbackValue = nextValue
+        }
+    }
+
+    private func endDrag(_ drag: DragGesture.Value) {
+        if abs(drag.translation.height) < 6, abs(drag.translation.width) < 6 {
+            let tappedOffset = Int(((drag.location.y - wheelHeight / 2) / itemSpacing).rounded())
+            choose(value + tappedOffset)
+        }
+
+        dragStartValue = nil
+        lastFeedbackValue = nil
+        withAnimation(.spring(response: 0.22, dampingFraction: 0.82)) {
+            dragOffset = 0
+        }
+    }
+
+    private func clamped(_ number: Int) -> Int {
+        min(max(number, range.lowerBound), range.upperBound)
+    }
+
+    private func opacity(for number: Int) -> Double {
+        switch abs(number - value) {
+        case 0: return 1
+        case 1: return 0.9
+        default: return 0.55
         }
     }
 }

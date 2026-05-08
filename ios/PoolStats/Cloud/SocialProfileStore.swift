@@ -640,8 +640,9 @@ final class SocialProfileStore: ObservableObject {
     }
 
     private func loadLocal() {
+        let decoder = Self.makeJSONDecoder()
         guard let data = try? Data(contentsOf: localURL),
-              let decoded = try? JSONDecoder().decode(PublicPlayerProfile.self, from: data) else { return }
+              let decoded = try? decoder.decode(PublicPlayerProfile.self, from: data) else { return }
         profile = decoded
         displayName = decoded.displayName
     }
@@ -660,8 +661,9 @@ final class SocialProfileStore: ObservableObject {
     }
 
     private func loadFriendsLocal() {
+        let decoder = Self.makeJSONDecoder()
         guard let data = try? Data(contentsOf: friendsURL),
-              let decoded = try? JSONDecoder().decode([SocialFriend].self, from: data) else { return }
+              let decoded = try? decoder.decode([SocialFriend].self, from: data) else { return }
         friends = decoded
         sortFriends()
     }
@@ -679,8 +681,9 @@ final class SocialProfileStore: ObservableObject {
     }
 
     private func loadOutgoingSharesLocal() {
+        let decoder = Self.makeJSONDecoder()
         guard let data = try? Data(contentsOf: outgoingSharesURL),
-              let decoded = try? JSONDecoder().decode([OutgoingMatchShare].self, from: data) else { return }
+              let decoded = try? decoder.decode([OutgoingMatchShare].self, from: data) else { return }
         outgoingShares = decoded.sorted { $0.createdAt > $1.createdAt }
     }
 
@@ -697,8 +700,9 @@ final class SocialProfileStore: ObservableObject {
     }
 
     private func loadIncomingSharesLocal() {
+        let decoder = Self.makeJSONDecoder()
         guard let data = try? Data(contentsOf: incomingSharesURL),
-              let decoded = try? JSONDecoder().decode([IncomingMatchShare].self, from: data) else { return }
+              let decoded = try? decoder.decode([IncomingMatchShare].self, from: data) else { return }
         incomingShares = decoded
             .filter { !$0.isDeclined }
             .sorted { $0.createdAt > $1.createdAt }
@@ -916,22 +920,13 @@ final class SocialProfileStore: ObservableObject {
 
     private func mirroredSession(_ original: Session, from share: IncomingMatchShare) -> Session {
         let mirroredRacks = original.racks.map { rack in
-            Rack(
-                index: rack.index,
-                result: mirroredResult(rack.result),
-                breaker: mirroredBreaker(rack.breaker),
-                breakBalls: rack.breakBalls,
-                breakFoul: rack.breakFoul,
-                layout: rack.layout,
-                outcome: nil,
-                fouls: 0,
-                badSafety: 0,
-                badPosition: 0,
-                patternCount: 0,
-                missCount: 0,
-                runoutFirst: false,
-                breakAndRun: false
-            )
+            var mirrored = rack
+            mirrored.result = mirroredResult(rack.result)
+            mirrored.breaker = mirroredBreaker(rack.breaker)
+            // Keep the logged rack detail intact and only flip the fields that are
+            // explicitly player-relative for the receiving side.
+            mirrored.breakAndRun = mirrored.runoutFirst && mirrored.breaker == "me" && mirrored.breakBalls >= 1
+            return mirrored
         }
 
         return Session(
@@ -1024,6 +1019,12 @@ final class SocialProfileStore: ObservableObject {
         let first = String((0..<3).map { _ in alphabet.randomElement()! })
         let second = String((0..<3).map { _ in alphabet.randomElement()! })
         return "PS-\(first)-\(second)"
+    }
+
+    private static func makeJSONDecoder() -> JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
     }
 
     private static func stableSharedSessionID(for inviteUUID: String) -> Int64 {

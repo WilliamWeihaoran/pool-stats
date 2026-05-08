@@ -3,6 +3,7 @@ import SwiftUI
 enum SettingsSection: String, CaseIterable, Hashable {
     case me
     case account
+    case friends
     case opponents
     case history
     case stats
@@ -14,6 +15,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         switch self {
         case .me: return "Me"
         case .account: return "Account"
+        case .friends: return "Friends"
         case .opponents: return "Opponents"
         case .history: return "History"
         case .stats: return "Stats"
@@ -25,8 +27,9 @@ enum SettingsSection: String, CaseIterable, Hashable {
 
     var subtitle: String {
         switch self {
-        case .me: return "Profile, friend code, and shared matches"
+        case .me: return "Player profile, Fargo baseline, and personal stats"
         case .account: return "iCloud sync and Sign in with Apple"
+        case .friends: return "Friend code, saved friends, and shared matches"
         case .opponents: return "Add, edit, favorite, and compare opponents"
         case .history: return "Review past sessions and summaries"
         case .stats: return "Session totals and performance snapshots"
@@ -40,6 +43,7 @@ enum SettingsSection: String, CaseIterable, Hashable {
         switch self {
         case .me: return "person.crop.circle.fill"
         case .account: return "lock.icloud.fill"
+        case .friends: return "person.2.wave.2.fill"
         case .opponents: return "person.2.fill"
         case .history: return "clock.arrow.circlepath"
         case .stats: return "chart.bar.fill"
@@ -114,13 +118,13 @@ struct SettingsView: View {
         [
             SettingsGroup(title: "Player", sections: [.me, .account, .stats]),
             SettingsGroup(title: "Sessions", sections: [.history]),
-            SettingsGroup(title: "People", sections: [.opponents]),
+            SettingsGroup(title: "People", sections: [.friends, .opponents]),
             SettingsGroup(title: "App", sections: [.appearance, .data, .about])
         ]
     }
 
     private func badgeText(for section: SettingsSection) -> String? {
-        guard section == .me else { return nil }
+        guard section == .friends else { return nil }
         let pending = socialProfileStore.incomingShares.filter(\.isPending).count
         return pending > 0 ? "\(pending)" : nil
     }
@@ -185,6 +189,7 @@ private struct SettingsSectionRow: View {
         switch section {
         case .me: return Theme.purple
         case .account: return Theme.teal
+        case .friends: return Theme.purple
         case .opponents: return Theme.teal
         case .history: return Theme.amber
         case .stats: return Theme.blue

@@ -137,7 +137,7 @@ struct WatchSessionStartView: View {
                 selectedDrillID = drills.first?.id ?? ""
             }
         }
-        .onChange(of: drills.map(\.id)) { _ in
+        .onChange(of: drills.map(\.id)) { _, _ in
             if drills.contains(where: { $0.id == selectedDrillID }) == false {
                 selectedDrillID = drills.first?.id ?? ""
             }

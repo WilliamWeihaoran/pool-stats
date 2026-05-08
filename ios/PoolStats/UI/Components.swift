@@ -4,6 +4,7 @@ import UIKit
 struct AppBackButton: View {
     @Environment(\.dismiss) private var dismiss
     var label: String = "Back"
+    var iconOnly: Bool = false
     var action: (() -> Void)? = nil
 
     var body: some View {
@@ -18,19 +19,33 @@ struct AppBackButton: View {
             HStack(spacing: 7) {
                 Image(systemName: "chevron.left")
                     .font(.caption.weight(.bold))
-                Text(label)
-                    .font(.subheadline.weight(.semibold))
+                if !iconOnly {
+                    Text(label)
+                        .font(.subheadline.weight(.semibold))
+                }
             }
             .foregroundColor(Theme.text2)
-            .padding(.horizontal, 11)
+            .padding(.horizontal, iconOnly ? 0 : 11)
+            .frame(width: iconOnly ? 34 : nil)
             .frame(height: 34)
-            .background(Theme.panel2.opacity(0.9))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(Theme.border, lineWidth: 0.6))
-            .contentShape(Capsule())
+            .background {
+                if iconOnly {
+                    Circle().fill(Theme.panel2.opacity(0.9))
+                } else {
+                    Capsule().fill(Theme.panel2.opacity(0.9))
+                }
+            }
+            .overlay {
+                if iconOnly {
+                    Circle().stroke(Theme.border, lineWidth: 0.6)
+                } else {
+                    Capsule().stroke(Theme.border, lineWidth: 0.6)
+                }
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Back")
+        .accessibilityLabel(label)
     }
 }
 

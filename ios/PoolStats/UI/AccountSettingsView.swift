@@ -20,7 +20,6 @@ struct AccountSettingsView: View {
                 }
 
                 if authStore.isSignedIn {
-                    infoRow(label: "Name", value: authStore.displayName ?? "—")
                     infoRow(label: "Email", value: authStore.email ?? "—")
                     infoRow(label: "Apple ID", value: authStore.maskedUserID)
                     infoRow(label: "Last linked", value: authStore.lastAuthDate.map(AppFormatters.sessionDate) ?? "—")

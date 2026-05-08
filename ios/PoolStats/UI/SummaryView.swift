@@ -8,6 +8,9 @@ struct SummaryView: View {
     @Environment(\.horizontalSizeClass) private var hSizeClass
 
     let session: Session
+    var completionButtonTitle: String? = nil
+    var onCompletion: (() -> Void)? = nil
+
     @State private var labelText: String = ""
     @State private var opponentText: String = ""
     @State private var performanceRating: Int? = nil
@@ -17,8 +20,7 @@ struct SummaryView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                AppBackButton(label: "Back")
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                summaryNavigationRow
                 header
                 timeSection
                 performanceSection
@@ -34,9 +36,11 @@ struct SummaryView: View {
                     breaksSection
                     rackLogSection
                 }
+                completionSection
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
+            .padding(.bottom, bottomContentPadding)
         }
         .background(Theme.bg)
         .navigationTitle("Summary")
@@ -54,6 +58,56 @@ struct SummaryView: View {
         .task(id: selectedFriendCode) {
             guard shouldShowMatchShare, socialProfileStore.profile != nil else { return }
             await socialProfileStore.refreshOutgoingShares(for: session.sessionUUID)
+        }
+    }
+
+    private var bottomContentPadding: CGFloat {
+        onCompletion == nil ? 78 : 96
+    }
+
+    @ViewBuilder
+    private var summaryNavigationRow: some View {
+        if let completionButtonTitle, onCompletion != nil {
+            HStack(spacing: 10) {
+                Text("Session summary")
+                    .font(.headline.weight(.bold))
+                    .foregroundColor(Theme.text)
+                Spacer(minLength: 0)
+                Button {
+                    finishSummary()
+                } label: {
+                    Text(completionButtonTitle)
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(Theme.bg)
+                        .padding(.horizontal, 12)
+                        .frame(height: 34)
+                        .background(Theme.teal)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        } else {
+            AppBackButton(label: "Back")
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private var completionSection: some View {
+        if let completionButtonTitle, onCompletion != nil {
+            Button {
+                finishSummary()
+            } label: {
+                Text(completionButtonTitle)
+                    .font(.headline.weight(.bold))
+                    .foregroundColor(Theme.bg)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .background(Theme.teal)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
         }
     }
 
@@ -708,6 +762,18 @@ struct SummaryView: View {
 
     private func saveOpponent() {
         Task { await store.updateSessionMeta(sessionID: session.id, opponent: opponentText.trimmingCharacters(in: .whitespaces)) }
+    }
+
+    private func finishSummary() {
+        saveLabel()
+        if !session.isPractice {
+            saveOpponent()
+        }
+        if let performanceRating {
+            savePerformanceRating(performanceRating)
+        }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        onCompletion?()
     }
 
     private var opponentSuggestions: [String] {

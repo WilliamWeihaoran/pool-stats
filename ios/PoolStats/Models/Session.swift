@@ -202,6 +202,18 @@ struct Session: Identifiable, Codable, Hashable {
         default: return "Drill"
         }
     }
+
+    static func newestFirst(_ lhs: Session, _ rhs: Session) -> Bool {
+        if lhs.ts != rhs.ts { return lhs.ts > rhs.ts }
+        if lhs.id != rhs.id { return lhs.id > rhs.id }
+        return lhs.sessionUUID > rhs.sessionUUID
+    }
+
+    static func oldestFirst(_ lhs: Session, _ rhs: Session) -> Bool {
+        if lhs.ts != rhs.ts { return lhs.ts < rhs.ts }
+        if lhs.id != rhs.id { return lhs.id < rhs.id }
+        return lhs.sessionUUID < rhs.sessionUUID
+    }
 }
 
 extension Session {

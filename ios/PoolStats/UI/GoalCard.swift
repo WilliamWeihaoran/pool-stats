@@ -35,12 +35,13 @@ struct GoalCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .top, spacing: 8) {
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(goal.title)
                             .font(.subheadline.weight(.semibold))
                             .foregroundColor(archived ? Theme.text2 : Theme.text)
+                            .fixedSize(horizontal: false, vertical: true)
                         if let badge = statusBadgeText {
                             Text(badge)
                                 .font(.caption2.weight(.semibold))
@@ -51,21 +52,9 @@ struct GoalCard: View {
                                 .cornerRadius(999)
                         }
                     }
-                    HStack(spacing: 8) {
-                        Text(goal.window.label)
-                            .font(.caption2)
-                            .foregroundColor(Theme.muted)
-                            .lineLimit(1)
-                        Spacer(minLength: 0)
-                        Text(goal.sessionScope.shortLabel.lowercased())
-                            .font(.caption2.weight(.semibold))
-                            .foregroundColor(scopeColor)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(scopeColor.opacity(0.14))
-                            .cornerRadius(999)
-                    }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
                 Spacer(minLength: 0)
                 Button(action: onMore) {
                     Image(systemName: "ellipsis.circle")
@@ -73,6 +62,21 @@ struct GoalCard: View {
                         .foregroundColor(Theme.text2)
                 }
                 .buttonStyle(.plain)
+            }
+
+            HStack(spacing: 8) {
+                Text(goal.window.label)
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Text(goal.sessionScope.shortLabel.lowercased())
+                    .font(.caption2.weight(.semibold))
+                    .foregroundColor(scopeColor)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(scopeColor.opacity(0.14))
+                    .cornerRadius(999)
             }
 
             HStack {

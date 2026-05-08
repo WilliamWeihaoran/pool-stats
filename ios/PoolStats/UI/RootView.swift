@@ -115,7 +115,8 @@ struct RootView: View {
         case .dashboard:
             DashboardView()
         case .log:
-            LogView()
+            NavigationStack { LogView() }
+                .appBackSwipeEnabled()
         case .drills:
             NavigationStack { DrillsView(onStartDrill: { selectedTab = .log }) }
                 .appBackSwipeEnabled()

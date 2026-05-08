@@ -107,12 +107,18 @@ struct LogView: View {
             .presentationDetents([.height(220)])
             .presentationDragIndicator(.hidden)
         }
-        .sheet(item: Binding(
-            get: { logStore.lastEndedSession },
-            set: { _ in logStore.lastEndedSession = nil }
-        )) { session in
-            NavigationStack {
-                SummaryView(session: session)
+        .navigationDestination(isPresented: Binding(
+            get: { logStore.lastEndedSession != nil },
+            set: { if !$0 { logStore.lastEndedSession = nil } }
+        )) {
+            if let session = logStore.lastEndedSession {
+                SummaryView(
+                    session: session,
+                    completionButtonTitle: "Save & Exit",
+                    onCompletion: {
+                        logStore.lastEndedSession = nil
+                    }
+                )
             }
         }
     }

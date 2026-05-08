@@ -158,6 +158,15 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
         }
     }
 
+    var updatesFromInProgressSession: Bool {
+        switch self {
+        case .conversionRate, .rackWinRate, .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
+            return true
+        case .matchWinRate, .averagePerformance:
+            return false
+        }
+    }
+
     var defaultAverageBasis: GoalAverageBasis {
         switch self {
         case .runouts, .breakAndRuns:

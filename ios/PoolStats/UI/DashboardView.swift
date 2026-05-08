@@ -161,7 +161,7 @@ struct DashboardView: View {
     }
 
     private var recentFormSection: some View {
-        let recent = Array(filteredSessions.filter { $0.type == "match" }.sorted { $0.ts > $1.ts }.prefix(10))
+        let recent = Array(filteredSessions.filter { $0.type == "match" }.sorted(by: Session.newestFirst).prefix(10))
         let wins = recent.filter { $0.wins > $0.losses }.count
         let draws = recent.filter { $0.wins == $0.losses }.count
         let losses = recent.filter { $0.losses > $0.wins }.count

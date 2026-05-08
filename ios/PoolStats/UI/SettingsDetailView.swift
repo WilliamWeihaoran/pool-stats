@@ -36,8 +36,8 @@ struct SettingsDetailView: View {
     }
 
     private var detailHeader: some View {
-        HStack(alignment: .top, spacing: 10) {
-            AppBackButton(label: "Settings")
+        HStack(alignment: .top, spacing: 12) {
+            AppBackButton(label: "Back to settings", iconOnly: true)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text("Settings")
@@ -65,6 +65,8 @@ struct SettingsDetailView: View {
             MeSettingsView()
         case .account:
             AccountSettingsView()
+        case .friends:
+            FriendsSettingsView()
         case .opponents:
             OpponentManagementView()
         case .history:

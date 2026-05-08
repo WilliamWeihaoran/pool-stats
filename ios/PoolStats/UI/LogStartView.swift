@@ -107,7 +107,6 @@ struct LogStartView: View {
                 } label: {
                     SelectedDrillPickerCard(
                         template: selectedTemplate,
-                        difficulty: selectedDrillDifficulty,
                         accent: logStartDifficultyColor(selectedDrillDifficulty.level)
                     )
                 }
