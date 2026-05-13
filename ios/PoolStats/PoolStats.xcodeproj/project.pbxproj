@@ -78,6 +78,10 @@
 		AA100001000000000000003E /* FriendMatchSharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000003E /* FriendMatchSharing.swift */; };
 		AA100001000000000000003F /* FriendsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000003F /* FriendsSettingsView.swift */; };
 		AA1000010000000000000040 /* DrillDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000040 /* DrillDetailView.swift */; };
+		AA1000010000000000000041 /* DrillLogActiveView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000041 /* DrillLogActiveView.swift */; };
+		AA1000010000000000000042 /* DrillSharedViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000042 /* DrillSharedViews.swift */; };
+		AA1000010000000000000043 /* LandscapeScoreboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000043 /* LandscapeScoreboardView.swift */; };
+		AA1000010000000000000044 /* FriendsPublicProfileSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000044 /* FriendsPublicProfileSection.swift */; };
 		AA1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
 		AB1000010000000000000001 /* GoalMetricTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000001 /* GoalMetricTests.swift */; };
 		AB1000010000000000000002 /* GoalWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000002 /* GoalWindowTests.swift */; };
@@ -224,6 +228,10 @@
 		AA200001000000000000003E /* FriendMatchSharing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendMatchSharing.swift; sourceTree = "<group>"; };
 		AA200001000000000000003F /* FriendsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsSettingsView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000040 /* DrillDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillDetailView.swift; sourceTree = "<group>"; };
+		AA2000010000000000000041 /* DrillLogActiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillLogActiveView.swift; sourceTree = "<group>"; };
+		AA2000010000000000000042 /* DrillSharedViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillSharedViews.swift; sourceTree = "<group>"; };
+		AA2000010000000000000043 /* LandscapeScoreboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandscapeScoreboardView.swift; sourceTree = "<group>"; };
+		AA2000010000000000000044 /* FriendsPublicProfileSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsPublicProfileSection.swift; sourceTree = "<group>"; };
 		AB2000010000000000000001 /* GoalMetricTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalMetricTests.swift; sourceTree = "<group>"; };
 		AB2000010000000000000002 /* GoalWindowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalWindowTests.swift; sourceTree = "<group>"; };
 		AB2000010000000000000003 /* DrillSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillSessionTests.swift; sourceTree = "<group>"; };
@@ -407,6 +415,7 @@
 				AA2000010000000000000015 /* LogStartView.swift */,
 				AA200001000000000000003B /* LogStartComponents.swift */,
 				AA2000010000000000000016 /* LogActiveView.swift */,
+				AA2000010000000000000043 /* LandscapeScoreboardView.swift */,
 				AA200001000000000000000D /* JSONDocument.swift */,
 				AA200001000000000000000E /* RootView.swift */,
 				AA2000010000000000000031 /* OnboardingFlowView.swift */,
@@ -416,6 +425,8 @@
 				AA2000010000000000000021 /* GoalsView.swift */,
 				AA2000010000000000000038 /* DrillsView.swift */,
 				AA2000010000000000000040 /* DrillDetailView.swift */,
+				AA2000010000000000000041 /* DrillLogActiveView.swift */,
+				AA2000010000000000000042 /* DrillSharedViews.swift */,
 				AA2000010000000000000039 /* DrillDiagramView.swift */,
 				AA200001000000000000003A /* DrillControls.swift */,
 				AA2000010000000000000025 /* GoalCard.swift */,
@@ -429,6 +440,7 @@
 				AA2000010000000000000028 /* SettingsDetailView.swift */,
 				AA2000010000000000000032 /* MeSettingsView.swift */,
 				AA200001000000000000003F /* FriendsSettingsView.swift */,
+				AA2000010000000000000044 /* FriendsPublicProfileSection.swift */,
 				AA2000010000000000000033 /* AccountSettingsView.swift */,
 				AA2000010000000000000034 /* AppearanceSettingsView.swift */,
 				AA2000010000000000000035 /* DataSettingsView.swift */,
@@ -758,6 +770,10 @@
 				AA100001000000000000003E /* FriendMatchSharing.swift in Sources */,
 				AA100001000000000000003F /* FriendsSettingsView.swift in Sources */,
 				AA1000010000000000000040 /* DrillDetailView.swift in Sources */,
+				AA1000010000000000000041 /* DrillLogActiveView.swift in Sources */,
+				AA1000010000000000000042 /* DrillSharedViews.swift in Sources */,
+				AA1000010000000000000043 /* LandscapeScoreboardView.swift in Sources */,
+				AA1000010000000000000044 /* FriendsPublicProfileSection.swift in Sources */,
 				E63058D818592AB17D246454 /* SocialProfileStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
