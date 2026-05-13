@@ -522,6 +522,58 @@ final class SocialProfileStore: ObservableObject {
         }
     }
 
+#if DEBUG
+    func simulateIncomingMatchShare() {
+        guard let profile else {
+            incomingShareState = .failed("Create your public profile first, then simulate an incoming match.")
+            return
+        }
+
+        do {
+            let sender = PublicPlayerProfile(
+                displayName: "Dev Friend",
+                friendCode: "PS-DEV-001",
+                recordName: Self.recordName(for: "PS-DEV-001"),
+                ownerRecordName: "debug-dev-friend",
+                updatedAt: Date()
+            )
+            let session = Self.makeDebugIncomingSession()
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(session)
+            guard let json = String(data: data, encoding: .utf8) else {
+                throw SocialProfileError.couldNotEncodeMatch
+            }
+
+            let share = IncomingMatchShare(
+                inviteUUID: UUID().uuidString,
+                recordName: nil,
+                senderFriendCode: sender.friendCode,
+                senderDisplayName: sender.displayName,
+                recipientFriendCode: profile.friendCode,
+                sessionUUID: session.sessionUUID,
+                sessionJSON: json,
+                sessionLabel: session.displayLabel,
+                game: session.game,
+                type: session.type,
+                opponent: session.opponent,
+                wins: session.wins,
+                losses: session.losses,
+                createdAt: Date(),
+                acceptedAt: nil,
+                status: "pending",
+                failureMessage: nil
+            )
+
+            upsertIncomingShare(share)
+            incomingShareState = .idle
+            lastError = nil
+        } catch {
+            incomingShareState = .failed(readableMessage(for: error))
+        }
+    }
+#endif
+
     func refreshFriends() async {
         guard !friends.isEmpty else { return }
         var next = friends
@@ -909,54 +961,7 @@ final class SocialProfileStore: ObservableObject {
     }
 
     private func acceptedSession(from share: IncomingMatchShare) throws -> Session {
-        guard let data = share.sessionJSON.data(using: .utf8) else {
-            throw SocialProfileError.couldNotDecodeMatch
-        }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        let original = try decoder.decode(Session.self, from: data)
-        return mirroredSession(original, from: share)
-    }
-
-    private func mirroredSession(_ original: Session, from share: IncomingMatchShare) -> Session {
-        let mirroredRacks = original.racks.map { rack in
-            var mirrored = rack
-            mirrored.result = mirroredResult(rack.result)
-            mirrored.breaker = mirroredBreaker(rack.breaker)
-            // Keep the logged rack detail intact and only flip the fields that are
-            // explicitly player-relative for the receiving side.
-            mirrored.breakAndRun = mirrored.runoutFirst && mirrored.breaker == "me" && mirrored.breakBalls >= 1
-            return mirrored
-        }
-
-        return Session(
-            id: Self.stableSharedSessionID(for: share.inviteUUID),
-            sessionUUID: "shared-\(share.inviteUUID)",
-            label: original.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Shared match" : original.label,
-            opponent: share.senderDisplayName,
-            game: original.game,
-            type: original.type,
-            ts: original.ts,
-            racks: mirroredRacks,
-            durationSeconds: original.durationSeconds,
-            performanceRating: nil
-        )
-    }
-
-    private func mirroredResult(_ result: String?) -> String? {
-        switch result {
-        case "won": return "lost"
-        case "lost": return "won"
-        default: return result
-        }
-    }
-
-    private func mirroredBreaker(_ breaker: String) -> String {
-        switch breaker {
-        case "me": return "opp"
-        case "opp": return "me"
-        default: return breaker
-        }
+        try FriendMatchSharing.acceptedSession(from: share)
     }
 
     private func intValue(_ value: Any?) -> Int {
@@ -967,36 +972,10 @@ final class SocialProfileStore: ObservableObject {
     }
 
     private func makeOutgoingShare(session: Session, friend: SocialFriend, sender: PublicPlayerProfile) throws -> OutgoingMatchShare {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        let data = try encoder.encode(session)
-        guard let json = String(data: data, encoding: .utf8) else {
-            throw SocialProfileError.couldNotEncodeMatch
-        }
-
-        return OutgoingMatchShare(
-            inviteUUID: UUID().uuidString,
-            recordName: nil,
-            senderFriendCode: sender.friendCode,
-            senderDisplayName: sender.displayName,
-            recipientFriendCode: Self.normalizeFriendCode(friend.friendCode),
-            recipientDisplayName: friend.displayName,
-            recipientOwnerRecordName: friend.ownerRecordName,
-            sessionUUID: session.sessionUUID,
-            sessionJSON: json,
-            sessionLabel: session.displayLabel,
-            game: session.game,
-            type: session.type,
-            opponent: session.opponent,
-            wins: session.wins,
-            losses: session.losses,
-            createdAt: Date(),
-            status: "pending",
-            failureMessage: nil
-        )
+        try FriendMatchSharing.makeOutgoingShare(session: session, friend: friend, sender: sender)
     }
 
-    static func normalizeFriendCode(_ raw: String) -> String {
+    nonisolated static func normalizeFriendCode(_ raw: String) -> String {
         let compact = raw.uppercased().filter { $0.isLetter || $0.isNumber }
         let body = compact.hasPrefix("PS") ? String(compact.dropFirst(2)) : compact
         guard body.count >= 6 else {
@@ -1007,7 +986,7 @@ final class SocialProfileStore: ObservableObject {
         return "PS-\(prefix)-\(suffix)"
     }
 
-    static func isValidFriendCode(_ raw: String) -> Bool {
+    nonisolated static func isValidFriendCode(_ raw: String) -> Bool {
         let normalized = normalizeFriendCode(raw)
         let compact = normalized.uppercased().filter { $0.isLetter || $0.isNumber }
         guard compact.hasPrefix("PS") else { return false }
@@ -1021,6 +1000,72 @@ final class SocialProfileStore: ObservableObject {
         return "PS-\(first)-\(second)"
     }
 
+#if DEBUG
+    private static func makeDebugIncomingSession() -> Session {
+        let racks = [
+            Rack(
+                index: 1,
+                result: "won",
+                breaker: "me",
+                breakBalls: 2,
+                layout: "open",
+                outcome: "runout",
+                runoutFirst: true,
+                breakAndRun: true
+            ),
+            Rack(
+                index: 2,
+                result: "lost",
+                breaker: "opp",
+                breakBalls: 1,
+                layout: "clustered",
+                outcome: "noRunout",
+                missCount: 1
+            ),
+            Rack(
+                index: 3,
+                result: "won",
+                breaker: "me",
+                breakBalls: 1,
+                layout: "open",
+                outcome: "noRunout",
+                badPosition: 1
+            ),
+            Rack(
+                index: 4,
+                result: "lost",
+                breaker: "opp",
+                breakBalls: 0,
+                breakFoul: true,
+                layout: "snookered",
+                outcome: "noRunout",
+                fouls: 1
+            ),
+            Rack(
+                index: 5,
+                result: "won",
+                breaker: "me",
+                breakBalls: 3,
+                layout: "open",
+                outcome: "runout",
+                runoutFirst: true,
+                breakAndRun: true
+            )
+        ]
+
+        return Session(
+            label: "Debug shared match",
+            opponent: "You",
+            game: "8ball",
+            type: "match",
+            ts: Date().addingTimeInterval(-60 * 24),
+            racks: racks,
+            durationSeconds: 35 * 60,
+            performanceRating: 7
+        )
+    }
+#endif
+
     private static func makeJSONDecoder() -> JSONDecoder {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -1028,17 +1073,11 @@ final class SocialProfileStore: ObservableObject {
     }
 
     private static func stableSharedSessionID(for inviteUUID: String) -> Int64 {
-        var hash: UInt64 = 14_695_981_039_346_656_037
-        for byte in inviteUUID.utf8 {
-            hash ^= UInt64(byte)
-            hash &*= 1_099_511_628_211
-        }
-        let stable = hash & 0x7FFF_FFFF_FFFF_FFFF
-        return Int64(stable == 0 ? 1 : stable)
+        FriendMatchSharing.stableSharedSessionID(for: inviteUUID)
     }
 }
 
-private enum SocialProfileError: LocalizedError {
+enum SocialProfileError: LocalizedError {
     case couldNotAllocateFriendCode
     case couldNotEncodeMatch
     case couldNotDecodeMatch

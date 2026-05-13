@@ -25,10 +25,10 @@ enum DrillLibraryCatalog {
         ),
         DrillTemplate(
             id: "one_side_pattern",
-            title: "Line drill",
+            title: "Line pattern drill",
             kind: .randomLayout,
             pictureID: "line_drill",
-            description: "Pocket the selected balls from a loose table-length line while controlling speed and getting on the correct side of the next ball.",
+            description: "Pocket balls from a loose table-length line while controlling speed and staying on the right side of the next shot.",
             primarySkills: ["Pattern", "Position"],
             secondarySkills: ["Speed control", "Pattern planning", "Minimal spin"],
             difficultyLevels: [
@@ -110,10 +110,10 @@ enum DrillLibraryCatalog {
         ),
         DrillTemplate(
             id: "open_table_runout",
-            title: "Runout drill mini",
+            title: "Mini runout",
             kind: .randomLayout,
             pictureID: "open_table_runout",
-            description: "A small progressive runout challenge: start with ball in hand, clear an open layout, then add balls as it gets easier.",
+            description: "Start with ball in hand on a small open layout and try to clear it cleanly, then add balls as you improve.",
             primarySkills: ["Runout", "Pattern", "Potting"],
             secondarySkills: ["Planning", "Pattern selection", "Route discipline"],
             difficultyLevels: [
@@ -244,7 +244,7 @@ enum DrillLibraryCatalog {
             title: "Target-pool position",
             kind: .staticLayout,
             pictureID: "target_pool",
-            description: "A target-practice position drill based on BU/Dr. Dave target-pool work: pocket the object ball and land the cue ball in a marked zone.",
+            description: "Pocket the object ball and land the cue ball in a clearly marked target zone.",
             primarySkills: ["Position", "Pattern"],
             secondarySkills: ["Speed control", "Target zones", "Cue-ball discipline"],
             countUnit: .shots,
@@ -266,7 +266,7 @@ enum DrillLibraryCatalog {
             title: "Rail-cut progressive",
             kind: .staticLayout,
             pictureID: "rail_cut",
-            description: "A rail-cut drill from the BU skills family for pocketing balls near the rail while controlling cue-ball position.",
+            description: "Pocket repeatable rail cuts while keeping the cue ball under control after contact.",
             primarySkills: ["Potting", "Position"],
             secondarySkills: ["Rail cuts", "Aiming", "Position speed"],
             countUnit: .shots,
@@ -376,7 +376,7 @@ enum DrillLibraryCatalog {
             title: "No-rail pattern",
             kind: .randomLayout,
             pictureID: "open_table_runout",
-            description: "A Dr. Dave cue-ball-control style pattern drill: run an open layout while avoiding rail contact with the cue ball.",
+            description: "Run an open layout while avoiding any cue-ball rail contact.",
             primarySkills: ["Pattern", "Position"],
             secondarySkills: ["Small routes", "Speed control", "Planning"],
             difficultyLevels: [
@@ -415,10 +415,10 @@ enum DrillLibraryCatalog {
         ),
         DrillTemplate(
             id: "nine_ball_ghost",
-            title: "9-ball ghost mini",
+            title: "Mini 9-ball ghost",
             kind: .randomLayout,
             pictureID: "open_table_runout",
-            description: "A rotation-style ghost drill: run a small set in numerical order from ball in hand.",
+            description: "A small rotation ghost set: start with ball in hand and run the balls in order.",
             primarySkills: ["Runout", "Pattern", "Position"],
             secondarySkills: ["Rotation routes", "Planning", "Shot selection"],
             difficultyLevels: [
@@ -457,10 +457,10 @@ enum DrillLibraryCatalog {
         ),
         DrillTemplate(
             id: "placement_pool_challenge",
-            title: "Placement challenge",
+            title: "Preset pattern challenge",
             kind: .randomLayout,
             pictureID: "open_table_runout",
-            description: "A PPC-inspired pattern challenge: try a sequence of preset runnable layouts and count how many balls are cleared.",
+            description: "Use a small preset layout instead of a random scatter and solve it as cleanly as you can.",
             primarySkills: ["Runout", "Pattern", "Position"],
             secondarySkills: ["Layout reading", "Problem solving", "Scoring"],
             difficultyLevels: [
@@ -478,10 +478,10 @@ enum DrillLibraryCatalog {
         ),
         DrillTemplate(
             id: "rds_break_run",
-            title: "RDS break-and-run",
+            title: "Break-layout runout",
             kind: .randomLayout,
             pictureID: "open_table_runout",
-            description: "A Runout Drill System inspired challenge: use break-and-run style layouts that increase in difficulty as you improve.",
+            description: "Practice runouts from open break-style layouts that get gradually more demanding.",
             primarySkills: ["Runout", "Pattern", "Potting"],
             secondarySkills: ["Break transition", "Planning", "Pressure"],
             difficultyLevels: [
@@ -520,10 +520,10 @@ enum DrillLibraryCatalog {
         ),
         DrillTemplate(
             id: "fargo_rotation",
-            title: "Fargo rotation drill",
+            title: "Rotation ladder",
             kind: .randomLayout,
             pictureID: "open_table_runout",
-            description: "A rotation rating drill inspired by Dr. Dave's rating-drill list: shoot balls in order and count legal balls pocketed.",
+            description: "Shoot balls in rotation order and log how many you can finish cleanly each attempt.",
             primarySkills: ["Runout", "Potting", "Position"],
             secondarySkills: ["Rotation", "Scoring", "Cue-ball control"],
             difficultyLevels: [
@@ -562,10 +562,10 @@ enum DrillLibraryCatalog {
         ),
         DrillTemplate(
             id: "hopkins_q_skills",
-            title: "Hopkins Q Skills",
+            title: "Open-table scoring",
             kind: .randomLayout,
             pictureID: "open_table_runout",
-            description: "A Q Skills style scoring drill: start with ball in hand and score your open-table run before the inning ends.",
+            description: "Start with ball in hand on an open table and see how many balls you can run before the inning ends.",
             primarySkills: ["Runout", "Potting", "Pattern"],
             secondarySkills: ["Scoring", "Consistency", "Shot choice"],
             difficultyLevels: [
@@ -674,7 +674,7 @@ enum DrillLibraryCatalog {
             title: "Center-ball stroke",
             kind: .staticLayout,
             pictureID: "straight_progressive",
-            description: "A center-ball stroke drill inspired by Dr. Dave's center-ball stroke resources: pocket straight shots without unintended side spin.",
+            description: "Pocket straight shots with clean center-ball contact and no unintended side spin.",
             primarySkills: ["Potting", "Overall"],
             secondarySkills: ["Center ball", "Stroke", "Alignment"],
             countUnit: .shots,

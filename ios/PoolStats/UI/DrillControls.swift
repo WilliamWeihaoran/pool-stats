@@ -42,7 +42,7 @@ struct DifficultyGradientSlider: View {
             HStack(spacing: 4) {
                 ForEach(levels) { difficulty in
                     Text(difficulty.level.label)
-                        .font(.system(size: 9, weight: difficulty.level == selectedLevel ? .black : .semibold))
+                        .font(.system(size: 10, weight: difficulty.level == selectedLevel ? .black : .semibold))
                         .foregroundColor(difficulty.level == selectedLevel ? difficultyColor(for: difficulty.level) : Theme.muted)
                         .lineLimit(1)
                         .minimumScaleFactor(0.55)
@@ -139,12 +139,14 @@ struct MistakeSquareButton: View {
     var body: some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 10, weight: .black))
+                .font(.system(size: 11, weight: .bold))
                 .foregroundColor(isOn ? .black.opacity(0.82) : color)
-                .lineLimit(1)
-                .minimumScaleFactor(0.55)
+                .lineLimit(2)
+                .minimumScaleFactor(0.75)
+                .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
-                .frame(height: 46)
+                .frame(minHeight: 52)
+                .padding(.horizontal, 8)
                 .background(isOn ? color : color.opacity(0.12))
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(color.opacity(isOn ? 0.55 : 0.28), lineWidth: 0.8))

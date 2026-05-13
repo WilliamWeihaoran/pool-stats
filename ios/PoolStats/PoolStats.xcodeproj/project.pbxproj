@@ -13,10 +13,6 @@
 		2F49D5E4D60378BD12355782 /* WatchSyncModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20DB8CB67DEEF7C32E13365F /* WatchSyncModels.swift */; };
 		361A8B865609ADA31C805909 /* PoolStatsWatchExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 6796882EB3A1DC2039DB20C0 /* PoolStatsWatchExtension.appex */; };
 		40576368ACA893DFB77B1E88 /* WatchConnectivityClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 304A8C77D82733F0C7CB230C /* WatchConnectivityClient.swift */; };
-		AB1000010000000000000001 /* GoalMetricTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000001 /* GoalMetricTests.swift */; };
-		AB1000010000000000000002 /* GoalWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000002 /* GoalWindowTests.swift */; };
-		AB1000010000000000000003 /* DrillSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000003 /* DrillSessionTests.swift */; };
-		AB1000010000000000000004 /* TestFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000004 /* TestFixtures.swift */; };
 		4F615CB5132527D2AF44A03F /* PoolStatsWatchComplications.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 9EB5F481BF3F9925C1F51611 /* PoolStatsWatchComplications.appex */; };
 		9096B1DCDF86CDC5B03B5B1B /* PoolStatsWatchComplications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9A91B9066103F654E63871 /* PoolStatsWatchComplications.swift */; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* WatchSessionStartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */; };
@@ -78,8 +74,18 @@
 		AA100001000000000000003A /* DrillControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000003A /* DrillControls.swift */; };
 		AA100001000000000000003B /* LogStartComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000003B /* LogStartComponents.swift */; };
 		AA100001000000000000003C /* DrillLibraryCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000003C /* DrillLibraryCatalog.swift */; };
+		AA100001000000000000003D /* DashboardSupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000003D /* DashboardSupportViews.swift */; };
+		AA100001000000000000003E /* FriendMatchSharing.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000003E /* FriendMatchSharing.swift */; };
+		AA100001000000000000003F /* FriendsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA200001000000000000003F /* FriendsSettingsView.swift */; };
+		AA1000010000000000000040 /* DrillDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000040 /* DrillDetailView.swift */; };
 		AA1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
+		AB1000010000000000000001 /* GoalMetricTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000001 /* GoalMetricTests.swift */; };
+		AB1000010000000000000002 /* GoalWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000002 /* GoalWindowTests.swift */; };
+		AB1000010000000000000003 /* DrillSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000003 /* DrillSessionTests.swift */; };
+		AB1000010000000000000004 /* TestFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000004 /* TestFixtures.swift */; };
+		AB1000010000000000000006 /* SocialProfileStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000006 /* SocialProfileStoreTests.swift */; };
 		B2C3D4E5F6A7B8C9D0E1F2A3 /* WatchActiveSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */; };
+		B2C3D4E5F6A7B8C9D0E1F2A4 /* WatchDrillActiveSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D3E4F5A6B7C8D9E0F1A2C4 /* WatchDrillActiveSessionView.swift */; };
 		B48C585D837953CA58D88B53 /* WatchQueueStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09DDE2033C526CE78DAEBC92 /* WatchQueueStore.swift */; };
 		BF105516C3EA12DAF5066C2C /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FC9E92BF268E25DB78D0CA99 /* Foundation.framework */; };
 		C3D4E5F6A7B8C9D0E1F2A3B4 /* WatchEndRackSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3E4F5A6B7C8D9E0F1A2B3C4 /* WatchEndRackSheet.swift */; };
@@ -171,7 +177,7 @@
 		AA200001000000000000000F /* SummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SummaryView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000010 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		AA2000010000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
+		AA2000010000000000000012 /* Resources/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
 		AA2000010000000000000013 /* PoolStats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = PoolStats.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA2000010000000000000014 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		AA2000010000000000000015 /* LogStartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStartView.swift; sourceTree = "<group>"; };
@@ -214,14 +220,20 @@
 		AA200001000000000000003A /* DrillControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillControls.swift; sourceTree = "<group>"; };
 		AA200001000000000000003B /* LogStartComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStartComponents.swift; sourceTree = "<group>"; };
 		AA200001000000000000003C /* DrillLibraryCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillLibraryCatalog.swift; sourceTree = "<group>"; };
+		AA200001000000000000003D /* DashboardSupportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardSupportViews.swift; sourceTree = "<group>"; };
+		AA200001000000000000003E /* FriendMatchSharing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendMatchSharing.swift; sourceTree = "<group>"; };
+		AA200001000000000000003F /* FriendsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsSettingsView.swift; sourceTree = "<group>"; };
+		AA2000010000000000000040 /* DrillDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillDetailView.swift; sourceTree = "<group>"; };
 		AB2000010000000000000001 /* GoalMetricTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalMetricTests.swift; sourceTree = "<group>"; };
 		AB2000010000000000000002 /* GoalWindowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalWindowTests.swift; sourceTree = "<group>"; };
 		AB2000010000000000000003 /* DrillSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrillSessionTests.swift; sourceTree = "<group>"; };
 		AB2000010000000000000004 /* TestFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestFixtures.swift; sourceTree = "<group>"; };
 		AB2000010000000000000005 /* PoolStatsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PoolStatsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AB2000010000000000000006 /* SocialProfileStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialProfileStoreTests.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionStartView.swift; sourceTree = "<group>"; };
 		B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "WatchExtension-Info.plist"; sourceTree = "<group>"; };
 		C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchActiveSessionView.swift; sourceTree = "<group>"; };
+		C2D3E4F5A6B7C8D9E0F1A2C4 /* WatchDrillActiveSessionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchDrillActiveSessionView.swift; sourceTree = "<group>"; };
 		C9A01D02F8214D38B6C4E021 /* WatchDrillCatalog.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchDrillCatalog.swift; sourceTree = "<group>"; };
 		D3E4F5A6B7C8D9E0F1A2B3C4 /* WatchEndRackSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchEndRackSheet.swift; sourceTree = "<group>"; };
 		E4F5A6B7C8D9E0F1A2B3C4D5 /* WatchSessionFinishView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionFinishView.swift; sourceTree = "<group>"; };
@@ -256,14 +268,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		AB3000010000000000000001 /* Frameworks */ = {
+		AA3000010000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		AA3000010000000000000001 /* Frameworks */ = {
+		AB3000010000000000000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -289,6 +301,7 @@
 				A03E32D9A1C7D5795E26164D /* PoolStatsWatchApp.swift */,
 				B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */,
 				C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */,
+				C2D3E4F5A6B7C8D9E0F1A2C4 /* WatchDrillActiveSessionView.swift */,
 				C9A01D02F8214D38B6C4E021 /* WatchDrillCatalog.swift */,
 				D3E4F5A6B7C8D9E0F1A2B3C4 /* WatchEndRackSheet.swift */,
 				E4F5A6B7C8D9E0F1A2B3C4D5 /* WatchSessionFinishView.swift */,
@@ -317,8 +330,8 @@
 			isa = PBXGroup;
 			children = (
 				886D45192F89469F00338AC1 /* PoolStats.entitlements */,
-				AA4000010000000000000002 /*  */,
-				AB4000010000000000000001 /* PoolStatsTests */,
+				AA4000010000000000000002,
+				AB4000010000000000000001 /* ../PoolStatsTests */,
 				AA2000010000000000000013 /* PoolStats.app */,
 				AB2000010000000000000005 /* PoolStatsTests.xctest */,
 				664A64AFB0ECF914A77B36B3 /* PoolStatsWatchApp.app */,
@@ -328,7 +341,7 @@
 			);
 			sourceTree = "<group>";
 		};
-		AA4000010000000000000002 /*  */ = {
+		AA4000010000000000000002 = {
 			isa = PBXGroup;
 			children = (
 				AA2000010000000000000001 /* PoolStatsApp.swift */,
@@ -337,7 +350,7 @@
 				AA4000010000000000000004 /* Models */,
 				AA4000010000000000000005 /* UI */,
 				AA4000010000000000000006 /* Resources */,
-				AA2000010000000000000012 /* Info.plist */,
+				AA2000010000000000000012 /* Resources/Info.plist */,
 				2F588EC825C4C4E826362F45 /* Watch */,
 				00CAC026206F8DCB79AD2F72 /* WatchComplications */,
 			);
@@ -351,6 +364,7 @@
 				AA200001000000000000002F /* SessionLogStore.swift */,
 				AA2000010000000000000030 /* AuthStore.swift */,
 				29CA7AB8BF15DCF9B893FCB7 /* SocialProfileStore.swift */,
+				AA200001000000000000003E /* FriendMatchSharing.swift */,
 				AA200001000000000000001D /* SessionService.swift */,
 			);
 			path = Cloud;
@@ -398,8 +412,10 @@
 				AA2000010000000000000031 /* OnboardingFlowView.swift */,
 				AA200001000000000000000F /* SummaryView.swift */,
 				AA2000010000000000000010 /* DashboardView.swift */,
+				AA200001000000000000003D /* DashboardSupportViews.swift */,
 				AA2000010000000000000021 /* GoalsView.swift */,
 				AA2000010000000000000038 /* DrillsView.swift */,
+				AA2000010000000000000040 /* DrillDetailView.swift */,
 				AA2000010000000000000039 /* DrillDiagramView.swift */,
 				AA200001000000000000003A /* DrillControls.swift */,
 				AA2000010000000000000025 /* GoalCard.swift */,
@@ -412,6 +428,7 @@
 				AA200001000000000000001F /* SettingsView.swift */,
 				AA2000010000000000000028 /* SettingsDetailView.swift */,
 				AA2000010000000000000032 /* MeSettingsView.swift */,
+				AA200001000000000000003F /* FriendsSettingsView.swift */,
 				AA2000010000000000000033 /* AccountSettingsView.swift */,
 				AA2000010000000000000034 /* AppearanceSettingsView.swift */,
 				AA2000010000000000000035 /* DataSettingsView.swift */,
@@ -428,12 +445,13 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		AB4000010000000000000001 /* PoolStatsTests */ = {
+		AB4000010000000000000001 /* ../PoolStatsTests */ = {
 			isa = PBXGroup;
 			children = (
 				AB2000010000000000000003 /* DrillSessionTests.swift */,
 				AB2000010000000000000001 /* GoalMetricTests.swift */,
 				AB2000010000000000000002 /* GoalWindowTests.swift */,
+				AB2000010000000000000006 /* SocialProfileStoreTests.swift */,
 				AB2000010000000000000004 /* TestFixtures.swift */,
 			);
 			path = ../PoolStatsTests;
@@ -652,6 +670,7 @@
 				0D52DE4A7A4FA4F6299D14EA /* PoolStatsWatchApp.swift in Sources */,
 				A1B2C3D4E5F6A7B8C9D0E1F2 /* WatchSessionStartView.swift in Sources */,
 				B2C3D4E5F6A7B8C9D0E1F2A3 /* WatchActiveSessionView.swift in Sources */,
+				B2C3D4E5F6A7B8C9D0E1F2A4 /* WatchDrillActiveSessionView.swift in Sources */,
 				C9A01D03F8214D38B6C4E021 /* WatchDrillCatalog.swift in Sources */,
 				C3D4E5F6A7B8C9D0E1F2A3B4 /* WatchEndRackSheet.swift in Sources */,
 				D4E5F6A7B8C9D0E1F2A3B4C5 /* WatchSessionFinishView.swift in Sources */,
@@ -735,6 +754,10 @@
 				AA100001000000000000003A /* DrillControls.swift in Sources */,
 				AA100001000000000000003B /* LogStartComponents.swift in Sources */,
 				AA100001000000000000003C /* DrillLibraryCatalog.swift in Sources */,
+				AA100001000000000000003D /* DashboardSupportViews.swift in Sources */,
+				AA100001000000000000003E /* FriendMatchSharing.swift in Sources */,
+				AA100001000000000000003F /* FriendsSettingsView.swift in Sources */,
+				AA1000010000000000000040 /* DrillDetailView.swift in Sources */,
 				E63058D818592AB17D246454 /* SocialProfileStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -746,6 +769,7 @@
 				AB1000010000000000000003 /* DrillSessionTests.swift in Sources */,
 				AB1000010000000000000001 /* GoalMetricTests.swift in Sources */,
 				AB1000010000000000000002 /* GoalWindowTests.swift in Sources */,
+				AB1000010000000000000006 /* SocialProfileStoreTests.swift in Sources */,
 				AB1000010000000000000004 /* TestFixtures.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -793,7 +817,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
@@ -819,7 +843,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -849,7 +873,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -872,7 +896,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -895,7 +919,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchComplications/Info.plist;
@@ -927,7 +951,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				ENABLE_TESTABILITY = YES;
@@ -958,7 +982,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1064,7 +1088,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 13;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";

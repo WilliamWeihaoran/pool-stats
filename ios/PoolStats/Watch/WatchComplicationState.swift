@@ -94,6 +94,7 @@ enum WatchComplicationStateStore {
         }
         guard reload else { return }
         #if canImport(WidgetKit)
+        WidgetCenter.shared.reloadTimelines(ofKind: "PoolStatsQuickLogComplication")
         WidgetCenter.shared.reloadTimelines(ofKind: "PoolStatsLiveScoreComplication")
         WidgetCenter.shared.reloadTimelines(ofKind: "PoolStatsSessionActiveComplication")
         #endif
