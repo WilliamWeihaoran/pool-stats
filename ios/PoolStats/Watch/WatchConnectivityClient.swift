@@ -35,10 +35,17 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
     func startSession(game: String, opponent: String) {
         let sessionUUID = sessionStore?.startSession(game: game, opponent: opponent)
             ?? UUID().uuidString
+        let initialRackUUID = sessionStore?.activeSnapshot?.rack?.rackUUID
         send(WatchSyncEnvelope(
             action: .startSession,
             sessionUUID: sessionUUID,
-            start: WatchSessionStartPayload(game: game, type: "match", opponent: opponent, timestampMs: nowMs()),
+            start: WatchSessionStartPayload(
+                game: game,
+                type: "match",
+                opponent: opponent,
+                initialRackUUID: initialRackUUID,
+                timestampMs: nowMs()
+            ),
             sentAtMs: nowMs()
         ))
     }
@@ -66,6 +73,7 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
                 targetCount: targetCount,
                 drillDifficulty: chosenDifficulty.level,
                 drillBallCount: chosenDifficulty.ballCount,
+                initialRackUUID: sessionStore?.activeSnapshot?.rack?.rackUUID,
                 timestampMs: nowMs()
             ),
             sentAtMs: nowMs()
@@ -73,16 +81,26 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
     }
 
     func patch(_ patch: WatchRackPatch, sessionUUID: String?) {
+        let rackUUID = sessionStore?.activeSnapshot?.rack?.rackUUID
         sessionStore?.applyPatch(patch)
-        send(WatchSyncEnvelope(action: .rackPatch, sessionUUID: sessionUUID, patch: patch, sentAtMs: nowMs()))
+        send(WatchSyncEnvelope(action: .rackPatch, sessionUUID: sessionUUID, rackUUID: rackUUID, patch: patch, sentAtMs: nowMs()))
     }
 
     func saveRack(sessionUUID: String?, patch: WatchRackPatch? = nil) {
+        let rackUUID = sessionStore?.activeSnapshot?.rack?.rackUUID
         if let patch {
             sessionStore?.applyPatch(patch)
         }
         sessionStore?.saveCurrentRack()
-        send(WatchSyncEnvelope(action: .saveRack, sessionUUID: sessionUUID, patch: patch, sentAtMs: nowMs()))
+        let nextRackUUID = sessionStore?.activeSnapshot?.rack?.rackUUID
+        send(WatchSyncEnvelope(
+            action: .saveRack,
+            sessionUUID: sessionUUID,
+            rackUUID: rackUUID,
+            nextRackUUID: nextRackUUID,
+            patch: patch,
+            sentAtMs: nowMs()
+        ))
     }
 
     func undoLastRack(sessionUUID: String?) {
@@ -93,19 +111,13 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
     func recordDrillAttempt(_ attempt: WatchDrillAttemptPayload, sessionUUID: String?) {
         if !attempt.saveAndExit {
             sessionStore?.recordDrillAttempt(attempt)
+        } else {
+            sessionStore?.markLocallyClosed(sessionUUID: sessionUUID ?? sessionStore?.activeSnapshot?.session.sessionUUID)
         }
         send(WatchSyncEnvelope(action: .drillAttempt, sessionUUID: sessionUUID, drillAttempt: attempt, sentAtMs: nowMs()))
         if attempt.saveAndExit {
             sessionStore?.clear()
-            snapshot = snapshot.map {
-                WatchSessionSnapshot(
-                    active: nil,
-                    availableOpponents: $0.availableOpponents,
-                    availableDrills: $0.availableDrills,
-                    acknowledgedAtMs: $0.acknowledgedAtMs,
-                    message: nil
-                )
-            }
+            clearSnapshotActive()
         }
     }
 
@@ -115,30 +127,16 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
     }
 
     func endSession(sessionUUID: String?, rating: Int) {
-        sessionStore?.clear()
-        snapshot = snapshot.map {
-            WatchSessionSnapshot(
-                active: nil,
-                availableOpponents: $0.availableOpponents,
-                availableDrills: $0.availableDrills,
-                acknowledgedAtMs: $0.acknowledgedAtMs,
-                message: nil
-            )
-        }
+        sessionStore?.markLocallyClosed(sessionUUID: sessionUUID ?? sessionStore?.activeSnapshot?.session.sessionUUID)
+        sessionStore?.clear(clearComplication: false)
+        clearSnapshotActive()
         send(WatchSyncEnvelope(action: .endSessionWithRating, sessionUUID: sessionUUID, end: WatchEndSessionPayload(rating: rating), sentAtMs: nowMs()))
     }
 
     func discardSession(sessionUUID: String?) {
+        sessionStore?.markLocallyClosed(sessionUUID: sessionUUID ?? sessionStore?.activeSnapshot?.session.sessionUUID)
         sessionStore?.clear()
-        snapshot = snapshot.map {
-            WatchSessionSnapshot(
-                active: nil,
-                availableOpponents: $0.availableOpponents,
-                availableDrills: $0.availableDrills,
-                acknowledgedAtMs: $0.acknowledgedAtMs,
-                message: nil
-            )
-        }
+        clearSnapshotActive()
         send(WatchSyncEnvelope(action: .discardSession, sessionUUID: sessionUUID, sentAtMs: nowMs()))
     }
 
@@ -149,8 +147,7 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
             queue.enqueue(envelope)
             return
         }
-        guard let data = try? JSONEncoder().encode(envelope),
-              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        guard let payload = WatchConnectivityCodec.payload(for: envelope) else { return }
         if session.isReachable {
             session.sendMessage(payload, replyHandler: nil) { [weak self] _ in
                 Task { @MainActor in
@@ -166,44 +163,79 @@ final class WatchConnectivityClient: NSObject, ObservableObject {
         let session = WCSession.default
         guard session.activationState == .activated, session.isReachable else { return }
         for env in queue.drain() {
-            // Strip rackUUID so the phone accepts queued patches regardless of local UUID mismatch.
-            // matchesActiveRack(nil) always returns true on the phone side.
-            var stripped = env
-            stripped.rackUUID = nil
-            send(stripped)
+            send(env)
         }
     }
 
     private func handleIncomingSnapshot(_ decoded: WatchSessionSnapshot) {
-        snapshot = decoded
         if let drills = decoded.availableDrills {
             sessionStore?.updateDrillCatalog(drills)
         }
         // Phone is authoritative — adopt its active session if it has one.
         // If it has none with a matching clear marker, remove any local active state too.
         if let active = decoded.active {
+            guard sessionStore?.shouldSuppressRemoteActive(active) != true else {
+                snapshot = decoded.withoutActive(message: decoded.message)
+                return
+            }
+            snapshot = decoded
             sessionStore?.applyRemote(active)
         } else if shouldClearLocalSession(for: decoded) {
-            sessionStore?.clear()
-        } else if sessionStore?.activeSnapshot == nil {
+            snapshot = decoded
+            sessionStore?.clearClosedSessionMarkerForAcknowledgedClear(
+                clearedSessionUUID: decoded.clearedSessionUUID,
+                message: decoded.message
+            )
+            sessionStore?.clear(clearComplication: !shouldPreserveRecentlyEndedComplication(for: decoded))
+        } else if sessionStore?.activeSnapshot == nil, shouldClearIdleComplication(for: decoded) {
+            snapshot = decoded
+            sessionStore?.clearClosedSessionMarkerForAcknowledgedClear(
+                clearedSessionUUID: decoded.clearedSessionUUID,
+                message: decoded.message
+            )
             WatchComplicationStateStore.clear()
+        } else {
+            snapshot = decoded
+            if decoded.active == nil {
+                sessionStore?.clearClosedSessionMarkerForAcknowledgedClear(
+                    clearedSessionUUID: decoded.clearedSessionUUID,
+                    message: decoded.message
+                )
+            }
         }
+    }
+
+    private func clearSnapshotActive() {
+        snapshot = snapshot?.withoutActive(message: nil)
     }
 
     private func shouldClearLocalSession(for snapshot: WatchSessionSnapshot) -> Bool {
-        if let clearedUUID = snapshot.clearedSessionUUID {
-            return sessionStore?.activeSnapshot?.session.sessionUUID == clearedUUID
-        }
-        return isSessionClearMessage(snapshot.message)
+        WatchSyncReconciler.shouldClearLocalSession(
+            activeSessionUUID: sessionStore?.activeSnapshot?.session.sessionUUID,
+            clearedSessionUUID: snapshot.clearedSessionUUID,
+            message: snapshot.message
+        )
     }
 
-    private func isSessionClearMessage(_ message: String?) -> Bool {
-        switch message {
-        case "session_cleared", "session_ended", "session_discarded", "drill_session_ended":
-            return true
-        default:
-            return false
-        }
+    private func shouldPreserveRecentlyEndedComplication(for snapshot: WatchSessionSnapshot) -> Bool {
+        let complication = WatchComplicationStateStore.load()
+        return WatchSyncReconciler.shouldPreserveRecentlyEndedComplication(
+            activeSessionUUID: sessionStore?.activeSnapshot?.session.sessionUUID,
+            message: snapshot.message,
+            clearedSessionUUID: snapshot.clearedSessionUUID,
+            complicationSessionUUID: complication.sessionUUID,
+            recentlyEndedAt: complication.recentlyEndedAt
+        )
+    }
+
+    private func shouldClearIdleComplication(for snapshot: WatchSessionSnapshot) -> Bool {
+        let complication = WatchComplicationStateStore.load()
+        return WatchSyncReconciler.shouldClearIdleComplication(
+            hasActiveSession: complication.hasActiveSession,
+            recentlyEndedAt: complication.recentlyEndedAt,
+            complicationSessionUUID: complication.sessionUUID,
+            snapshotClearedSessionUUID: snapshot.clearedSessionUUID
+        )
     }
 }
 
@@ -224,22 +256,14 @@ extension WatchConnectivityClient: WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         Task { @MainActor in
-            guard let action = message["action"] as? String,
-                  action == WatchSyncAction.sessionSnapshot.rawValue,
-                  let snapshotObj = message["snapshot"],
-                  let data = try? JSONSerialization.data(withJSONObject: snapshotObj),
-                  let decoded = try? JSONDecoder().decode(WatchSessionSnapshot.self, from: data) else { return }
+            guard let decoded = WatchConnectivityCodec.snapshot(from: message) else { return }
             self.handleIncomingSnapshot(decoded)
         }
     }
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         Task { @MainActor in
-            guard let action = applicationContext["action"] as? String,
-                  action == WatchSyncAction.sessionSnapshot.rawValue,
-                  let snapshotObj = applicationContext["snapshot"],
-                  let data = try? JSONSerialization.data(withJSONObject: snapshotObj),
-                  let decoded = try? JSONDecoder().decode(WatchSessionSnapshot.self, from: data) else { return }
+            guard let decoded = WatchConnectivityCodec.snapshot(from: applicationContext) else { return }
             self.handleIncomingSnapshot(decoded)
         }
     }

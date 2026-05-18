@@ -25,7 +25,7 @@ struct SummaryView: View {
                 timeSection
                 performanceSection
                 if shouldShowMatchShare {
-                    matchShareSection
+                    SummaryMatchShareSection(session: session, selectedFriendCode: $selectedFriendCode)
                 }
                 if session.isDrillPractice {
                     drillSummaryCards
@@ -76,7 +76,7 @@ struct SummaryView: View {
                 Button {
                     finishSummary()
                 } label: {
-                    Text(completionButtonTitle)
+                    Text(LocalizedStringKey(completionButtonTitle))
                         .font(.caption.weight(.bold))
                         .foregroundColor(Theme.bg)
                         .padding(.horizontal, 12)
@@ -98,7 +98,7 @@ struct SummaryView: View {
             Button {
                 finishSummary()
             } label: {
-                Text(completionButtonTitle)
+                Text(LocalizedStringKey(completionButtonTitle))
                     .font(.headline.weight(.bold))
                     .foregroundColor(Theme.bg)
                     .frame(maxWidth: .infinity)
@@ -131,7 +131,7 @@ struct SummaryView: View {
                     .font(.caption)
                     .foregroundColor(Theme.muted)
                 Spacer(minLength: 0)
-                Text(opponentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Optional" : opponentText.trimmingCharacters(in: .whitespacesAndNewlines))
+                Text(opponentText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? SummaryCopy.opponentPlaceholder : opponentText.trimmingCharacters(in: .whitespacesAndNewlines))
                     .font(.caption2.weight(.medium))
                     .foregroundColor(Theme.text2)
             }
@@ -239,7 +239,7 @@ struct SummaryView: View {
                         .font(.caption)
                         .foregroundColor(Theme.text2)
                     Spacer()
-                    Text(performanceRating.map { "\($0)/10" } ?? "Drag to rate")
+                    Text(performanceRating.map { "\($0)/10" } ?? NSLocalizedString("Drag to rate", comment: ""))
                         .font(.caption.weight(.semibold))
                         .foregroundColor(performanceRating == nil ? Theme.muted : performanceSliderColor)
                 }
@@ -276,215 +276,6 @@ struct SummaryView: View {
         !session.isPractice && !session.isDrillPractice && !session.racks.isEmpty
     }
 
-    private var matchShareSection: some View {
-        SectionCard(title: "Share match") {
-            VStack(alignment: .leading, spacing: 12) {
-                if socialProfileStore.profile == nil {
-                    shareHint(
-                        title: "Create your public profile first",
-                        message: "Create a public profile in Settings > Me, then send this match to a saved friend."
-                    )
-                } else if socialProfileStore.friends.isEmpty {
-                    shareHint(
-                        title: "No friends yet",
-                        message: "Add a friend by code in Settings > Me, then come back here to share this match."
-                    )
-                } else {
-                    friendSelector
-                    selectedFriendShareControls
-                }
-            }
-        }
-    }
-
-    private var friendSelector: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(socialProfileStore.friends) { friend in
-                    let isSelected = selectedFriend?.friendCode == friend.friendCode
-                    Button {
-                        selectedFriendCode = friend.friendCode
-                        socialProfileStore.resetMatchShareState()
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(friend.displayName)
-                                .font(.caption.weight(.bold))
-                                .lineLimit(1)
-                            Text(friend.friendCode)
-                                .font(.caption2.monospaced())
-                                .lineLimit(1)
-                        }
-                        .foregroundColor(isSelected ? Theme.text : Theme.text2)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(isSelected ? Theme.purple.opacity(0.22) : Theme.panel2.opacity(0.7))
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(isSelected ? Theme.purple.opacity(0.65) : Theme.border, lineWidth: 0.8)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var selectedFriendShareControls: some View {
-        if let friend = selectedFriend {
-            let latestShare = socialProfileStore.latestOutgoingShare(for: session, friendCode: friend.friendCode)
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    shareStatusChip(for: latestShare)
-                    Spacer(minLength: 0)
-                    Text("\(session.wins):\(session.losses)")
-                        .font(.caption.weight(.black).monospacedDigit())
-                        .foregroundColor(Theme.text)
-
-                    Button {
-                        Task { await socialProfileStore.refreshOutgoingShares(for: session.sessionUUID) }
-                    } label: {
-                        Image(systemName: outgoingSharesAreRefreshing ? "hourglass" : "arrow.clockwise")
-                            .font(.caption.weight(.bold))
-                            .foregroundColor(Theme.teal)
-                            .frame(width: 28, height: 28)
-                            .background(Theme.teal.opacity(0.1))
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(outgoingSharesAreRefreshing)
-                }
-
-                Button {
-                    Task { await socialProfileStore.shareMatch(session, with: friend) }
-                } label: {
-                    HStack(spacing: 8) {
-                        if case .sending(let code) = socialProfileStore.matchShareState, code == friend.friendCode {
-                            ProgressView()
-                                .tint(Theme.text)
-                        }
-                        Text(shareButtonTitle(for: latestShare))
-                            .font(.subheadline.weight(.bold))
-                    }
-                    .foregroundColor(Theme.bg)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 11)
-                    .background(shareButtonColor(for: latestShare))
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .disabled(isShareButtonDisabled(for: friend, latestShare: latestShare))
-
-                if let message = shareMessage(for: friend, latestShare: latestShare) {
-                    Text(message)
-                        .font(.caption2)
-                        .foregroundColor(message.hasPrefix("Could") ? Theme.red : Theme.muted)
-                }
-            }
-        }
-    }
-
-    private func shareHint(title: String, message: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(title)
-                .font(.caption.weight(.bold))
-                .foregroundColor(Theme.text2)
-            Text(message)
-                .font(.caption2)
-                .foregroundColor(Theme.muted)
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.panel2.opacity(0.55))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-
-    private func shareStatusChip(for share: OutgoingMatchShare?) -> some View {
-        let label: String
-        let color: Color
-        if let share, share.isPending {
-            label = "Pending acceptance"
-            color = Theme.amber
-        } else if let share, share.isAccepted {
-            label = "Accepted"
-            color = Theme.green
-        } else if let share, share.isDeclined {
-            label = "Declined"
-            color = Theme.red
-        } else if let share, share.isFailed {
-            label = "Failed"
-            color = Theme.red
-        } else {
-            label = "Ready to share"
-            color = Theme.teal
-        }
-
-        return Text(label)
-            .font(.caption2.weight(.bold))
-            .foregroundColor(color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(color.opacity(0.12))
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(color.opacity(0.35), lineWidth: 0.6))
-    }
-
-    private func shareButtonTitle(for share: OutgoingMatchShare?) -> String {
-        if let share, share.isPending { return "Shared with friend" }
-        if let share, share.isAccepted { return "Shared and accepted" }
-        if let share, share.isDeclined { return "Share again" }
-        if let share, share.isFailed { return "Try sharing again" }
-        return "Share with \(selectedFriend?.displayName ?? "friend")"
-    }
-
-    private func shareButtonColor(for share: OutgoingMatchShare?) -> Color {
-        if let share, share.isPending { return Theme.muted }
-        if let share, share.isAccepted { return Theme.green }
-        if let share, share.isDeclined { return Theme.amber }
-        if let share, share.isFailed { return Theme.amber }
-        return Theme.teal
-    }
-
-    private func isShareButtonDisabled(for friend: SocialFriend, latestShare: OutgoingMatchShare?) -> Bool {
-        if let latestShare, latestShare.isPending { return true }
-        if let latestShare, latestShare.isAccepted { return true }
-        if case .sending(let code) = socialProfileStore.matchShareState, code == friend.friendCode { return true }
-        return outgoingSharesAreRefreshing
-    }
-
-    private func shareMessage(for friend: SocialFriend, latestShare: OutgoingMatchShare?) -> String? {
-        if case .failed(let message) = socialProfileStore.matchShareState { return message }
-        if case .failed(let message) = socialProfileStore.outgoingShareRefreshState { return message }
-        if let latestShare, latestShare.isPending {
-            return "\(friend.displayName) can accept this in Settings > Me."
-        }
-        if let latestShare, latestShare.isAccepted {
-            let acceptedText = latestShare.acceptedAt.map { " on \(AppFormatters.sessionDate($0))" } ?? ""
-            return "\(friend.displayName) accepted this match into their history\(acceptedText)."
-        }
-        if let latestShare, latestShare.isDeclined {
-            return "\(friend.displayName) declined this shared match. You can share it again if needed."
-        }
-        if let latestShare, latestShare.isFailed {
-            return latestShare.failureMessage ?? "Could not share this match."
-        }
-        return "Send a match invite your friend can accept into their history."
-    }
-
-    private var outgoingSharesAreRefreshing: Bool {
-        if case .loading(let refreshingSessionUUID) = socialProfileStore.outgoingShareRefreshState {
-            return refreshingSessionUUID == nil || refreshingSessionUUID == session.sessionUUID
-        }
-        return false
-    }
-
-    private var selectedFriend: SocialFriend? {
-        let code = selectedFriendCode.isEmpty ? socialProfileStore.friends.first?.friendCode : selectedFriendCode
-        guard let code else { return nil }
-        return socialProfileStore.friends.first { $0.friendCode == code } ?? socialProfileStore.friends.first
-    }
-
     private func ratingColor(for value: Int, lowerBound: Int, upperBound: Int) -> Color {
         let clamped = Double(Swift.max(Swift.min(value, upperBound), lowerBound))
         let mid = Double(lowerBound + upperBound) / 2.0
@@ -516,8 +307,8 @@ struct SummaryView: View {
         let rate = session.drillSuccessRate.map { "\($0)%" } ?? "--"
         let template = DrillLibrary.template(id: session.drillID)
         let totalCompleted = session.racks.reduce(0) { $0 + ($1.drillBallsMade ?? 0) }
-        let avgCompleted = attempts == 0 ? "--" : String(format: "%.1f", Double(totalCompleted) / Double(attempts))
-        let averageLabel = template?.progressTitle() == "Potted" ? "Avg potted" : "Avg completed"
+        let avgCompleted = attempts == 0 ? "--" : AppLanguageRuntime.format("%.1f", Double(totalCompleted) / Double(attempts))
+        let averageLabel = SummaryCopy.drillAverageLabel(countUnit: template?.countUnit)
         let progress = session.drillTargetProgress
 
         return SectionCard(title: "Practice") {
@@ -528,7 +319,12 @@ struct SummaryView: View {
                         .foregroundColor(Theme.text)
                     HStack(spacing: 8) {
                         badge(text: session.drillDifficultyLabel, color: Theme.purple)
-                        if let count = session.drillBallCount { badge(text: template?.countText(count) ?? "\(count) reps", color: Theme.amber) }
+                        if let count = session.drillBallCount {
+                            badge(
+                                text: template?.countText(count) ?? AppLanguageRuntime.localizedFormat("%lld reps", count),
+                                color: Theme.amber
+                            )
+                        }
                         if let target = session.drillTargetLabel { badge(text: target, color: Theme.green) }
                     }
                 }
@@ -545,7 +341,7 @@ struct SummaryView: View {
                         .foregroundColor(Theme.red)
                     Spacer()
                     VStack(alignment: .trailing, spacing: 3) {
-                        Text(rate)
+                                Text(rate)
                             .font(.title3.bold().monospacedDigit())
                             .foregroundColor(Theme.text)
                         Text("success rate")
@@ -609,7 +405,7 @@ struct SummaryView: View {
                                     .font(.caption.weight(.semibold))
                                     .foregroundColor(rack.drillOutcome == "success" ? Theme.green : Theme.red)
                                 if let made = rack.drillBallsMade, let target = rack.drillTargetBallCount {
-                                    Text("\(made)/\(target) potted")
+                                    Text(SummaryCopy.drillProgressText(made: made, target: target))
                                         .font(.caption.weight(.bold).monospacedDigit())
                                         .foregroundColor(Theme.text2)
                                 }
@@ -666,12 +462,12 @@ struct SummaryView: View {
         ]
         if session.isPractice {
             let errTotal = rs.reduce(0) { $0 + $1.unforcedErrorCount }
-            rows.append(("Err/rack", String(format: "%.1f", Double(errTotal) / n)))
+            rows.append(("Err/rack", AppLanguageRuntime.format("%.1f", Double(errTotal) / n)))
         } else {
             rows.append(("Opp runouts", "\(oRus)"))
         }
         rows.append(("B&R", "\(bnr)"))
-        rows.append(("Avg potted", String(format: "%.1f", avgP)))
+        rows.append(("Avg potted", AppLanguageRuntime.format("%.1f", avgP)))
 
         return SectionCard(title: "Break") {
             LazyVGrid(columns: Layout.fourColumn(), spacing: 8) {
@@ -693,18 +489,20 @@ struct SummaryView: View {
                             .font(.caption)
                             .foregroundColor(Theme.muted)
                             .frame(width: 20, alignment: .leading)
-                        Text(session.isPractice ? "Prac" : (r.result == "won" ? "Won" : "Lost"))
+                        Text(
+                            SummaryCopy.rackResultLabel(isPractice: session.isPractice, result: r.result)
+                        )
                             .font(.caption)
                             .foregroundColor(r.result == "won" ? Theme.teal : (r.result == "lost" ? Theme.red : Theme.amber))
                             .frame(width: 40, alignment: .leading)
-                        Text(outcomeLabel(r.outcome))
+                        Text(SummaryCopy.outcomeLabel(r.outcome))
                             .font(.caption)
                             .foregroundColor(Theme.purple)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Theme.panel2)
                             .cornerRadius(4)
-                        Text("\(err) ue")
+                        Text(SummaryCopy.rackErrorsText(err))
                             .font(.caption2)
                             .foregroundColor(Theme.muted)
                         Spacer()
@@ -721,12 +519,7 @@ struct SummaryView: View {
     }
 
     private func metaText() -> String {
-        let opponent = session.isPractice ? "" : session.opponent.trimmingCharacters(in: .whitespaces)
-        let oppText = opponent.isEmpty ? nil : "vs \(opponent)"
-        let countText = session.isDrillPractice ? "\(session.drillAttempts) attempts" : "\(session.racks.count) racks"
-        return [session.typeLabel, session.isDrillPractice ? session.drillTitle : session.gameLabel, oppText, countText, session.drillTargetLabel, AppFormatters.sessionDate(session.ts)]
-            .compactMap { $0 }
-            .joined(separator: " · ")
+        SummaryCopy.metaText(for: session)
     }
 
     private func badge(text: String, color: Color) -> some View {
@@ -738,17 +531,6 @@ struct SummaryView: View {
             .background(color.opacity(0.12))
             .overlay(RoundedRectangle(cornerRadius: 5).stroke(color.opacity(0.28), lineWidth: 0.5))
             .cornerRadius(5)
-    }
-
-    private func outcomeLabel(_ outcome: String?) -> String {
-        switch outcome {
-        case "runout": return "Runout"
-        case "noRunout": return "No runout"
-        case "safety": return "Safety"
-        case "error": return "Error"
-        case "other": return "Other"
-        default: return "—"
-        }
     }
 
     private func saveLabel() {
@@ -792,5 +574,172 @@ private extension UIColor {
         var a: CGFloat = 0
         getRed(&r, green: &g, blue: &b, alpha: &a)
         return (Double(r), Double(g), Double(b), Double(a))
+    }
+}
+
+private struct SummaryMatchShareSection: View {
+    @EnvironmentObject private var socialProfileStore: SocialProfileStore
+
+    let session: Session
+    @Binding var selectedFriendCode: String
+
+    var body: some View {
+        SectionCard(title: "Share match") {
+            VStack(alignment: .leading, spacing: 12) {
+                if socialProfileStore.profile == nil {
+                    shareHint(SummaryCopy.shareProfileHint)
+                } else if socialProfileStore.friends.isEmpty {
+                    shareHint(SummaryCopy.shareNoFriendsHint)
+                } else {
+                    friendSelector
+                    selectedFriendShareControls
+                }
+            }
+        }
+    }
+
+    private var friendSelector: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(socialProfileStore.friends) { friend in
+                    let isSelected = selectedFriend?.friendCode == friend.friendCode
+                    Button {
+                        selectedFriendCode = friend.friendCode
+                        socialProfileStore.resetMatchShareState()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(friend.displayName)
+                                .font(.caption.weight(.bold))
+                                .lineLimit(1)
+                            Text(friend.friendCode)
+                                .font(.caption2.monospaced())
+                                .lineLimit(1)
+                        }
+                        .foregroundColor(isSelected ? Theme.text : Theme.text2)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(isSelected ? Theme.purple.opacity(0.22) : Theme.panel2.opacity(0.7))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(isSelected ? Theme.purple.opacity(0.65) : Theme.border, lineWidth: 0.8)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var selectedFriendShareControls: some View {
+        if let friend = selectedFriend {
+            let shareState = SummaryMatchShareState(
+                sessionUUID: session.sessionUUID,
+                friendCode: friend.friendCode,
+                friendDisplayName: friend.displayName,
+                latestShare: socialProfileStore.latestOutgoingShare(for: session, friendCode: friend.friendCode),
+                matchShareState: socialProfileStore.matchShareState,
+                refreshState: socialProfileStore.outgoingShareRefreshState
+            )
+            let copy = shareState.presentation
+
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 8) {
+                    shareStatusChip(label: copy.statusLabel, tone: copy.statusTone)
+                    Spacer(minLength: 0)
+                    Text("\(session.wins):\(session.losses)")
+                        .font(.caption.weight(.black).monospacedDigit())
+                        .foregroundColor(Theme.text)
+
+                    Button {
+                        Task { await socialProfileStore.refreshOutgoingShares(for: session.sessionUUID) }
+                    } label: {
+                        Image(systemName: shareState.isRefreshingCurrentSession ? "hourglass" : "arrow.clockwise")
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(Theme.teal)
+                            .frame(width: 28, height: 28)
+                            .background(Theme.teal.opacity(0.1))
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(shareState.isRefreshingCurrentSession)
+                }
+
+                Button {
+                    Task { await socialProfileStore.shareMatch(session, with: friend) }
+                } label: {
+                    HStack(spacing: 8) {
+                        if shareState.isSendingCurrentFriend {
+                            ProgressView()
+                                .tint(Theme.text)
+                        }
+                        Text(copy.buttonTitle)
+                            .font(.subheadline.weight(.bold))
+                    }
+                    .foregroundColor(Theme.bg)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(color(for: copy.buttonTone))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .disabled(shareState.isActionDisabled)
+
+                if let message = copy.message {
+                    Text(message)
+                        .font(.caption2)
+                        .foregroundColor(color(for: copy.messageTone))
+                }
+            }
+        }
+    }
+
+    private var selectedFriend: SocialFriend? {
+        let code = selectedFriendCode.isEmpty ? socialProfileStore.friends.first?.friendCode : selectedFriendCode
+        guard let code else { return nil }
+        return socialProfileStore.friends.first { $0.friendCode == code } ?? socialProfileStore.friends.first
+    }
+
+    private func shareHint(_ hint: ShareHintCopy) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(hint.title)
+                .font(.caption.weight(.bold))
+                .foregroundColor(Theme.text2)
+            Text(hint.message)
+                .font(.caption2)
+                .foregroundColor(Theme.muted)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.panel2.opacity(0.55))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func shareStatusChip(label: String, tone: AppCopyTone) -> some View {
+        let color = color(for: tone)
+        return Text(label)
+            .font(.caption2.weight(.bold))
+            .foregroundColor(color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(color.opacity(0.12))
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(color.opacity(0.35), lineWidth: 0.6))
+    }
+
+    private func color(for tone: AppCopyTone) -> Color {
+        switch tone {
+        case .accent:
+            return Theme.teal
+        case .success:
+            return Theme.green
+        case .warning:
+            return Theme.amber
+        case .danger:
+            return Theme.red
+        case .muted:
+            return Theme.muted
+        }
     }
 }

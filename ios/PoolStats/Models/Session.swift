@@ -6,6 +6,7 @@ struct Session: Identifiable, Codable, Hashable {
     var label: String
     var opponent: String
     var game: String
+    var raceTo: Int?
     var type: String
     var ts: Date
     var racks: [Rack]
@@ -29,6 +30,7 @@ struct Session: Identifiable, Codable, Hashable {
         label: String = "",
         opponent: String = "",
         game: String,
+        raceTo: Int? = nil,
         type: String,
         ts: Date = Date(),
         racks: [Rack] = [],
@@ -51,6 +53,7 @@ struct Session: Identifiable, Codable, Hashable {
         self.label = label
         self.opponent = opponent
         self.game = game
+        self.raceTo = raceTo
         self.type = type
         self.ts = ts
         self.racks = racks
@@ -75,6 +78,7 @@ struct Session: Identifiable, Codable, Hashable {
         case label
         case opponent
         case game
+        case raceTo
         case type
         case ts
         case racks
@@ -100,6 +104,7 @@ struct Session: Identifiable, Codable, Hashable {
         label = try c.decode(String.self, forKey: .label)
         opponent = try c.decode(String.self, forKey: .opponent)
         game = try c.decode(String.self, forKey: .game)
+        raceTo = try c.decodeIfPresent(Int.self, forKey: .raceTo)
         type = try c.decode(String.self, forKey: .type)
         ts = try c.decode(Date.self, forKey: .ts)
         racks = try c.decode([Rack].self, forKey: .racks)
@@ -125,6 +130,7 @@ struct Session: Identifiable, Codable, Hashable {
         try c.encode(label, forKey: .label)
         try c.encode(opponent, forKey: .opponent)
         try c.encode(game, forKey: .game)
+        try c.encodeIfPresent(raceTo, forKey: .raceTo)
         try c.encode(type, forKey: .type)
         try c.encode(ts, forKey: .ts)
         try c.encode(racks, forKey: .racks)
@@ -149,13 +155,24 @@ struct Session: Identifiable, Codable, Hashable {
     var losses: Int { racks.filter { $0.result == "lost" }.count }
     var isDraw: Bool { !isPractice && wins == losses && wins > 0 }
     var gameLabel: String { game == "8ball" ? "8-ball" : "9-ball" }
-    var typeLabel: String { isDrillPractice ? "Drill practice" : (isPractice ? "Practice" : "Match") }
+    var raceLabel: String? {
+        guard let raceTo, raceTo > 0 else { return nil }
+        return AppLanguageRuntime.localizedFormat("Race to %lld", raceTo)
+    }
+    var typeLabel: String {
+        if isDrillPractice { return NSLocalizedString("Drill practice", comment: "") }
+        return isPractice ? NSLocalizedString("Practice", comment: "") : NSLocalizedString("Match", comment: "")
+    }
     var displayLabel: String {
         let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { return trimmed }
         if isDrillPractice, let drillTitle { return drillTitle }
-        let gameName = game == "8ball" ? "8 ball" : "9 ball"
-        let modeName = isPractice ? "practice" : "match"
+        let gameName = game == "8ball"
+            ? NSLocalizedString("8 ball", comment: "")
+            : NSLocalizedString("9 ball", comment: "")
+        let modeName = isPractice
+            ? NSLocalizedString("practice", comment: "")
+            : NSLocalizedString("match", comment: "")
         return "\(gameName) \(modeName)"
     }
     var drillPrimaryLabels: [String] {
@@ -172,8 +189,10 @@ struct Session: Identifiable, Codable, Hashable {
     var drillAttempts: Int { racks.filter { $0.drillOutcome != nil }.count }
     var drillTargetLabel: String? {
         guard let drillTargetCount, drillTargetCount > 0 else { return nil }
-        if drillTargetType == "attempts" { return "Target: \(drillTargetCount) attempts" }
-        return "Target: \(drillTargetCount) successes"
+        if drillTargetType == "attempts" {
+            return AppLanguageRuntime.localizedFormat("Target: %lld attempts", drillTargetCount)
+        }
+        return AppLanguageRuntime.localizedFormat("Target: %lld successes", drillTargetCount)
     }
     var drillTargetProgress: (current: Int, target: Int)? {
         guard let drillTargetCount, drillTargetCount > 0 else { return nil }
@@ -194,12 +213,12 @@ struct Session: Identifiable, Codable, Hashable {
     }
     var drillDifficultyLabel: String {
         switch drillDifficulty {
-        case "beginner": return "Beginner"
-        case "easy": return "Easy"
-        case "standard": return "Standard"
-        case "hard": return "Hard"
-        case "expert": return "Expert"
-        default: return "Drill"
+        case "beginner": return NSLocalizedString("Beginner", comment: "")
+        case "easy": return NSLocalizedString("Easy", comment: "")
+        case "standard": return NSLocalizedString("Standard", comment: "")
+        case "hard": return NSLocalizedString("Hard", comment: "")
+        case "expert": return NSLocalizedString("Expert", comment: "")
+        default: return NSLocalizedString("Drill", comment: "")
         }
     }
 

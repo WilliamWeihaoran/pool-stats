@@ -10,19 +10,19 @@ enum GoalWindowUnit: String, CaseIterable, Codable, Identifiable {
 
     var label: String {
         switch self {
-        case .racks: return "Racks"
-        case .sessions: return "Sessions"
-        case .days: return "Days"
-        case .weeks: return "Weeks"
+        case .racks: return NSLocalizedString("Racks", comment: "")
+        case .sessions: return NSLocalizedString("Sessions", comment: "")
+        case .days: return NSLocalizedString("Days", comment: "")
+        case .weeks: return NSLocalizedString("Weeks", comment: "")
         }
     }
 
     var shortLabel: String {
         switch self {
-        case .racks: return "racks"
-        case .sessions: return "sessions"
-        case .days: return "days"
-        case .weeks: return "weeks"
+        case .racks: return NSLocalizedString("racks", comment: "")
+        case .sessions: return NSLocalizedString("sessions", comment: "")
+        case .days: return NSLocalizedString("days", comment: "")
+        case .weeks: return NSLocalizedString("weeks", comment: "")
         }
     }
 }
@@ -32,8 +32,7 @@ struct GoalRollingWindow: Codable, Hashable {
     var unit: GoalWindowUnit
 
     var label: String {
-        let amountText = amount == 1 ? "1" : "\(amount)"
-        return "\(amountText) rolling \(unit.shortLabel)"
+        AppLanguageRuntime.localizedFormat("%lld rolling %@", amount, unit.shortLabel)
     }
 }
 
@@ -67,16 +66,16 @@ enum GoalWindow: Codable, Hashable, Identifiable {
         case .rolling(let window):
             return window.label
         case .dueDate(let date):
-            return "Due \(AppFormatters.sessionDate(date))"
+            return String(format: NSLocalizedString("Due %@", comment: ""), AppFormatters.sessionDate(date))
         }
     }
 
     var modeLabel: String {
         switch self {
         case .rolling:
-            return "Rolling"
+            return NSLocalizedString("Rolling", comment: "")
         case .dueDate:
-            return "Due date"
+            return NSLocalizedString("Due date", comment: "")
         }
     }
 

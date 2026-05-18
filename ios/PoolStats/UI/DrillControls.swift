@@ -117,7 +117,7 @@ struct FilterSkillButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text(skill)
+            Text(LocalizedStringKey(skill))
                 .font(.caption.weight(.bold))
                 .foregroundColor(isOn ? .black.opacity(0.82) : drillColor(skill))
                 .padding(.horizontal, 11)
@@ -180,12 +180,12 @@ struct DrillInfoTile: View {
 
 func drillColor(_ name: String) -> Color {
     switch name.lowercased() {
-    case "potting", "red": return Theme.red
-    case "position", "blue": return Theme.blue
-    case "pattern", "teal": return Theme.teal
-    case "runout", "purple": return Theme.purple
-    case "overall", "fundamentals", "green": return Theme.green
-    case "break", "orange", "yellow", "amber": return Theme.amber
+    case "potting", "准度", "red": return Theme.red
+    case "position", "走位", "blue": return Theme.blue
+    case "pattern", "路线", "teal": return Theme.teal
+    case "runout", "清台", "purple": return Theme.purple
+    case "overall", "fundamentals", "综合", "基本功", "green": return Theme.green
+    case "break", "开球", "orange", "yellow", "amber": return Theme.amber
     default: return Theme.text2
     }
 }

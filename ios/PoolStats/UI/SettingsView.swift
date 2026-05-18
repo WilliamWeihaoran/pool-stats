@@ -13,29 +13,29 @@ enum SettingsSection: String, CaseIterable, Hashable {
 
     var title: String {
         switch self {
-        case .me: return "Me"
-        case .account: return "Account"
-        case .friends: return "Friends"
-        case .opponents: return "Opponents"
-        case .history: return "History"
-        case .stats: return "Stats"
-        case .appearance: return "Appearance"
-        case .data: return "Data"
-        case .about: return "About"
+        case .me: return NSLocalizedString("Me", comment: "")
+        case .account: return NSLocalizedString("Account", comment: "")
+        case .friends: return NSLocalizedString("Friends", comment: "")
+        case .opponents: return NSLocalizedString("Opponents", comment: "")
+        case .history: return NSLocalizedString("History", comment: "")
+        case .stats: return NSLocalizedString("Stats", comment: "")
+        case .appearance: return NSLocalizedString("Appearance", comment: "")
+        case .data: return NSLocalizedString("Data", comment: "")
+        case .about: return NSLocalizedString("About", comment: "")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .me: return "Player profile, Fargo baseline, and personal stats"
-        case .account: return "iCloud sync and Sign in with Apple"
-        case .friends: return "Friend code, saved friends, and shared matches"
-        case .opponents: return "Add, edit, favorite, and compare opponents"
-        case .history: return "Review past sessions and summaries"
-        case .stats: return "Session totals and performance snapshots"
-        case .appearance: return "Choose a color theme for the app"
-        case .data: return "Sync health and local data tools"
-        case .about: return "App version and build information"
+        case .me: return NSLocalizedString("Player profile, Fargo baseline, and personal stats", comment: "")
+        case .account: return NSLocalizedString("iCloud sync and Sign in with Apple", comment: "")
+        case .friends: return NSLocalizedString("Friend code, saved friends, and shared matches", comment: "")
+        case .opponents: return NSLocalizedString("Add, edit, favorite, and compare opponents", comment: "")
+        case .history: return NSLocalizedString("Review past sessions and summaries", comment: "")
+        case .stats: return NSLocalizedString("Session totals and performance snapshots", comment: "")
+        case .appearance: return NSLocalizedString("Theme and app language", comment: "")
+        case .data: return NSLocalizedString("Sync health and local data tools", comment: "")
+        case .about: return NSLocalizedString("App version and build information", comment: "")
         }
     }
 
@@ -116,10 +116,10 @@ struct SettingsView: View {
 
     private var settingGroups: [SettingsGroup] {
         [
-            SettingsGroup(title: "Player", sections: [.me, .account, .stats]),
-            SettingsGroup(title: "Sessions", sections: [.history]),
-            SettingsGroup(title: "People", sections: [.friends, .opponents]),
-            SettingsGroup(title: "App", sections: [.appearance, .data, .about])
+            SettingsGroup(title: NSLocalizedString("Player", comment: ""), sections: [.me, .account, .stats]),
+            SettingsGroup(title: NSLocalizedString("Sessions", comment: ""), sections: [.history]),
+            SettingsGroup(title: NSLocalizedString("People", comment: ""), sections: [.friends, .opponents]),
+            SettingsGroup(title: NSLocalizedString("App", comment: ""), sections: [.appearance, .data, .about])
         ]
     }
 
@@ -171,7 +171,9 @@ private struct SettingsSectionRow: View {
                     .padding(.vertical, 4)
                     .background(Theme.amber)
                     .clipShape(Capsule())
-                    .accessibilityLabel("\(badgeText) pending shared matches")
+                    .accessibilityLabel(
+                        Text(String(format: NSLocalizedString("%@ pending shared matches", comment: ""), badgeText))
+                    )
             }
 
             Image(systemName: "chevron.right")

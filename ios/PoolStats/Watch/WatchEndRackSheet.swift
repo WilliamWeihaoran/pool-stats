@@ -45,17 +45,11 @@ struct EndRackSheet: View {
 
                     VStack(spacing: 7) {
                         actionButton("Next Rack", color: .teal, prominent: true, disabled: !canSave || isSubmitting) {
-                            guard submissionAction == nil else { return }
-                            submissionAction = .nextRack
-                            WKInterfaceDevice.current().play(.success)
-                            onSaveRack(selectedResult, runoutFirst, breakAndRun)
+                            submit(.nextRack)
                         }
 
                         actionButton("Save & Exit", color: .red, prominent: false, disabled: !canSave || isSubmitting) {
-                            guard submissionAction == nil else { return }
-                            submissionAction = .saveAndExit
-                            WKInterfaceDevice.current().play(.click)
-                            onSaveAndExit(selectedResult, runoutFirst, breakAndRun)
+                            submit(.saveAndExit)
                         }
                     }
                 }
@@ -68,14 +62,29 @@ struct EndRackSheet: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
+                        guard !isSubmitting else { return }
                         WKInterfaceDevice.current().play(.click)
                         onClose()
                     } label: {
                         Image(systemName: "xmark")
                     }
+                    .disabled(isSubmitting)
                 }
             }
             .background(Color.black.ignoresSafeArea())
+        }
+    }
+
+    private func submit(_ action: SubmissionAction) {
+        guard submissionAction == nil else { return }
+        submissionAction = action
+        switch action {
+        case .nextRack:
+            WKInterfaceDevice.current().play(.success)
+            onSaveRack(selectedResult, runoutFirst, breakAndRun)
+        case .saveAndExit:
+            WKInterfaceDevice.current().play(.click)
+            onSaveAndExit(selectedResult, runoutFirst, breakAndRun)
         }
     }
 

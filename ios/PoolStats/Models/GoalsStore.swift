@@ -13,10 +13,11 @@ struct Goal: Identifiable, Codable, Hashable {
     var notes: String = ""
     var isArchived: Bool = false
     var completedAt: Date? = nil
+    var completionPromptedAt: Date? = nil
     var starterGenerated: Bool = false
 
     enum CodingKeys: String, CodingKey {
-        case id, title, metric, target, window, valueStyle, averageBasis, sessionScope, createdAt, notes, isArchived, completedAt, starterGenerated
+        case id, title, metric, target, window, valueStyle, averageBasis, sessionScope, createdAt, notes, isArchived, completedAt, completionPromptedAt, starterGenerated
     }
 
     init(id: UUID = UUID(),
@@ -31,6 +32,7 @@ struct Goal: Identifiable, Codable, Hashable {
          notes: String = "",
          isArchived: Bool = false,
          completedAt: Date? = nil,
+         completionPromptedAt: Date? = nil,
          starterGenerated: Bool = false) {
         self.id = id
         self.title = title
@@ -44,6 +46,7 @@ struct Goal: Identifiable, Codable, Hashable {
         self.notes = notes
         self.isArchived = isArchived
         self.completedAt = completedAt
+        self.completionPromptedAt = completionPromptedAt
         self.starterGenerated = starterGenerated
     }
 
@@ -63,6 +66,7 @@ struct Goal: Identifiable, Codable, Hashable {
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
         completedAt = try container.decodeIfPresent(Date.self, forKey: .completedAt)
+        completionPromptedAt = try container.decodeIfPresent(Date.self, forKey: .completionPromptedAt) ?? completedAt
         starterGenerated = try container.decodeIfPresent(Bool.self, forKey: .starterGenerated) ?? false
     }
 
@@ -82,6 +86,7 @@ struct Goal: Identifiable, Codable, Hashable {
         try container.encode(notes, forKey: .notes)
         try container.encode(isArchived, forKey: .isArchived)
         try container.encodeIfPresent(completedAt, forKey: .completedAt)
+        try container.encodeIfPresent(completionPromptedAt, forKey: .completionPromptedAt)
         try container.encode(starterGenerated, forKey: .starterGenerated)
     }
 }
@@ -93,7 +98,8 @@ final class GoalsStore: ObservableObject {
     private let localURL: URL
 
     init() {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
         localURL = dir.appendingPathComponent("goals.json")
         loadLocal()
@@ -116,10 +122,47 @@ final class GoalsStore: ObservableObject {
         saveLocal()
     }
 
-    func complete(_ goal: Goal) {
+    func complete(_ goal: Goal, promptShownAt: Date? = nil) {
         guard let idx = goals.firstIndex(where: { $0.id == goal.id }) else { return }
         goals[idx].completedAt = Date()
+        goals[idx].completionPromptedAt = promptShownAt
         goals[idx].isArchived = true
+        saveLocal()
+    }
+
+    func autoCompleteReachedGoals(using sessions: [Session]) -> [Goal] {
+        var completed: [Goal] = []
+        var didChange = false
+
+        for idx in goals.indices {
+            let goal = goals[idx]
+            guard goal.canAutoCompleteFromStats,
+                  goal.isComplete(from: sessions) else { continue }
+
+            goals[idx].completedAt = Date()
+            goals[idx].isArchived = true
+            completed.append(goals[idx])
+            didChange = true
+        }
+
+        if didChange {
+            saveLocal()
+        }
+        return completed
+    }
+
+    func pendingCompletionPrompt() -> Goal? {
+        goals
+            .filter { $0.completedAt != nil && $0.completionPromptedAt == nil }
+            .sorted { lhs, rhs in
+                (lhs.completedAt ?? .distantPast) < (rhs.completedAt ?? .distantPast)
+            }
+            .first
+    }
+
+    func markCompletionPromptShown(_ goal: Goal) {
+        guard let idx = goals.firstIndex(where: { $0.id == goal.id }) else { return }
+        goals[idx].completionPromptedAt = Date()
         saveLocal()
     }
 

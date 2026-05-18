@@ -12,10 +12,10 @@ extension Analytics {
             return Int(round(Double(w) / Double(arr.count) * 100))
         }
         let breakCards: [(String, Int?)] = [
-            ("Potted on break win%", wr(mBP)),
-            ("Dry break win%", wr(mBD)),
-            ("My break win%", wr(myB)),
-            ("Opp break win%", wr(oB))
+            (NSLocalizedString("Potted on break win%", comment: ""), wr(mBP)),
+            (NSLocalizedString("Dry break win%", comment: ""), wr(mBD)),
+            (NSLocalizedString("My break win%", comment: ""), wr(myB)),
+            (NSLocalizedString("Opp break win%", comment: ""), wr(oB))
         ]
 
         let layouts = ["open", "clustered", "problematic", "snookered"]

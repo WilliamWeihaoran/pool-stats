@@ -314,7 +314,7 @@ struct GoalEditorSheet: View {
     }
 
     private var previewText: String {
-        let draftGoal = Goal(title: draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "This goal" : draft.title,
+        let draftGoal = Goal(title: draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? NSLocalizedString("This goal", comment: "") : draft.title,
                              metric: draft.metric,
                              target: draft.target,
                              window: draft.window,

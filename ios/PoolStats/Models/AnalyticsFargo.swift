@@ -63,12 +63,12 @@ extension Analytics {
         let estimated = Int(round(clamp(300 + weightedPct * 4.5, min: 300, max: 750)))
         let rangeText = "\(estimated - 25)–\(estimated + 25)"
 
-        let names = ["Potting", "Position", "Pattern", "Runout", "Overall"]
         let weightTexts = ["25%", "20%", "20%", "20%", "15%"]
-        let factors: [FargoFactor] = Array(0..<names.count).map { idx in
+        let kinds = FargoFactorKind.allCases
+        let factors: [FargoFactor] = Array(0..<kinds.count).map { idx in
             let impact = 300 + values[idx] * 4.5
             let contribution = Int(round((impact - 500) * weights[idx]))
-            return FargoFactor(name: names[idx],
+            return FargoFactor(kind: kinds[idx],
                                scoreValue: Int(round(values[idx])),
                                valueText: String(format: "%.0f%%", values[idx]),
                                weightText: weightTexts[idx],

@@ -13,8 +13,8 @@ enum GoalValueStyle: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .average: return "Average"
-        case .cumulative: return "Cumulative"
+        case .average: return NSLocalizedString("Average", comment: "")
+        case .cumulative: return NSLocalizedString("Cumulative", comment: "")
         }
     }
 }
@@ -27,15 +27,15 @@ enum GoalAverageBasis: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .racks: return "Per rack"
-        case .sessions: return "Per session"
+        case .racks: return NSLocalizedString("Per rack", comment: "")
+        case .sessions: return NSLocalizedString("Per session", comment: "")
         }
     }
 
     var unitLabel: String {
         switch self {
-        case .racks: return "rack"
-        case .sessions: return "session"
+        case .racks: return NSLocalizedString("rack", comment: "")
+        case .sessions: return NSLocalizedString("session", comment: "")
         }
     }
 }
@@ -49,17 +49,17 @@ enum GoalSessionScope: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .all: return "All sessions"
-        case .match: return "Match only"
-        case .practice: return "Practice only"
+        case .all: return NSLocalizedString("All sessions", comment: "")
+        case .match: return NSLocalizedString("Match only", comment: "")
+        case .practice: return NSLocalizedString("Practice only", comment: "")
         }
     }
 
     var shortLabel: String {
         switch self {
-        case .all: return "All"
-        case .match: return "Match"
-        case .practice: return "Practice"
+        case .all: return NSLocalizedString("All", comment: "")
+        case .match: return NSLocalizedString("Match", comment: "")
+        case .practice: return NSLocalizedString("Practice", comment: "")
         }
     }
 
@@ -107,22 +107,22 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
 
     var label: String {
         switch self {
-        case .conversionRate: return "Conversion rate"
-        case .matchWinRate: return "Match win rate"
-        case .rackWinRate: return "Rack win rate"
-        case .runouts: return "Runouts"
-        case .breakAndRuns: return "Break & runs"
-        case .missErrors: return "Miss errors"
-        case .positionalErrors: return "Positional errors"
-        case .safetyErrors: return "Safety errors"
-        case .patternErrors: return "Pattern errors"
-        case .foulErrors: return "Foul errors (legacy)"
-        case .averagePerformance: return "Performance rating"
+        case .conversionRate: return NSLocalizedString("Conversion rate", comment: "")
+        case .matchWinRate: return NSLocalizedString("Match win rate", comment: "")
+        case .rackWinRate: return NSLocalizedString("Rack win rate", comment: "")
+        case .runouts: return NSLocalizedString("Runouts", comment: "")
+        case .breakAndRuns: return NSLocalizedString("Break & runs", comment: "")
+        case .missErrors: return NSLocalizedString("Miss errors", comment: "")
+        case .positionalErrors: return NSLocalizedString("Positional errors", comment: "")
+        case .safetyErrors: return NSLocalizedString("Safety errors", comment: "")
+        case .patternErrors: return NSLocalizedString("Pattern errors", comment: "")
+        case .foulErrors: return NSLocalizedString("Foul errors (legacy)", comment: "")
+        case .averagePerformance: return NSLocalizedString("Performance rating", comment: "")
         }
     }
 
     var groupLabel: String {
-        isLowerBetter ? "Trim" : "Grow"
+        isLowerBetter ? NSLocalizedString("Trim", comment: "") : NSLocalizedString("Grow", comment: "")
     }
 
     var direction: GoalDirection {
@@ -262,6 +262,25 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
         return total / denominator
     }
 
+    func hasProgressData(from sessions: [Session], style: GoalValueStyle, basis: GoalAverageBasis? = nil) -> Bool {
+        let racks = sessions.flatMap(\.racks)
+        switch self {
+        case .conversionRate:
+            return racks.contains { $0.layout == "open" }
+        case .matchWinRate:
+            return sessions.contains { $0.type == "match" }
+        case .rackWinRate:
+            return !racks.isEmpty
+        case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
+            if style == .average, (basis ?? defaultAverageBasis) == .sessions {
+                return !sessions.isEmpty
+            }
+            return !racks.isEmpty
+        case .averagePerformance:
+            return sessions.contains { $0.performanceRating != nil }
+        }
+    }
+
     func format(_ value: Double, style: GoalValueStyle = .cumulative, basis: GoalAverageBasis? = nil) -> String {
         switch self {
         case .conversionRate, .matchWinRate, .rackWinRate:
@@ -280,10 +299,10 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
         guard supportsValueStyle else { return "" }
         switch style {
         case .cumulative:
-            return "Cumulative"
+            return NSLocalizedString("Cumulative", comment: "")
         case .average:
             let basis = basis ?? defaultAverageBasis
-            return "Average per \(basis.unitLabel)"
+            return String(format: NSLocalizedString("Average per %@", comment: ""), basis.unitLabel)
         }
     }
 
@@ -291,15 +310,37 @@ enum GoalMetric: String, CaseIterable, Codable, Identifiable {
         let formatted = format(target, style: style, basis: basis)
         switch self {
         case .conversionRate, .matchWinRate, .rackWinRate:
-            return "\(label) \(isLowerBetter ? "under" : "above") \(formatted)"
+            let comparator = isLowerBetter ? NSLocalizedString("under", comment: "") : NSLocalizedString("above", comment: "")
+            return "\(label) \(comparator) \(formatted)"
         case .averagePerformance:
-            return "\(label) \(isLowerBetter ? "under" : "above") \(formatted)"
+            let comparator = isLowerBetter ? NSLocalizedString("under", comment: "") : NSLocalizedString("above", comment: "")
+            return "\(label) \(comparator) \(formatted)"
         case .runouts, .breakAndRuns, .missErrors, .positionalErrors, .safetyErrors, .patternErrors, .foulErrors:
             if style == .average {
                 let basis = basis ?? defaultAverageBasis
-                return "\(isLowerBetter ? "Keep" : "Average") \(label.lowercased()) \(isLowerBetter ? "under" : "at") \(formatted) per \(basis.unitLabel)"
+                let prefix = isLowerBetter ? NSLocalizedString("Keep", comment: "") : NSLocalizedString("Average", comment: "")
+                let comparator = isLowerBetter ? NSLocalizedString("under", comment: "") : NSLocalizedString("at", comment: "")
+                return AppLanguageRuntime.localizedFormat(
+                    "%@ %@ %@ %@ per %@",
+                    prefix,
+                    label.lowercased(with: AppLanguageRuntime.locale),
+                    comparator,
+                    formatted,
+                    basis.unitLabel
+                )
             }
-            return isLowerBetter ? "Keep \(label.lowercased()) under \(formatted)" : "Record \(formatted) \(label.lowercased())"
+            if isLowerBetter {
+                return AppLanguageRuntime.localizedFormat(
+                    "Keep %@ under %@",
+                    label.lowercased(with: AppLanguageRuntime.locale),
+                    formatted
+                )
+            }
+            return AppLanguageRuntime.localizedFormat(
+                "Record %@ %@",
+                formatted,
+                label.lowercased(with: AppLanguageRuntime.locale)
+            )
         }
     }
 
@@ -322,22 +363,46 @@ extension GoalWindow {
     func plainEnglishSuffix() -> String {
         switch self {
         case .rolling(let rolling):
-            let amountText = rolling.amount == 1 ? "1" : "\(rolling.amount)"
-            return "over \(amountText) rolling \(rolling.unit.shortLabel)"
+            return AppLanguageRuntime.localizedFormat("over %lld rolling %@", rolling.amount, rolling.unit.shortLabel)
         case .dueDate(let date):
-            return "by \(AppFormatters.sessionDate(date))"
+            return String(format: NSLocalizedString("by %@", comment: ""), AppFormatters.sessionDate(date))
         }
     }
 }
 
 extension Goal {
     var plainEnglishSummary: String {
-        "\(metric.goalSummary(target: target, style: valueStyle, basis: averageBasis)) \(window.plainEnglishSuffix()) (\(sessionScope.shortLabel.lowercased()))"
+        String(
+            format: NSLocalizedString("%@ %@ (%@)", comment: ""),
+            metric.goalSummary(target: target, style: valueStyle, basis: averageBasis),
+            window.plainEnglishSuffix(),
+            sessionScope.shortLabel.lowercased(with: AppLanguageRuntime.locale)
+        )
     }
 
     func currentValue(from sessions: [Session]) -> Double {
         let scoped = sessionScope.apply(to: sessions)
         let filtered = window.apply(to: scoped, createdAt: createdAt)
         return metric.value(from: filtered, style: valueStyle, basis: averageBasis)
+    }
+
+    func hasProgressData(from sessions: [Session]) -> Bool {
+        let scoped = sessionScope.apply(to: sessions)
+        let filtered = window.apply(to: scoped, createdAt: createdAt)
+        return metric.hasProgressData(from: filtered, style: valueStyle, basis: averageBasis)
+    }
+
+    func isComplete(from sessions: [Session]) -> Bool {
+        guard completedAt == nil, hasProgressData(from: sessions) else { return false }
+        let current = currentValue(from: sessions)
+        return metric.isLowerBetter ? current <= target : current >= target
+    }
+
+    var canAutoCompleteFromStats: Bool {
+        completedAt == nil
+            && !isArchived
+            && !metric.isLowerBetter
+            && metric.supportsValueStyle
+            && valueStyle == .cumulative
     }
 }

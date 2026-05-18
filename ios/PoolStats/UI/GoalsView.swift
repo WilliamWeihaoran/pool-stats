@@ -269,12 +269,11 @@ struct GoalsView: View {
     }
 
     private func isComplete(_ goal: Goal) -> Bool {
-        let current = currentValue(for: goal)
-        return goal.metric.isLowerBetter ? current <= goal.target : current >= goal.target
+        goal.isComplete(from: sessionsForGoalTracking(goal))
     }
 
     private func completeGoal(_ goal: Goal) {
-        goalsStore.complete(goal)
+        goalsStore.complete(goal, promptShownAt: Date())
         actionGoal = nil
         withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) {
             celebrationGoal = goal
@@ -290,10 +289,10 @@ struct GoalsView: View {
     private func sectionHeader(title: String, subtitle: String, count: Int) -> some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(Theme.text2)
-                Text(subtitle)
+                Text(LocalizedStringKey(subtitle))
                     .font(.caption2)
                     .foregroundColor(Theme.muted)
             }
@@ -311,15 +310,15 @@ struct GoalsView: View {
 
     private func overviewMessage(activeCount: Int, completeCount: Int) -> String {
         if activeCount == 0 {
-            return "Start with one realistic goal and adjust it once you have a few sessions of data."
+            return NSLocalizedString("Start with one realistic goal and adjust it once you have a few sessions of data.", comment: "")
         }
         if completeCount == activeCount {
-            return "Every active goal is currently on target."
+            return NSLocalizedString("Every active goal is currently on target.", comment: "")
         }
         if completeCount == 0 {
-            return "None of your active goals are at target yet, which is a good signal that the bar is doing real work."
+            return NSLocalizedString("None of your active goals are at target yet, which is a good signal that the bar is doing real work.", comment: "")
         }
-        return "\(completeCount) of \(activeCount) active goals are currently at target."
+        return AppLanguageRuntime.localizedFormat("%lld of %lld active goals are currently at target.", completeCount, activeCount)
     }
 
     private func sessionsForGoalTracking(_ goal: Goal) -> [Session] {

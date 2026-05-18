@@ -11,6 +11,7 @@ enum WatchLaunchRoute: String {
 
 struct WatchComplicationSnapshot: Codable, Equatable {
     var hasActiveSession: Bool
+    var sessionUUID: String?
     var game: String?
     var type: String?
     var opponent: String?
@@ -22,6 +23,7 @@ struct WatchComplicationSnapshot: Codable, Equatable {
 
     static let inactive = WatchComplicationSnapshot(
         hasActiveSession: false,
+        sessionUUID: nil,
         game: nil,
         type: nil,
         opponent: nil,
@@ -50,6 +52,7 @@ enum WatchComplicationStateStore {
         if let active {
             snapshot = WatchComplicationSnapshot(
                 hasActiveSession: true,
+                sessionUUID: active.session.sessionUUID,
                 game: active.session.game,
                 type: active.session.type,
                 opponent: active.session.opponent,
@@ -68,6 +71,7 @@ enum WatchComplicationStateStore {
     static func save(completed session: WatchSession) {
         let snapshot = WatchComplicationSnapshot(
             hasActiveSession: false,
+            sessionUUID: session.sessionUUID,
             game: session.game,
             type: session.type,
             opponent: session.opponent,

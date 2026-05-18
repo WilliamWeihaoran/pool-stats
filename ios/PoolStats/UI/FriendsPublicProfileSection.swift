@@ -16,7 +16,7 @@ struct FriendsPublicProfileSection: View {
             if let profile = socialProfileStore.profile {
                 publicProfileDetails(profile)
             } else {
-                emptyState("No public profile yet. Create one to get a friend code and start sharing matches.")
+                emptyState(NSLocalizedString("No public profile yet. Create one to get a friend code and start sharing matches.", comment: ""))
             }
 
             if let error = socialProfileStore.lastError, !error.isEmpty {
@@ -115,7 +115,7 @@ struct FriendsPublicProfileSection: View {
 
     private var socialProfileStatusLabel: String {
         if socialProfileStore.profile == nil {
-            return "No public profile yet"
+            return NSLocalizedString("No public profile yet", comment: "")
         }
         return socialProfileStore.statusText
     }
@@ -174,7 +174,7 @@ struct FriendsPublicProfileSection: View {
 
     private func infoRow(label: String, value: String) -> some View {
         HStack {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption)
                 .foregroundColor(Theme.muted)
             Spacer()

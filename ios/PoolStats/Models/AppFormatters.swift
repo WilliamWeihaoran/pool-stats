@@ -1,38 +1,26 @@
 import Foundation
 
 enum AppFormatters {
-    private static let sessionDateFormatter: DateFormatter = {
+    private static func localizedFormatter(configure: (DateFormatter) -> Void) -> DateFormatter {
         let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateFormat = "MMM d, yyyy"
+        df.locale = AppLanguageRuntime.locale
+        configure(df)
         return df
-    }()
-
-    private static let shortDateFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateFormat = "MMM d"
-        return df
-    }()
-
-    private static let shortDateTimeFormatter: DateFormatter = {
-        let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
-        df.dateStyle = .medium
-        df.timeStyle = .short
-        return df
-    }()
+    }
 
     static func sessionDate(_ date: Date) -> String {
-        sessionDateFormatter.string(from: date)
+        localizedFormatter { $0.setLocalizedDateFormatFromTemplate("MMM d, yyyy") }.string(from: date)
     }
 
     static func shortDate(_ date: Date) -> String {
-        shortDateFormatter.string(from: date)
+        localizedFormatter { $0.setLocalizedDateFormatFromTemplate("MMM d") }.string(from: date)
     }
 
     static func shortDateTime(_ date: Date) -> String {
-        shortDateTimeFormatter.string(from: date)
+        localizedFormatter {
+            $0.dateStyle = .medium
+            $0.timeStyle = .short
+        }.string(from: date)
     }
 
     private static let dueDateFormatter: DateFormatter = {

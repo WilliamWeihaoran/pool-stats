@@ -24,7 +24,8 @@ private struct SharedSnapshotProvider: TimelineProvider {
             dates.append(midnight)
         }
         let entries = dates.map { ComplicationEntry(date: $0, snapshot: snapshot) }
-        completion(Timeline(entries: entries, policy: snapshot.recentlyEndedAt == nil ? .never : .after(dates.last!)))
+        let policy: TimelineReloadPolicy = snapshot.recentlyEndedAt == nil ? .never : .after(dates.last ?? now)
+        completion(Timeline(entries: entries, policy: policy))
     }
 }
 
@@ -263,6 +264,10 @@ private func sessionActiveLabel(_ snapshot: WatchComplicationSnapshot) -> String
 }
 
 private func shouldShowRecentScore(_ snapshot: WatchComplicationSnapshot, now: Date = .now) -> Bool {
-    guard !snapshot.hasActiveSession, snapshot.recentlyEndedAt != nil else { return false }
-    return Calendar.current.isDate(snapshot.updatedAt, inSameDayAs: now)
+    WatchSyncReconciler.shouldShowRecentScore(
+        hasActiveSession: snapshot.hasActiveSession,
+        updatedAt: snapshot.updatedAt,
+        recentlyEndedAt: snapshot.recentlyEndedAt,
+        now: now
+    )
 }

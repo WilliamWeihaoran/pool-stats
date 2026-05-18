@@ -83,7 +83,7 @@ struct GoalActionButton: View {
                 Image(systemName: systemImage)
                     .font(.caption.weight(.semibold))
                     .frame(width: 18)
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.subheadline.weight(.semibold))
                 Spacer(minLength: 0)
             }
@@ -174,7 +174,7 @@ struct GoalResetPrompt: View {
                     Text("Reset this goal?")
                         .font(.title3.bold())
                         .foregroundColor(Theme.text)
-                    Text("We can start a new version with a nudged target: \(suggestedTargetText).")
+                    Text(AppLanguageRuntime.localizedFormat("We can start a new version with a nudged target: %@.", suggestedTargetText))
                         .font(.caption)
                         .foregroundColor(Theme.muted)
 

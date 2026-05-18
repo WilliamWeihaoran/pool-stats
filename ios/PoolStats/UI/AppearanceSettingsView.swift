@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct AppearanceSettingsView: View {
+    @EnvironmentObject private var languageStore: AppLanguageStore
     @EnvironmentObject private var themeStore: ThemeStore
 
     var body: some View {
@@ -17,8 +18,67 @@ struct AppearanceSettingsView: View {
                         }
                     }
                 }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("App language")
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+
+                    VStack(spacing: 8) {
+                        ForEach(AppLanguageOption.allCases) { option in
+                            LanguageChoiceRow(
+                                option: option,
+                                isOn: languageStore.selectedOption == option
+                            ) {
+                                languageStore.setLanguage(option)
+                            }
+                        }
+                    }
+
+                    Text("Default is English. Choose Simplified Chinese here, or use Follow System to match iPhone Settings.")
+                        .font(.caption2)
+                        .foregroundColor(Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
+    }
+}
+
+private struct LanguageChoiceRow: View {
+    let option: AppLanguageOption
+    let isOn: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(option.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(Theme.text)
+                    Text(option.subtitle)
+                        .font(.caption2)
+                        .foregroundColor(Theme.text2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(isOn ? Theme.teal : Theme.muted)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 11)
+            .background(isOn ? Theme.teal.opacity(0.08) : Theme.panel2)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(isOn ? Theme.teal : Theme.border, lineWidth: 0.7)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

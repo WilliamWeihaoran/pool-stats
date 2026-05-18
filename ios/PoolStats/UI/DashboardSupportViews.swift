@@ -92,7 +92,42 @@ struct ErrorStackPoint: Identifiable {
     let sessionIndex: Int
     let bottom: Double
     let top: Double
-    let type: String
+    let kind: ErrorTrendKind
+}
+
+enum ErrorTrendKind: String, CaseIterable, Identifiable {
+    case miss
+    case position
+    case safety
+    case pattern
+
+    var id: String { rawValue }
+
+    var localizedLabel: String {
+        switch self {
+        case .miss:
+            return NSLocalizedString("Miss", comment: "")
+        case .position:
+            return NSLocalizedString("Position", comment: "")
+        case .safety:
+            return NSLocalizedString("Safety", comment: "")
+        case .pattern:
+            return NSLocalizedString("Pattern", comment: "")
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .miss:
+            return Theme.red
+        case .position:
+            return Theme.amber
+        case .safety:
+            return Theme.teal
+        case .pattern:
+            return Theme.purple
+        }
+    }
 }
 
 struct ErrorTrendChart: View {
@@ -105,10 +140,13 @@ struct ErrorTrendChart: View {
                 .font(.caption)
                 .foregroundColor(Theme.muted)
         } else {
-            chartBody
-            Text("Errors per rack · 5-session rolling avg")
-                .font(.caption2)
-                .foregroundColor(Theme.muted)
+            VStack(alignment: .leading, spacing: 8) {
+                chartBody
+                ErrorTrendLegend()
+                Text("Errors per rack · 5-session rolling avg")
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+            }
         }
     }
 
@@ -119,12 +157,12 @@ struct ErrorTrendChart: View {
                 yStart: .value("Bottom", point.bottom),
                 yEnd: .value("Top", point.top)
             )
-            .foregroundStyle(by: .value("Error", point.type))
+            .foregroundStyle(by: .value("ErrorKind", point.kind.rawValue))
             .interpolationMethod(.monotone)
         }
         .chartForegroundStyleScale(
-            domain: ["Miss", "Position", "Safety", "Pattern"],
-            range: [Theme.red, Theme.amber, Theme.teal, Theme.purple]
+            domain: ErrorTrendKind.allCases.map(\.rawValue),
+            range: ErrorTrendKind.allCases.map(\.color)
         )
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 4)) { v in
@@ -141,13 +179,30 @@ struct ErrorTrendChart: View {
                 AxisGridLine()
                 AxisValueLabel {
                     if let val = v.as(Double.self) {
-                        Text(String(format: "%.1f", val)).font(.caption2)
+                        Text(AppLanguageRuntime.format("%.1f", val)).font(.caption2)
                     }
                 }
             }
         }
-        .chartLegend(position: .bottom, alignment: .leading, spacing: 8)
+        .chartLegend(.hidden)
         .frame(height: chartHeight)
+    }
+}
+
+private struct ErrorTrendLegend: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            ForEach(ErrorTrendKind.allCases) { kind in
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(kind.color)
+                        .frame(width: 7, height: 7)
+                    Text(kind.localizedLabel)
+                        .font(.caption2)
+                        .foregroundColor(Theme.muted)
+                }
+            }
+        }
     }
 }
 
@@ -190,6 +245,7 @@ struct ActivityHeatmapView: View {
     private var monthLabels: [(text: String, col: Int)] {
         let cal = Calendar.current
         let fmt = DateFormatter()
+        fmt.locale = AppLanguageRuntime.locale
         fmt.dateFormat = "MMM"
         var labels: [(String, Int)] = []
         var lastMonth = -1

@@ -159,7 +159,7 @@ struct FriendsSettingsView: View {
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(Theme.green)
-                Text("Added \(friend.displayName)")
+                Text(String(format: NSLocalizedString("Added %@", comment: ""), friend.displayName))
                     .font(.caption.weight(.semibold))
                     .foregroundColor(Theme.green)
                 Spacer(minLength: 0)
@@ -426,10 +426,17 @@ struct FriendsSettingsView: View {
                         .font(.caption2)
                         .foregroundColor(Theme.text2)
                         .lineLimit(1)
-                    Text("\(AppFormatters.sessionDate(share.createdAt)) · Your score \(share.losses):\(share.wins)")
-                        .font(.caption2.monospacedDigit())
-                        .foregroundColor(Theme.muted)
-                        .lineLimit(1)
+                Text(
+                    "\(AppFormatters.sessionDate(share.createdAt)) · "
+                    + String(
+                        format: NSLocalizedString("Your score %lld:%lld", comment: ""),
+                        share.losses,
+                        share.wins
+                    )
+                )
+                    .font(.caption2.monospacedDigit())
+                    .foregroundColor(Theme.muted)
+                    .lineLimit(1)
                 }
 
                 Spacer(minLength: 0)
@@ -506,11 +513,11 @@ struct FriendsSettingsView: View {
     private var incomingShareStateMessage: some View {
         switch socialProfileStore.incomingShareState {
         case .accepted(let share):
-            Text("Accepted \(share.sessionLabel). It is now in History.")
+            Text(String(format: NSLocalizedString("Accepted %@. It is now in History.", comment: ""), share.sessionLabel))
                 .font(.caption2.weight(.semibold))
                 .foregroundColor(Theme.green)
         case .declined(let share):
-            Text("Declined match from \(share.senderDisplayName).")
+            Text(String(format: NSLocalizedString("Declined match from %@.", comment: ""), share.senderDisplayName))
                 .font(.caption2.weight(.semibold))
                 .foregroundColor(Theme.muted)
         case .failed(let message):
@@ -527,7 +534,7 @@ struct FriendsSettingsView: View {
     private var outgoingShareStateMessage: some View {
         switch socialProfileStore.outgoingShareRefreshState {
         case .synced(let date):
-            Text("Sent status refreshed \(AppFormatters.shortDate(date)).")
+            Text(String(format: NSLocalizedString("Sent status refreshed %@.", comment: ""), AppFormatters.shortDate(date)))
                 .font(.caption2.weight(.semibold))
                 .foregroundColor(Theme.green)
         case .failed(let message):
@@ -578,9 +585,9 @@ struct FriendsSettingsView: View {
     }
 
     private func incomingShareStatusText(_ share: IncomingMatchShare) -> String {
-        if share.isAccepted { return "Accepted" }
-        if share.isDeclined { return "Declined" }
-        return "Pending"
+        if share.isAccepted { return NSLocalizedString("Accepted", comment: "") }
+        if share.isDeclined { return NSLocalizedString("Declined", comment: "") }
+        return NSLocalizedString("Pending", comment: "")
     }
 
     private func incomingShareAccent(_ share: IncomingMatchShare) -> Color {
@@ -590,10 +597,10 @@ struct FriendsSettingsView: View {
     }
 
     private func outgoingShareStatusText(_ share: OutgoingMatchShare) -> String {
-        if share.isAccepted { return "Accepted" }
-        if share.isDeclined { return "Declined" }
-        if share.isFailed { return "Failed" }
-        return "Pending"
+        if share.isAccepted { return NSLocalizedString("Accepted", comment: "") }
+        if share.isDeclined { return NSLocalizedString("Declined", comment: "") }
+        if share.isFailed { return NSLocalizedString("Failed", comment: "") }
+        return NSLocalizedString("Pending", comment: "")
     }
 
     private func outgoingShareAccent(_ share: OutgoingMatchShare) -> Color {
@@ -617,10 +624,10 @@ struct FriendsSettingsView: View {
     ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(Theme.text)
-                Text(subtitle)
+                Text(LocalizedStringKey(subtitle))
                     .font(.caption2)
                     .foregroundColor(Theme.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -638,7 +645,7 @@ struct FriendsSettingsView: View {
     }
 
     private func emptyState(_ message: String) -> some View {
-        Text(message)
+        Text(LocalizedStringKey(message))
             .font(.caption2)
             .foregroundColor(Theme.muted)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -651,7 +658,7 @@ struct FriendsSettingsView: View {
         HStack(spacing: 5) {
             Image(systemName: systemName)
                 .font(.caption2.weight(.bold))
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption2.weight(.semibold))
         }
         .foregroundColor(color)

@@ -7,10 +7,10 @@ extension Analytics {
             Double(racks.reduce(0) { $0 + $1[keyPath: key] })
         }
         return [
-            MetricItem(label: "Miss", value: sum(\.missCount) / n),
-            MetricItem(label: "Position", value: sum(\.positionTrackingCount) / n),
-            MetricItem(label: "Safety", value: sum(\.badSafety) / n),
-            MetricItem(label: "Pattern", value: sum(\.patternMistakeCount) / n)
+            MetricItem(label: NSLocalizedString("Miss", comment: ""), value: sum(\.missCount) / n),
+            MetricItem(label: NSLocalizedString("Position", comment: ""), value: sum(\.positionTrackingCount) / n),
+            MetricItem(label: NSLocalizedString("Safety", comment: ""), value: sum(\.badSafety) / n),
+            MetricItem(label: NSLocalizedString("Pattern", comment: ""), value: sum(\.patternMistakeCount) / n)
         ]
     }
 
@@ -38,9 +38,13 @@ extension Analytics {
         }
         let lossText: String
         if tf.isEmpty {
-            lossText = "Not enough data yet."
+            lossText = NSLocalizedString("Not enough data yet.", comment: "")
         } else {
-            lossText = "Biggest loss factor: \(tf) (+\(String(format: "%.2f", maxDiff))/rack in losses)"
+            lossText = AppLanguageRuntime.localizedFormat(
+                "Biggest loss factor: %@ (+%.2f/rack in losses)",
+                tf,
+                maxDiff
+            )
         }
 
         return (paired, lossText)
@@ -49,13 +53,13 @@ extension Analytics {
     static func biggestLeakSummary(_ racks: [Rack]) -> String {
         let (items, _) = wonLostItems(racks)
         guard let leak = items.max(by: { ($0.lost - $0.won) < ($1.lost - $1.won) }) else {
-            return "Not enough data yet."
+            return NSLocalizedString("Not enough data yet.", comment: "")
         }
         let diff = leak.lost - leak.won
         guard diff > 0 else {
-            return "No clear leak yet."
+            return NSLocalizedString("No clear leak yet.", comment: "")
         }
-        return "\(leak.label) (+\(String(format: "%.2f", diff))/rack)"
+        return AppLanguageRuntime.localizedFormat("%@ (+%.2f/rack)", leak.label, diff)
     }
 
     static func outcomeCounts(sessions: [Session], target: OutcomeTarget) -> (wins: Int, losses: Int) {

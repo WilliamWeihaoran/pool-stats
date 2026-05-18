@@ -2,17 +2,22 @@ import SwiftUI
 
 struct SessionChoiceCard: View {
     let title: String
+    let ballNumber: Int
     let isOn: Bool
     let color: Color
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            HStack {
-                Text(title)
+            HStack(spacing: 10) {
+                GameBallBadge(number: ballNumber)
+
+                Text(LocalizedStringKey(title))
                     .font(.headline)
                     .foregroundColor(isOn ? color : Theme.text)
+
                 Spacer()
+
                 Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(isOn ? color : Theme.muted)
             }
@@ -23,6 +28,24 @@ struct SessionChoiceCard: View {
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(isOn ? color : Theme.border, lineWidth: 0.8))
         }
         .buttonStyle(.plain)
+    }
+}
+
+private struct GameBallBadge: View {
+    let number: Int
+
+    private var isEightBall: Bool { number == 8 }
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(isEightBall ? Color.black : Color(red: 0.98, green: 0.82, blue: 0.12))
+                .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1.5))
+            Text("\(number)")
+                .font(.system(size: 14, weight: .black, design: .rounded))
+                .foregroundStyle(isEightBall ? Color.white : Color.black.opacity(0.84))
+        }
+        .frame(width: 34, height: 34)
     }
 }
 
@@ -38,7 +61,7 @@ struct CompactModeButton: View {
             action()
         } label: {
             HStack(spacing: 6) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.caption.weight(.bold))
                 Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
                     .font(.caption2.weight(.bold))
@@ -72,7 +95,7 @@ struct SelectedDrillPickerCard: View {
                 Text("Selected drill")
                     .font(.caption2.weight(.bold))
                     .foregroundColor(Theme.muted)
-                Text(template.title)
+                Text(template.localizedTitle)
                     .font(.headline.weight(.bold))
                     .foregroundColor(Theme.text)
                     .lineLimit(1)
@@ -109,8 +132,7 @@ struct DrillSelectorSheet: View {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return DrillLibrary.templates }
         return DrillLibrary.templates.filter { template in
-            let searchable = ([template.title, template.description] + template.primarySkills + template.secondarySkills)
-                .joined(separator: " ")
+            let searchable = template.searchableText
             return searchable.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
         }
     }
@@ -196,7 +218,7 @@ private struct DrillSelectorRow: View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text(template.title)
+                    Text(template.localizedTitle)
                         .font(.headline.weight(.semibold))
                         .foregroundColor(Theme.text)
                     Spacer(minLength: 0)
@@ -204,12 +226,12 @@ private struct DrillSelectorRow: View {
                         .font(.caption2.weight(.bold))
                         .foregroundColor(accent)
                 }
-                Text(template.description)
+                Text(template.localizedDescription)
                     .font(.caption)
                     .foregroundColor(Theme.muted)
                     .lineLimit(2)
                 HStack(spacing: 6) {
-                    ForEach(Array(template.primarySkills.prefix(3)), id: \.self) { skill in
+                    ForEach(Array(template.localizedPrimarySkills.prefix(3)), id: \.self) { skill in
                         Text(skill)
                             .font(.caption2.weight(.bold))
                             .foregroundColor(logStartSkillColor(skill))
@@ -367,11 +389,11 @@ func logStartDifficultyColor(_ level: DrillDifficultyLevel) -> Color {
 
 func logStartSkillColor(_ skill: String) -> Color {
     switch skill.lowercased() {
-    case "potting": return Theme.red
-    case "position": return Theme.blue
-    case "pattern": return Theme.teal
-    case "runout": return Theme.purple
-    case "overall", "fundamentals": return Theme.green
+    case "potting", "准度": return Theme.red
+    case "position", "走位": return Theme.blue
+    case "pattern", "路线": return Theme.teal
+    case "runout", "清台": return Theme.purple
+    case "overall", "fundamentals", "综合", "基本功": return Theme.green
     default: return Theme.text2
     }
 }

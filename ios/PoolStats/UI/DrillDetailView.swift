@@ -45,11 +45,11 @@ struct DrillDetailView: View {
 
     private var detailHeader: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text(template.title)
+            Text(template.localizedTitle)
                 .font(.largeTitle.bold())
                 .foregroundColor(Theme.text)
                 .fixedSize(horizontal: false, vertical: true)
-            Text(template.description)
+            Text(template.localizedDescription)
                 .font(.subheadline)
                 .foregroundColor(Theme.text2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -91,8 +91,8 @@ struct DrillDetailView: View {
                 Spacer(minLength: 0)
             }
 
-            compactSkillRow(label: "Fargo", items: Array(template.primarySkills.prefix(3)), color: nil)
-            compactSkillRow(label: "Cues", items: Array(template.secondarySkills.prefix(3)), color: Theme.teal)
+            compactSkillRow(label: "Fargo", items: Array(template.localizedPrimarySkills.prefix(3)), color: nil)
+            compactSkillRow(label: "Cues", items: Array(template.localizedSecondarySkills.prefix(3)), color: Theme.teal)
         }
         .padding(12)
         .background(Theme.panel.opacity(0.92))
@@ -110,7 +110,7 @@ struct DrillDetailView: View {
                         Text(selectedDifficulty.level.label)
                             .font(.caption.weight(.bold))
                             .foregroundColor(difficultyColor(for: selectedLevel))
-                        Text(selectedDifficulty.constraint)
+                        Text(selectedDifficulty.localizedConstraint)
                             .font(.caption)
                             .foregroundColor(Theme.text2)
                             .fixedSize(horizontal: false, vertical: true)
@@ -128,7 +128,7 @@ struct DrillDetailView: View {
     private var instructionsSection: some View {
         SectionCard(title: "How to run it") {
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(template.instructions, id: \.self) { item in
+                ForEach(template.localizedInstructions, id: \.self) { item in
                     HStack(alignment: .top, spacing: 8) {
                         Image(systemName: "checkmark.circle.fill")
                             .font(.caption.weight(.bold))
@@ -178,7 +178,7 @@ struct DrillDetailView: View {
 
     private func compactSkillRow(label: String, items: [String], color: Color?) -> some View {
         HStack(alignment: .top, spacing: 10) {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption2.weight(.black))
                 .foregroundColor(Theme.muted)
                 .textCase(.uppercase)

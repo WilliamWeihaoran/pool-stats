@@ -6,6 +6,7 @@ struct PoolStatsApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var store = DataStore()
     @StateObject private var logStore = SessionLogStore()
+    @StateObject private var languageStore = AppLanguageStore()
     @StateObject private var themeStore = ThemeStore()
     @StateObject private var goalsStore = GoalsStore()
     @StateObject private var opponentStore = OpponentStore()
@@ -17,8 +18,10 @@ struct PoolStatsApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(\.locale, languageStore.locale)
                 .environmentObject(store)
                 .environmentObject(logStore)
+                .environmentObject(languageStore)
                 .environmentObject(themeStore)
                 .environmentObject(goalsStore)
                 .environmentObject(opponentStore)
@@ -31,6 +34,7 @@ struct PoolStatsApp: App {
                 }
                 .onChange(of: scenePhase) { newPhase in
                     guard newPhase == .active else { return }
+                    languageStore.refreshSystemLanguageIfNeeded()
                     Task { await authStore.refreshCredentialState() }
                 }
         }

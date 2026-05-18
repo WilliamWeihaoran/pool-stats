@@ -12,12 +12,12 @@ enum TimeFilter: Int, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .today: return "Today"
-        case .week: return "Week"
-        case .month: return "Month"
+        case .today: return NSLocalizedString("Today", comment: "")
+        case .week: return NSLocalizedString("Week", comment: "")
+        case .month: return NSLocalizedString("Month", comment: "")
         case .threeMonths: return "3mo"
-        case .year: return "Year"
-        case .all: return "All"
+        case .year: return NSLocalizedString("Year", comment: "")
+        case .all: return NSLocalizedString("All", comment: "")
         }
     }
 }
@@ -31,9 +31,9 @@ enum ModeFilter: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .all: return "All"
-        case .match: return "Match"
-        case .practice: return "Practice"
+        case .all: return NSLocalizedString("All", comment: "")
+        case .match: return NSLocalizedString("Match", comment: "")
+        case .practice: return NSLocalizedString("Practice", comment: "")
         }
     }
 }
@@ -48,10 +48,10 @@ enum GameFilter: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .all: return "All"
+        case .all: return NSLocalizedString("All", comment: "")
         case .eightBall: return "8-ball"
         case .nineBall: return "9-ball"
-        case .practice: return "Practice"
+        case .practice: return NSLocalizedString("Practice", comment: "")
         }
     }
 }
@@ -64,8 +64,8 @@ enum OutcomeTarget: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .match: return "Match"
-        case .rack: return "Rack"
+        case .match: return NSLocalizedString("Match", comment: "")
+        case .rack: return NSLocalizedString("Rack", comment: "")
         }
     }
 }

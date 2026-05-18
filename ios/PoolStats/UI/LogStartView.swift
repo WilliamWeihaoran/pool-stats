@@ -15,14 +15,19 @@ struct LogStartView: View {
     @State private var showOpponentPicker: Bool = false
     @State private var showDrillSelector: Bool = false
     @State private var drillSearchText: String = ""
+    @State private var showAdvancedMatchOptions: Bool = false
+    @State private var raceToEnabled: Bool = false
+    @State private var raceTo: Int = 9
     @FocusState private var opponentFocused: Bool
 
-    private var selectedTemplate: DrillTemplate {
-        DrillLibrary.template(id: selectedDrillID) ?? DrillLibrary.templates[0]
+    private var selectedTemplate: DrillTemplate? {
+        DrillLibrary.template(id: selectedDrillID) ?? DrillLibrary.templates.first
     }
 
     private var selectedDrillDifficulty: DrillDifficulty {
-        selectedTemplate.difficultyLevels.first(where: { $0.level == selectedDifficulty }) ?? selectedTemplate.standardDifficulty
+        selectedTemplate?.difficultyLevels.first(where: { $0.level == selectedDifficulty })
+            ?? selectedTemplate?.standardDifficulty
+            ?? DrillDifficulty(level: .standard, ballCount: 5, constraint: "")
     }
 
     var body: some View {
@@ -40,7 +45,7 @@ struct LogStartView: View {
         }
         .padding(4)
         .onChange(of: selectedDrillID) { _ in
-            selectedDifficulty = selectedTemplate.standardDifficulty.level
+            selectedDifficulty = selectedTemplate?.standardDifficulty.level ?? .standard
         }
         .sheet(isPresented: $showDrillSelector) {
             DrillSelectorSheet(
@@ -52,7 +57,7 @@ struct LogStartView: View {
 
     private var header: some View {
         HStack {
-            Text(sessionMode == "match" ? "Log a match" : "Start practice")
+            Text(LogStartCopy.headerTitle(mode: sessionMode))
                 .font(.title2.bold())
                 .foregroundColor(Theme.text)
             Spacer(minLength: 0)
@@ -80,78 +85,170 @@ struct LogStartView: View {
     }
 
     private var detailsCard: some View {
-        LogSectionCard(title: "Session details") {
+        LogSectionCard(title: "Match") {
             VStack(alignment: .leading, spacing: 12) {
                 opponentField
 
-                TextField(labelFieldPlaceholder, text: $label)
-                    .textFieldStyle(.roundedBorder)
+                Button {
+                    withAnimation(.spring(response: 0.24, dampingFraction: 0.86)) {
+                        showAdvancedMatchOptions.toggle()
+                    }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.subheadline.weight(.bold))
+                        .foregroundColor(Theme.text2)
+                        Text("Advanced")
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(Theme.text2)
+                        Spacer(minLength: 0)
+                        if let advancedSummary {
+                            Text(advancedSummary)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundColor(Theme.muted)
+                                .lineLimit(1)
+                        }
+                        Image(systemName: showAdvancedMatchOptions ? "chevron.up" : "chevron.down")
+                            .font(.caption2.weight(.bold))
+                            .foregroundColor(Theme.muted)
+                    }
+                    .padding(.horizontal, 10)
+                    .frame(height: 38)
+                    .background(Theme.panel2.opacity(0.75))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.6))
+                }
+                .buttonStyle(.plain)
 
-                HStack(spacing: 12) {
-                    Text("Date")
-                        .font(.caption)
-                        .foregroundColor(Theme.muted)
-                    Spacer()
-                    DatePicker("", selection: $sessionDate, displayedComponents: .date)
-                        .datePickerStyle(.compact)
+                if showAdvancedMatchOptions {
+                    advancedMatchOptions
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
         }
     }
 
+    private var advancedMatchOptions: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Session note")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Theme.text2)
+                TextField(labelFieldPlaceholder, text: $label)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            HStack(spacing: 12) {
+                Label("Date", systemImage: "calendar")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Theme.text2)
+                Spacer()
+                DatePicker("", selection: $sessionDate, displayedComponents: .date)
+                    .datePickerStyle(.compact)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Toggle(isOn: $raceToEnabled) {
+                    Label("Race to", systemImage: "flag.checkered")
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.text2)
+                }
+                .toggleStyle(.switch)
+                .tint(Theme.teal)
+
+                if raceToEnabled {
+                    Stepper(value: $raceTo, in: 1...30) {
+                        HStack(spacing: 6) {
+                            Text("First to")
+                                .font(.caption)
+                                .foregroundColor(Theme.muted)
+                            Text("\(raceTo)")
+                                .font(.headline.weight(.black).monospacedDigit())
+                                .foregroundColor(Theme.teal)
+                            Text("wins")
+                                .font(.caption)
+                                .foregroundColor(Theme.muted)
+                        }
+                    }
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+        }
+        .padding(12)
+        .background(Theme.panel2.opacity(0.42))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border.opacity(0.85), lineWidth: 0.6))
+    }
+
     private var practiceCard: some View {
         LogSectionCard(title: "Drill") {
-            VStack(alignment: .leading, spacing: 14) {
+            if let selectedTemplate {
+                VStack(alignment: .leading, spacing: 14) {
+                    Button {
+                        showDrillSelector = true
+                    } label: {
+                        SelectedDrillPickerCard(
+                            template: selectedTemplate,
+                            accent: logStartDifficultyColor(selectedDrillDifficulty.level)
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    VStack(alignment: .leading, spacing: 9) {
+                        Text(selectedTemplate.localizedDescription)
+                            .font(.caption)
+                            .foregroundColor(Theme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        HStack(spacing: 6) {
+                            ForEach(Array(selectedTemplate.localizedPrimarySkills.prefix(3)), id: \.self) { skill in
+                                Text(skill)
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundColor(logStartSkillColor(skill))
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 5)
+                                    .background(logStartSkillColor(skill).opacity(0.14))
+                                    .clipShape(Capsule())
+                                    .overlay(Capsule().stroke(logStartSkillColor(skill).opacity(0.3), lineWidth: 0.6))
+                            }
+                            Spacer(minLength: 0)
+                            Text(selectedTemplate.difficultyRangeText)
+                                .font(.caption2.weight(.semibold))
+                                .foregroundColor(Theme.text2)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: 9) {
+                        HStack {
+                            Text("Difficulty")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(Theme.text2)
+                            Spacer()
+                            Text(selectedTemplate.difficultySummary(selectedDrillDifficulty))
+                                .font(.caption.weight(.bold))
+                                .foregroundColor(logStartDifficultyColor(selectedDrillDifficulty.level))
+                        }
+                        DifficultyGradientSlider(levels: selectedTemplate.difficultyLevels, selectedLevel: $selectedDifficulty)
+                        Text(selectedDrillDifficulty.localizedConstraint)
+                            .font(.caption)
+                            .foregroundColor(Theme.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            } else {
                 Button {
                     showDrillSelector = true
                 } label: {
-                    SelectedDrillPickerCard(
-                        template: selectedTemplate,
-                        accent: logStartDifficultyColor(selectedDrillDifficulty.level)
-                    )
+                    Text("Choose a drill")
+                        .font(.caption)
+                        .foregroundColor(Theme.text)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(Theme.panel2)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
                 .buttonStyle(.plain)
-
-                VStack(alignment: .leading, spacing: 9) {
-                    Text(selectedTemplate.description)
-                        .font(.caption)
-                        .foregroundColor(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    HStack(spacing: 6) {
-                        ForEach(Array(selectedTemplate.primarySkills.prefix(3)), id: \.self) { skill in
-                            Text(skill)
-                                .font(.caption2.weight(.bold))
-                                .foregroundColor(logStartSkillColor(skill))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 5)
-                                .background(logStartSkillColor(skill).opacity(0.14))
-                                .clipShape(Capsule())
-                                .overlay(Capsule().stroke(logStartSkillColor(skill).opacity(0.3), lineWidth: 0.6))
-                        }
-                        Spacer(minLength: 0)
-                        Text(selectedTemplate.difficultyRangeText)
-                            .font(.caption2.weight(.semibold))
-                            .foregroundColor(Theme.text2)
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 9) {
-                    HStack {
-                        Text("Difficulty")
-                            .font(.caption.weight(.semibold))
-                            .foregroundColor(Theme.text2)
-                        Spacer()
-                        Text(selectedTemplate.difficultySummary(selectedDrillDifficulty))
-                            .font(.caption.weight(.bold))
-                            .foregroundColor(logStartDifficultyColor(selectedDrillDifficulty.level))
-                    }
-                    DifficultyGradientSlider(levels: selectedTemplate.difficultyLevels, selectedLevel: $selectedDifficulty)
-                    Text(selectedDrillDifficulty.constraint)
-                        .font(.caption)
-                        .foregroundColor(Theme.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
         }
     }
@@ -235,7 +332,7 @@ struct LogStartView: View {
                                 Image(systemName: "plus.circle.fill")
                                     .font(.system(size: 12, weight: .semibold))
                                     .foregroundColor(Theme.teal)
-                                Text("Create \"\(trimmedOpponentForLookup)\"")
+                                Text(AppLanguageRuntime.localizedFormat("Create \"%@\"", trimmedOpponentForLookup))
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundColor(Theme.text)
                                 Spacer(minLength: 0)
@@ -285,8 +382,8 @@ struct LogStartView: View {
     private var gameCard: some View {
         LogSectionCard(title: "Game") {
             HStack(spacing: 10) {
-                SessionChoiceCard(title: "8-ball", isOn: game == "8ball", color: Theme.green) { game = "8ball" }
-                SessionChoiceCard(title: "9-ball", isOn: game == "9ball", color: Theme.amber) { game = "9ball" }
+                SessionChoiceCard(title: "8-ball", ballNumber: 8, isOn: game == "8ball", color: Theme.green) { game = "8ball" }
+                SessionChoiceCard(title: "9-ball", ballNumber: 9, isOn: game == "9ball", color: Theme.amber) { game = "9ball" }
             }
         }
     }
@@ -294,6 +391,7 @@ struct LogStartView: View {
     private var startButton: some View {
         Button {
             if sessionMode == "practice" {
+                guard let selectedTemplate else { return }
                 store.startDrillPractice(
                     template: selectedTemplate,
                     difficulty: selectedDrillDifficulty,
@@ -301,12 +399,18 @@ struct LogStartView: View {
                     targetCount: targetCount
                 )
             } else {
-                store.startSession(game: game, label: trimmedLabel, opponent: trimmedOpponent, date: sessionDate)
+                store.startSession(
+                    game: game,
+                    label: trimmedLabel,
+                    opponent: trimmedOpponent,
+                    date: sessionDate,
+                    raceTo: raceToEnabled ? raceTo : nil
+                )
             }
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(sessionMode == "practice" ? "Start practice" : "Start session")
+                    Text(LogStartCopy.startButtonTitle(mode: sessionMode))
                         .font(.headline)
                     Text(summaryText)
                         .font(.caption)
@@ -319,30 +423,44 @@ struct LogStartView: View {
             .foregroundColor(.white)
             .padding(16)
             .frame(maxWidth: .infinity)
-            .background(LinearGradient(colors: [Theme.teal, Theme.blue], startPoint: .leading, endPoint: .trailing))
-            .cornerRadius(16)
+            .background(LinearGradient(colors: [Theme.teal.opacity(0.72), Theme.blue.opacity(0.66)], startPoint: .leading, endPoint: .trailing))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.teal.opacity(0.28), lineWidth: 0.8))
         }
         .buttonStyle(.plain)
+        .disabled(sessionMode == "practice" && selectedTemplate == nil)
+        .opacity(sessionMode == "practice" && selectedTemplate == nil ? 0.55 : 1)
     }
 
-    private var labelFieldPlaceholder: String { "Session note (optional)" }
-    private var opponentFieldPlaceholder: String { "Opponent (optional)" }
+    private var labelFieldPlaceholder: String { NSLocalizedString("Session note (optional)", comment: "") }
+    private var opponentFieldPlaceholder: String { NSLocalizedString("Opponent (optional)", comment: "") }
     private var trimmedLabel: String { label.trimmingCharacters(in: .whitespaces) }
 
     private var summaryText: String {
         if sessionMode == "practice" {
-            return [selectedTemplate.title, selectedTemplate.difficultySummary(selectedDrillDifficulty), targetSummary].joined(separator: " · ")
+            return LogStartCopy.practiceSummary(
+                templateTitle: selectedTemplate?.title,
+                difficultySummary: selectedTemplate?.difficultySummary(selectedDrillDifficulty) ?? selectedDrillDifficulty.summaryText,
+                targetSummary: targetSummary
+            )
         }
-        let gameText = game == "8ball" ? "8-ball" : "9-ball"
-        let segments = ["Match", gameText, trimmedOpponent.isEmpty ? nil : "vs \(trimmedOpponent)", dateSummary]
-        return segments.compactMap { $0 }.joined(separator: " · ")
+        return LogStartCopy.matchSummary(
+            gameText: game == "8ball" ? "8-ball" : "9-ball",
+            raceToEnabled: raceToEnabled,
+            raceTo: raceTo,
+            opponent: trimmedOpponent,
+            dateSummary: dateSummary
+        )
     }
 
     private var targetSummary: String {
-        "\(targetCount) successful reps"
+        AppLanguageRuntime.localizedFormat("%lld successful reps", targetCount)
     }
 
     private var dateSummary: String { AppFormatters.shortDate(sessionDate) }
+    private var advancedSummary: String? {
+        LogStartCopy.advancedSummary(noteIsSet: !trimmedLabel.isEmpty, raceToEnabled: raceToEnabled, raceTo: raceTo)
+    }
     private var trimmedOpponent: String { opponent.trimmingCharacters(in: .whitespaces) }
 
     private var opponentSuggestions: [String] {

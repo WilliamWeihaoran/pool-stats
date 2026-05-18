@@ -30,27 +30,27 @@ enum ThemeStyle: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .slate: return "Slate"
-        case .midnight: return "Midnight"
-        case .paper: return "Paper"
-        case .ivory: return "Ivory"
-        case .forest: return "Forest"
-        case .ember: return "Ember"
-        case .lagoon: return "Lagoon"
-        case .parchment: return "Parchment"
+        case .slate: return NSLocalizedString("Slate", comment: "")
+        case .midnight: return NSLocalizedString("Midnight", comment: "")
+        case .paper: return NSLocalizedString("Paper", comment: "")
+        case .ivory: return NSLocalizedString("Ivory", comment: "")
+        case .forest: return NSLocalizedString("Forest", comment: "")
+        case .ember: return NSLocalizedString("Ember", comment: "")
+        case .lagoon: return NSLocalizedString("Lagoon", comment: "")
+        case .parchment: return NSLocalizedString("Parchment", comment: "")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .slate: return "Balanced dark"
-        case .midnight: return "Deep dark"
-        case .paper: return "Cool light"
-        case .ivory: return "Warm light"
-        case .forest: return "Dark green"
-        case .ember: return "Warm dark"
-        case .lagoon: return "Soft aqua"
-        case .parchment: return "Cream light"
+        case .slate: return NSLocalizedString("Balanced dark", comment: "")
+        case .midnight: return NSLocalizedString("Deep dark", comment: "")
+        case .paper: return NSLocalizedString("Cool light", comment: "")
+        case .ivory: return NSLocalizedString("Warm light", comment: "")
+        case .forest: return NSLocalizedString("Dark green", comment: "")
+        case .ember: return NSLocalizedString("Warm dark", comment: "")
+        case .lagoon: return NSLocalizedString("Soft aqua", comment: "")
+        case .parchment: return NSLocalizedString("Cream light", comment: "")
         }
     }
 

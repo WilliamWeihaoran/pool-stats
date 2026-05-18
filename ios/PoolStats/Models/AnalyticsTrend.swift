@@ -100,21 +100,21 @@ extension Analytics {
 
     private static func shortMonth(_ date: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
+        f.locale = AppLanguageRuntime.locale
         f.dateFormat = "MMM"
         return f.string(from: date)
     }
 
     private static func shortMonthYear(_ date: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
+        f.locale = AppLanguageRuntime.locale
         f.dateFormat = "MMM yy"
         return f.string(from: date)
     }
 
     private static func shortMonthDay(_ date: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "en_US_POSIX")
+        f.locale = AppLanguageRuntime.locale
         f.dateFormat = "MMM d"
         return f.string(from: date)
     }
@@ -122,7 +122,7 @@ extension Analytics {
     private static func rangeLabel(start: Date, end: Date, calendar: Calendar) -> String {
         let sameYear = calendar.component(.year, from: start) == calendar.component(.year, from: end)
         let df = DateFormatter()
-        df.locale = Locale(identifier: "en_US_POSIX")
+        df.locale = AppLanguageRuntime.locale
         df.dateFormat = sameYear ? "MMM d" : "MMM d, yy"
         let left = df.string(from: start)
         let right = df.string(from: calendar.date(byAdding: .day, value: -1, to: end) ?? end)

@@ -63,25 +63,25 @@ struct DataSettingsView: View {
 
     private var syncStatusText: String {
         switch store.syncStatus {
-        case .loading: return "Loading"
-        case .syncing: return "Syncing"
-        case .synced: return "iCloud synced"
-        case .localOnly: return "Local cache active"
-        case .error: return "Sync issue"
+        case .loading: return NSLocalizedString("Loading", comment: "")
+        case .syncing: return NSLocalizedString("Syncing", comment: "")
+        case .synced: return NSLocalizedString("iCloud synced", comment: "")
+        case .localOnly: return NSLocalizedString("Local cache active", comment: "")
+        case .error: return NSLocalizedString("Sync issue", comment: "")
         }
     }
 
     private var syncHealthText: String {
         if let reason = store.lastSyncFailureReason, !reason.isEmpty {
-            return "Needs attention"
+            return NSLocalizedString("Needs attention", comment: "")
         }
         if store.lastSyncSuccessAt != nil {
-            return "Healthy"
+            return NSLocalizedString("Healthy", comment: "")
         }
         if store.lastSyncAttemptAt != nil {
-            return "Checking"
+            return NSLocalizedString("Checking", comment: "")
         }
-        return "Unknown"
+        return NSLocalizedString("Unknown", comment: "")
     }
 
     private var lastCloudSyncText: String {
@@ -89,14 +89,14 @@ struct DataSettingsView: View {
             return AppFormatters.shortDateTime(last)
         }
         if let attempted = store.lastSyncAttemptAt {
-            return "Last attempt \(AppFormatters.shortDateTime(attempted))"
+            return String(format: NSLocalizedString("Last attempt %@", comment: ""), AppFormatters.shortDateTime(attempted))
         }
-        return "Never"
+        return NSLocalizedString("Never", comment: "")
     }
 
     private func infoRow(label: String, value: String) -> some View {
         HStack {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption)
                 .foregroundColor(Theme.muted)
             Spacer()

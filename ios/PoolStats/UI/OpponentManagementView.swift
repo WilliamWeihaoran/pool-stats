@@ -287,12 +287,12 @@ private struct BreakAdvantageRow: View {
 
     private var pct: Double { total > 0 ? Double(wins) / Double(total) : 0 }
     private var pctText: String { total > 0 ? "\(Int(round(pct * 100)))%" : "—" }
-    private var fractionText: String { total > 0 ? "\(wins)/\(total)" : "no data" }
+    private var fractionText: String { total > 0 ? "\(wins)/\(total)" : NSLocalizedString("no data", comment: "") }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(label)
+                Text(LocalizedStringKey(label))
                     .font(.caption)
                     .foregroundColor(Theme.text2)
                 Spacer()
@@ -343,7 +343,7 @@ private struct OpponentRow: View {
                             .foregroundColor(Theme.amber)
                     }
                 }
-                Text("Last seen \(lastSeenText)")
+                Text(String(format: NSLocalizedString("Last seen %@", comment: ""), lastSeenText))
                     .font(.caption2)
                     .foregroundColor(Theme.text2)
             }
@@ -398,8 +398,8 @@ private enum OpponentEditorMode: Hashable, Identifiable {
 
     var title: String {
         switch self {
-        case .add: return "Add opponent"
-        case .edit: return "Edit opponent"
+        case .add: return NSLocalizedString("Add opponent", comment: "")
+        case .edit: return NSLocalizedString("Edit opponent", comment: "")
         }
     }
 

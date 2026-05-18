@@ -11,11 +11,11 @@ enum SkillLevel: String, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .novice: return "Beginner"
-        case .beginner: return "Developing"
-        case .intermediate: return "Intermediate"
-        case .advanced: return "Advanced"
-        case .pro: return "Pro"
+        case .novice: return NSLocalizedString("Beginner", comment: "")
+        case .beginner: return NSLocalizedString("Developing", comment: "")
+        case .intermediate: return NSLocalizedString("Intermediate", comment: "")
+        case .advanced: return NSLocalizedString("Advanced", comment: "")
+        case .pro: return NSLocalizedString("Pro", comment: "")
         }
     }
 
@@ -51,11 +51,11 @@ enum DedicationLevel: Int, Codable, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .justForFun: return "Just for fun"
-        case .maybe: return "Light commitment"
-        case .neutral: return "Balanced commitment"
-        case .yes: return "High commitment"
-        case .veryMuch: return "Tournament mode"
+        case .justForFun: return NSLocalizedString("Just for fun", comment: "")
+        case .maybe: return NSLocalizedString("Light commitment", comment: "")
+        case .neutral: return NSLocalizedString("Balanced commitment", comment: "")
+        case .yes: return NSLocalizedString("High commitment", comment: "")
+        case .veryMuch: return NSLocalizedString("Tournament mode", comment: "")
         }
     }
 }
@@ -71,7 +71,7 @@ enum PrimaryGame: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .eightBall: return "8-ball"
         case .nineBall: return "9-ball"
-        case .both: return "Both"
+        case .both: return NSLocalizedString("Both", comment: "")
         }
     }
 }
@@ -101,9 +101,9 @@ enum FrequencyBand: String, Codable, CaseIterable, Identifiable {
 
     var sublabel: String {
         switch self {
-        case .oneToTwo: return "Casual"
-        case .threeToFour: return "Regular"
-        case .fivePlus: return "Dedicated"
+        case .oneToTwo: return NSLocalizedString("Casual", comment: "")
+        case .threeToFour: return NSLocalizedString("Regular", comment: "")
+        case .fivePlus: return NSLocalizedString("Dedicated", comment: "")
         }
     }
 }
@@ -124,7 +124,7 @@ struct PlayerProfile: Codable, Equatable {
 
     var displayName: String {
         let trimmed = nickname.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? "Me" : trimmed
+        return trimmed.isEmpty ? NSLocalizedString("Me", comment: "") : trimmed
     }
 }
 
@@ -215,21 +215,21 @@ extension GoalsStore {
         let rollingRacks = max(60, Int(round(70 + effort * 110)))
 
         return [
-            Goal(title: "Open layouts to \(Int(round(conversionTarget)))%",
+            Goal(title: AppLanguageRuntime.localizedFormat("Open layouts to %lld%%", Int(round(conversionTarget))),
                  metric: .conversionRate,
                  target: conversionTarget,
                  window: .rolling(.init(amount: rollingSessions, unit: .sessions)),
                  sessionScope: matchScope,
                  starterGenerated: true),
 
-            Goal(title: "Match win rate above \(Int(round(matchWinTarget)))%",
+            Goal(title: AppLanguageRuntime.localizedFormat("Match win rate above %lld%%", Int(round(matchWinTarget))),
                  metric: .matchWinRate,
                  target: matchWinTarget,
                  window: .rolling(.init(amount: max(8, rollingSessions / 2), unit: .sessions)),
                  sessionScope: matchScope,
                  starterGenerated: true),
 
-            Goal(title: "Record \(Int(runoutTarget)) runouts by year end",
+            Goal(title: AppLanguageRuntime.localizedFormat("Record %lld runouts by year end", Int(runoutTarget)),
                  metric: .runouts,
                  target: runoutTarget,
                  window: .dueDate(yearEnd),
@@ -237,7 +237,7 @@ extension GoalsStore {
                  sessionScope: sessionScope,
                  starterGenerated: true),
 
-            Goal(title: "Keep miss errors under \(missTarget) per rack",
+            Goal(title: AppLanguageRuntime.localizedFormat("Keep miss errors under %.1f per rack", missTarget),
                  metric: .missErrors,
                  target: missTarget,
                  window: .rolling(.init(amount: rollingRacks, unit: .racks)),
@@ -246,7 +246,7 @@ extension GoalsStore {
                  sessionScope: practiceScope,
                  starterGenerated: true),
 
-            Goal(title: "Keep positional errors under \(positionalTarget) per rack",
+            Goal(title: AppLanguageRuntime.localizedFormat("Keep positional errors under %.1f per rack", positionalTarget),
                  metric: .positionalErrors,
                  target: positionalTarget,
                  window: .rolling(.init(amount: rollingRacks, unit: .racks)),
@@ -255,7 +255,7 @@ extension GoalsStore {
                  sessionScope: practiceScope,
                  starterGenerated: true),
 
-            Goal(title: "Average performance \(String(format: "%.1f", perfTarget))+",
+            Goal(title: AppLanguageRuntime.localizedFormat("Average performance %.1f+", perfTarget),
                  metric: .averagePerformance,
                  target: perfTarget,
                  window: .rolling(.init(amount: rollingSessions, unit: .sessions)),

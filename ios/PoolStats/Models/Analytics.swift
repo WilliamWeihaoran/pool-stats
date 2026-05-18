@@ -1,5 +1,30 @@
 import Foundation
 
+enum FargoFactorKind: String, CaseIterable, Identifiable {
+    case potting
+    case position
+    case pattern
+    case runout
+    case overall
+
+    var id: String { rawValue }
+
+    var localizedName: String {
+        switch self {
+        case .potting:
+            return NSLocalizedString("Potting", comment: "")
+        case .position:
+            return NSLocalizedString("Position", comment: "")
+        case .pattern:
+            return NSLocalizedString("Pattern", comment: "")
+        case .runout:
+            return NSLocalizedString("Runout", comment: "")
+        case .overall:
+            return NSLocalizedString("Overall", comment: "")
+        }
+    }
+}
+
 struct MetricItem: Identifiable {
     let id = UUID()
     let label: String
@@ -22,11 +47,13 @@ struct TrendSeries {
 
 struct FargoFactor: Identifiable {
     let id = UUID()
-    let name: String
+    let kind: FargoFactorKind
     let scoreValue: Int
     let valueText: String
     let weightText: String
     let contribution: Int
+
+    var name: String { kind.localizedName }
 }
 
 struct FargoResult {

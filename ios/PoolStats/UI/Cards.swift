@@ -6,7 +6,7 @@ struct StatCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption)
                 .foregroundColor(Theme.muted)
             Text(value)
@@ -27,7 +27,7 @@ struct SectionCard<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .font(.subheadline)
                 .foregroundColor(Theme.text2)
             content
@@ -46,7 +46,7 @@ struct PillButton: View {
 
     var body: some View {
         Button(action: action) {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption)
                 .foregroundColor(isOn ? Theme.purple : Theme.muted)
                 .padding(.horizontal, 10)
@@ -69,7 +69,7 @@ struct SegmentedRow<Item: Hashable>: View {
                 Button {
                     selection = item
                 } label: {
-                    Text(label(item))
+                    Text(LocalizedStringKey(label(item)))
                         .font(.caption)
                         .foregroundColor(selection == item ? Theme.text : Theme.muted)
                         .frame(maxWidth: .infinity)
@@ -100,7 +100,7 @@ struct SegmentedGrid<Item: Hashable>: View {
                 Button {
                     selection = item
                 } label: {
-                    Text(label(item))
+                    Text(LocalizedStringKey(label(item)))
                         .font(.caption)
                         .foregroundColor(selection == item ? Theme.text : Theme.muted)
                         .frame(maxWidth: .infinity)
@@ -135,11 +135,11 @@ struct InlinePickerCard<Item: Hashable>: View {
             }
         } label: {
             HStack(spacing: 10) {
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.caption)
                     .foregroundColor(Theme.muted)
                 Spacer(minLength: 8)
-                Text(label(selection))
+                Text(LocalizedStringKey(label(selection)))
                     .font(.caption)
                     .foregroundColor(Theme.text)
                     .lineLimit(1)
@@ -175,7 +175,7 @@ struct OverlayPickerPanel<Item: Hashable>: View {
                 Spacer(minLength: 0)
                 VStack(alignment: .leading, spacing: 10) {
                     HStack {
-                        Text(title)
+                        Text(LocalizedStringKey(title))
                             .font(.subheadline.weight(.semibold))
                             .foregroundColor(Theme.text)
                         Spacer(minLength: 0)
@@ -198,7 +198,7 @@ struct OverlayPickerPanel<Item: Hashable>: View {
                                     onDismiss()
                                 } label: {
                                     HStack(spacing: 10) {
-                                        Text(label(item))
+                                        Text(LocalizedStringKey(label(item)))
                                             .font(.subheadline.weight(.medium))
                                             .foregroundColor(selection == item ? Theme.text : Theme.text2)
                                             .lineLimit(1)
@@ -238,7 +238,7 @@ struct MiniLabel: View {
     let text: String
 
     var body: some View {
-        Text(text)
+        Text(LocalizedStringKey(text))
             .font(.caption2)
             .foregroundColor(Theme.muted)
     }

@@ -114,7 +114,7 @@ struct SettingsDetailView: View {
 
     private func infoRow(label: String, value: String) -> some View {
         HStack {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption)
                 .foregroundColor(Theme.muted)
             Spacer()
@@ -142,7 +142,7 @@ struct SettingsDetailView: View {
         let ratings = store.sessions.compactMap { $0.performanceRating }
         guard !ratings.isEmpty else { return "—" }
         let avg = Double(ratings.reduce(0, +)) / Double(ratings.count)
-        return String(format: "%.1f/10", avg)
+        return AppLanguageRuntime.format("%.1f/10", avg)
     }
 
     private var bestGameText: String {
@@ -150,7 +150,7 @@ struct SettingsDetailView: View {
         let eight = sessions.filter { $0.game == "8ball" }.count
         let nine = sessions.filter { $0.game == "9ball" }.count
         if eight == 0 && nine == 0 { return "—" }
-        if eight == nine { return "Split" }
+        if eight == nine { return NSLocalizedString("Split", comment: "") }
         return eight > nine ? "8-ball" : "9-ball"
     }
 

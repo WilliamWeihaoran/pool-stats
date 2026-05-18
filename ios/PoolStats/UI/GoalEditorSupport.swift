@@ -142,8 +142,8 @@ enum GoalWindowMode: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .rolling: return "Rolling"
-        case .dueDate: return "Due date"
+        case .rolling: return NSLocalizedString("Rolling", comment: "")
+        case .dueDate: return NSLocalizedString("Due date", comment: "")
         }
     }
 }

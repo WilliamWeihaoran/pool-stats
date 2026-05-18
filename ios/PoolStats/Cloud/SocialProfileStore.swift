@@ -190,7 +190,8 @@ final class SocialProfileStore: ObservableObject {
         self.container = container
         self.db = container.publicCloudDatabase
 
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
         localURL = dir.appendingPathComponent(Constants.localFilename)
         friendsURL = dir.appendingPathComponent(Constants.friendsFilename)
@@ -602,13 +603,13 @@ final class SocialProfileStore: ObservableObject {
     var statusText: String {
         switch publishState {
         case .idle:
-            return profile == nil ? "No public profile yet" : "Profile saved locally"
+            return profile == nil ? NSLocalizedString("No public profile yet", comment: "") : NSLocalizedString("Profile saved locally", comment: "")
         case .loading:
-            return "Checking public profile…"
+            return NSLocalizedString("Checking public profile…", comment: "")
         case .saving:
-            return "Publishing friend code…"
+            return NSLocalizedString("Publishing friend code…", comment: "")
         case .synced(let date):
-            return "Published \(AppFormatters.shortDate(date))"
+            return String(format: NSLocalizedString("Published %@", comment: ""), AppFormatters.shortDate(date))
         case .localOnly(let message):
             return message
         case .failed(let message):
@@ -708,7 +709,7 @@ final class SocialProfileStore: ObservableObject {
             let data = try encoder.encode(profile)
             try data.write(to: localURL, options: [.atomic])
         } catch {
-            lastError = "Could not save public profile locally."
+            lastError = NSLocalizedString("Could not save public profile locally.", comment: "")
         }
     }
 
@@ -728,7 +729,7 @@ final class SocialProfileStore: ObservableObject {
             let data = try encoder.encode(friends)
             try data.write(to: friendsURL, options: [.atomic])
         } catch {
-            lastError = "Could not save friends locally."
+            lastError = NSLocalizedString("Could not save friends locally.", comment: "")
         }
     }
 
@@ -747,7 +748,7 @@ final class SocialProfileStore: ObservableObject {
             let data = try encoder.encode(outgoingShares)
             try data.write(to: outgoingSharesURL, options: [.atomic])
         } catch {
-            lastError = "Could not save shared match status locally."
+            lastError = NSLocalizedString("Could not save shared match status locally.", comment: "")
         }
     }
 
@@ -768,7 +769,7 @@ final class SocialProfileStore: ObservableObject {
             let data = try encoder.encode(incomingShares)
             try data.write(to: incomingSharesURL, options: [.atomic])
         } catch {
-            lastError = "Could not save incoming match invites locally."
+            lastError = NSLocalizedString("Could not save incoming match invites locally.", comment: "")
         }
     }
 
@@ -830,11 +831,11 @@ final class SocialProfileStore: ObservableObject {
         if let ckError = error as? CKError {
             switch ckError.code {
             case .notAuthenticated:
-                return "Sign in to iCloud to publish your friend code."
+                return NSLocalizedString("Sign in to iCloud to publish your friend code.", comment: "")
             case .networkUnavailable, .networkFailure:
-                return "Network unavailable. Your profile is saved locally."
+                return NSLocalizedString("Network unavailable. Your profile is saved locally.", comment: "")
             case .quotaExceeded:
-                return "iCloud storage is full, so the friend code was not published."
+                return NSLocalizedString("iCloud storage is full, so the friend code was not published.", comment: "")
             default:
                 return ckError.localizedDescription
             }

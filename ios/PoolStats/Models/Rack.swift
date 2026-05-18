@@ -31,13 +31,13 @@ struct Rack: Identifiable, Codable, Hashable {
     var safetyCount: Int { badSafety }
     var patternMistakeCount: Int { patternCount }
     var foulCount: Int { fouls }
-    var unforcedErrorCount: Int { missCount + positionTrackingCount + safetyCount + patternMistakeCount }
+    var unforcedErrorCount: Int { missCount + positionTrackingCount + safetyCount }
     var isDrillAttempt: Bool { drillOutcome != nil }
     var drillOutcomeLabel: String {
         switch drillOutcome {
-        case "success": return "Success"
-        case "miss": return "Miss"
-        default: return "Attempt"
+        case "success": return NSLocalizedString("Success", comment: "")
+        case "miss": return NSLocalizedString("Miss", comment: "")
+        default: return NSLocalizedString("Attempt", comment: "")
         }
     }
 

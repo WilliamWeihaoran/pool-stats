@@ -5,42 +5,30 @@ final class WatchSessionStore: ObservableObject {
     @Published private(set) var activeSnapshot: ActiveSessionSnapshot?
     @Published private(set) var cachedDrills: [WatchDrillTemplatePayload] = []
 
-    private let key = "poolstats.watch.local.session.v1"
-    private let drillsKey = "poolstats.watch.local.drills.v1"
+    private var closedSessionMarker: WatchClosedSessionMarker?
 
     init() {
-        restore()
-        restoreDrills()
+        activeSnapshot = WatchSessionPersistence.restoreActive()
+        cachedDrills = WatchSessionPersistence.restoreDrills()
+        closedSessionMarker = WatchSessionPersistence.restoreClosedSessionMarker()
     }
 
     // Returns the generated sessionUUID so the caller can include it in the phone message.
     func startSession(game: String, opponent: String) -> String {
         let sessionUUID = UUID().uuidString
-        let session = WatchSession(
-            id: 0,
-            sessionUUID: sessionUUID,
-            label: "",
-            opponent: opponent,
-            game: game,
-            type: "match",
-            ts: Date(),
-            racks: [],
-            durationSeconds: nil,
-            performanceRating: nil,
-            drillID: nil,
-            drillTitle: nil,
-            drillKind: nil,
-            drillDifficulty: nil,
-            drillBallCount: nil,
-            drillPrimarySkill: nil,
-            drillPrimarySkills: nil,
-            drillSubskills: nil,
-            drillSecondarySkills: nil,
-            drillTargetType: nil,
-            drillTargetCount: nil
-        )
         let now = Date()
-        activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: 1), sessionStartedAt: now, rackStartedAt: now)
+        let session = WatchSessionFactory.matchSession(
+            game: game,
+            opponent: opponent,
+            sessionUUID: sessionUUID,
+            date: now
+        )
+        activeSnapshot = ActiveSessionSnapshot(
+            session: session,
+            rack: WatchSessionFactory.freshRack(index: 1),
+            sessionStartedAt: now,
+            rackStartedAt: now
+        )
         persist()
         return sessionUUID
     }
@@ -53,50 +41,28 @@ final class WatchSessionStore: ObservableObject {
         targetCount: Int
     ) -> String {
         let sessionUUID = UUID().uuidString
-        let session = WatchSession(
-            id: 0,
-            sessionUUID: sessionUUID,
-            label: drill.title,
-            opponent: "",
-            game: "8ball",
-            type: "practice",
-            ts: Date(),
-            racks: [],
-            durationSeconds: nil,
-            performanceRating: nil,
-            drillID: drill.id,
-            drillTitle: drill.title,
-            drillKind: nil,
-            drillDifficulty: difficulty.level,
-            drillBallCount: difficulty.ballCount,
-            drillPrimarySkill: nil,
-            drillPrimarySkills: nil,
-            drillSubskills: nil,
-            drillSecondarySkills: nil,
-            drillTargetType: targetType,
-            drillTargetCount: targetCount
-        )
         let now = Date()
-        activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: 1), sessionStartedAt: now, rackStartedAt: now)
+        let session = WatchSessionFactory.drillPracticeSession(
+            drill: drill,
+            difficulty: difficulty,
+            targetType: targetType,
+            targetCount: targetCount,
+            sessionUUID: sessionUUID,
+            date: now
+        )
+        activeSnapshot = ActiveSessionSnapshot(
+            session: session,
+            rack: WatchSessionFactory.freshRack(index: 1),
+            sessionStartedAt: now,
+            rackStartedAt: now
+        )
         persist()
         return sessionUUID
     }
 
     func applyPatch(_ patch: WatchRackPatch) {
         guard var snap = activeSnapshot, var rack = snap.rack else { return }
-        if let v = patch.result { rack.result = v }
-        if let v = patch.breaker { rack.breaker = v }
-        if let v = patch.breakBalls { rack.breakBalls = v }
-        if let v = patch.breakFoul { rack.breakFoul = v }
-        if let v = patch.layout { rack.layout = v }
-        if let v = patch.outcome { rack.outcome = v }
-        if let v = patch.fouls { rack.fouls = max(0, v) }
-        if let v = patch.badSafety { rack.badSafety = max(0, v) }
-        if let v = patch.badPosition { rack.badPosition = max(0, v) }
-        if let v = patch.patternCount { rack.patternCount = max(0, v) }
-        if let v = patch.missCount { rack.missCount = max(0, v) }
-        if let v = patch.runoutFirst { rack.runoutFirst = v }
-        if let v = patch.breakAndRun { rack.breakAndRun = v }
+        rack.apply(patch)
         snap.rack = rack
         activeSnapshot = snap
         persist()
@@ -106,37 +72,19 @@ final class WatchSessionStore: ObservableObject {
         guard let snap = activeSnapshot, let rack = snap.rack else { return }
         var session = snap.session
         session.racks.append(rack)
-        activeSnapshot = ActiveSessionSnapshot(session: session, rack: freshRack(index: rack.index + 1), sessionStartedAt: snap.sessionStartedAt, rackStartedAt: Date())
+        activeSnapshot = ActiveSessionSnapshot(
+            session: session,
+            rack: WatchSessionFactory.freshRack(index: rack.index + 1),
+            sessionStartedAt: snap.sessionStartedAt,
+            rackStartedAt: Date()
+        )
         persist()
     }
 
     func recordDrillAttempt(_ attempt: WatchDrillAttemptPayload) {
         guard let snap = activeSnapshot, snap.session.isDrillPractice else { return }
         var session = snap.session
-        let rack = WatchRack(
-            id: UUID().uuidString,
-            rackUUID: UUID().uuidString,
-            index: session.racks.count + 1,
-            result: nil,
-            breaker: "none",
-            breakBalls: -1,
-            breakFoul: false,
-            layout: "none",
-            outcome: nil,
-            fouls: 0,
-            badSafety: 0,
-            badPosition: 0,
-            patternCount: 0,
-            missCount: 0,
-            runoutFirst: false,
-            breakAndRun: false,
-            drillOutcome: attempt.outcome,
-            drillTags: attempt.tags.isEmpty ? nil : attempt.tags,
-            drillNotes: nil,
-            drillBallsMade: attempt.ballsMade,
-            drillTargetBallCount: attempt.targetBallCount,
-            drillDifficulty: attempt.difficulty
-        )
+        let rack = WatchSessionFactory.drillAttemptRack(index: session.racks.count + 1, attempt: attempt)
         session.racks.append(rack)
         activeSnapshot = ActiveSessionSnapshot(session: session, rack: nil, sessionStartedAt: snap.sessionStartedAt, rackStartedAt: snap.rackStartedAt)
         persist()
@@ -159,72 +107,62 @@ final class WatchSessionStore: ObservableObject {
         persist()
     }
 
-    func clear() {
+    func clear(clearComplication: Bool = true) {
         activeSnapshot = nil
-        UserDefaults.standard.removeObject(forKey: key)
-        WatchComplicationStateStore.clear()
+        WatchSessionPersistence.clearActive(clearComplication: clearComplication)
+    }
+
+    func markLocallyClosed(sessionUUID: String?) {
+        closedSessionMarker = WatchSessionPersistence.marker(sessionUUID: sessionUUID)
+        WatchSessionPersistence.saveClosedSessionMarker(closedSessionMarker)
+    }
+
+    func shouldSuppressRemoteActive(_ remote: ActiveSessionSnapshot, now: Date = Date()) -> Bool {
+        WatchSyncReconciler.shouldSuppressActiveSnapshotAfterLocalClose(
+            remoteSessionUUID: remote.session.sessionUUID,
+            locallyClosedSessionUUID: closedSessionMarker?.sessionUUID,
+            locallyClosedAt: closedSessionMarker?.closedAt,
+            now: now
+        )
+    }
+
+    func clearClosedSessionMarker(matching sessionUUID: String?) {
+        guard let closedSessionMarker else { return }
+        guard let sessionUUID = WatchSyncReconciler.normalizedIdentifier(sessionUUID) else { return }
+        guard sessionUUID == closedSessionMarker.sessionUUID else { return }
+        clearStoredClosedSessionMarker()
+    }
+
+    func clearClosedSessionMarkerForAcknowledgedClear(clearedSessionUUID: String?, message: String?) {
+        if let clearedSessionUUID = WatchSyncReconciler.normalizedIdentifier(clearedSessionUUID) {
+            clearClosedSessionMarker(matching: clearedSessionUUID)
+        } else if WatchSyncReconciler.isSessionClearMessage(message) {
+            clearStoredClosedSessionMarker()
+        }
     }
 
     func updateDrillCatalog(_ drills: [WatchDrillTemplatePayload]) {
         guard !drills.isEmpty else { return }
         cachedDrills = drills
-        persistDrills()
+        WatchSessionPersistence.saveDrills(drills)
     }
 
-    // Phone snapshot is always authoritative — overwrite local state when it arrives.
+    // Phone snapshots are authoritative unless they echo a session this watch just closed.
     func applyRemote(_ remote: ActiveSessionSnapshot) {
+        if let marker = closedSessionMarker,
+           marker.sessionUUID != WatchSyncReconciler.normalizedIdentifier(remote.session.sessionUUID) || !shouldSuppressRemoteActive(remote) {
+            clearStoredClosedSessionMarker()
+        }
         activeSnapshot = remote
         persist()
     }
 
-    private func freshRack(index: Int) -> WatchRack {
-        WatchRack(
-            id: UUID().uuidString,
-            rackUUID: UUID().uuidString,
-            index: index,
-            result: nil,
-            breaker: "none",
-            breakBalls: -1,
-            breakFoul: false,
-            layout: "open",
-            outcome: nil,
-            fouls: 0,
-            badSafety: 0,
-            badPosition: 0,
-            patternCount: 0,
-            missCount: 0,
-            runoutFirst: false,
-            breakAndRun: false,
-            drillOutcome: nil,
-            drillTags: nil,
-            drillNotes: nil,
-            drillBallsMade: nil,
-            drillTargetBallCount: nil,
-            drillDifficulty: nil
-        )
-    }
-
     private func persist() {
-        guard let data = try? JSONEncoder().encode(activeSnapshot) else { return }
-        UserDefaults.standard.set(data, forKey: key)
-        WatchComplicationStateStore.save(active: activeSnapshot)
+        WatchSessionPersistence.saveActive(activeSnapshot)
     }
 
-    private func restore() {
-        guard let data = UserDefaults.standard.data(forKey: key),
-              let snap = try? JSONDecoder().decode(ActiveSessionSnapshot.self, from: data) else { return }
-        activeSnapshot = snap
-        WatchComplicationStateStore.save(active: snap)
-    }
-
-    private func persistDrills() {
-        guard let data = try? JSONEncoder().encode(cachedDrills) else { return }
-        UserDefaults.standard.set(data, forKey: drillsKey)
-    }
-
-    private func restoreDrills() {
-        guard let data = UserDefaults.standard.data(forKey: drillsKey),
-              let drills = try? JSONDecoder().decode([WatchDrillTemplatePayload].self, from: data) else { return }
-        cachedDrills = drills
+    private func clearStoredClosedSessionMarker() {
+        closedSessionMarker = nil
+        WatchSessionPersistence.clearClosedSessionMarker()
     }
 }

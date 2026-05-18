@@ -1,5 +1,9 @@
 import Foundation
 
+private func localizedDrillText(_ text: String) -> String {
+    NSLocalizedString(text, comment: "")
+}
+
 struct DrillTemplate: Identifiable, Codable, Hashable {
     var id: String
     var title: String
@@ -36,16 +40,28 @@ struct DrillTemplate: Identifiable, Codable, Hashable {
         self.instructions = instructions
     }
 
-    var primarySkill: String { primarySkills.first ?? "Overall" }
-    var subskills: [String] { secondarySkills }
+    var localizedTitle: String { localizedDrillText(title) }
+    var localizedDescription: String { localizedDrillText(description) }
+    var localizedPrimarySkills: [String] { primarySkills.map(localizedDrillText) }
+    var localizedSecondarySkills: [String] { secondarySkills.map(localizedDrillText) }
+    var localizedInstructions: [String] { instructions.map(localizedDrillText) }
+    var searchableText: String {
+        ([title, description] + primarySkills + secondarySkills + [localizedTitle, localizedDescription] + localizedPrimarySkills + localizedSecondarySkills)
+            .joined(separator: " ")
+    }
+
+    var primarySkill: String { localizedPrimarySkills.first ?? NSLocalizedString("Overall", comment: "") }
+    var subskills: [String] { localizedSecondarySkills }
 
     var standardDifficulty: DrillDifficulty {
-        difficultyLevels.first(where: { $0.level == .standard }) ?? difficultyLevels[0]
+        difficultyLevels.first(where: { $0.level == .standard })
+            ?? difficultyLevels.first
+            ?? DrillDifficulty(level: .standard, ballCount: 5, constraint: "")
     }
 
     var difficultyRangeText: String {
         guard let minCount = difficultyLevels.map(\.ballCount).min(),
-              let maxCount = difficultyLevels.map(\.ballCount).max() else { return "Adaptive" }
+              let maxCount = difficultyLevels.map(\.ballCount).max() else { return NSLocalizedString("Adaptive", comment: "") }
         return countUnit.rangeText(min: minCount, max: maxCount)
     }
 
@@ -111,63 +127,63 @@ enum DrillCountUnit: String, Codable, Hashable {
 
     var title: String {
         switch self {
-        case .balls: return "Balls"
-        case .shots: return "Shots"
-        case .targets: return "Targets"
-        case .kicks: return "Kicks"
-        case .banks: return "Banks"
-        case .safeties: return "Safeties"
-        case .breaks: return "Breaks"
-        case .lags: return "Lags"
-        case .attempts: return "Attempts"
-        case .reps: return "Reps"
-        case .routes: return "Routes"
-        case .caroms: return "Caroms"
-        case .jumps: return "Jumps"
+        case .balls: return NSLocalizedString("Balls", comment: "")
+        case .shots: return NSLocalizedString("Shots", comment: "")
+        case .targets: return NSLocalizedString("Targets", comment: "")
+        case .kicks: return NSLocalizedString("Kicks", comment: "")
+        case .banks: return NSLocalizedString("Banks", comment: "")
+        case .safeties: return NSLocalizedString("Safeties", comment: "")
+        case .breaks: return NSLocalizedString("Breaks", comment: "")
+        case .lags: return NSLocalizedString("Lags", comment: "")
+        case .attempts: return NSLocalizedString("Attempts", comment: "")
+        case .reps: return NSLocalizedString("Reps", comment: "")
+        case .routes: return NSLocalizedString("Routes", comment: "")
+        case .caroms: return NSLocalizedString("Caroms", comment: "")
+        case .jumps: return NSLocalizedString("Jumps", comment: "")
         }
     }
 
     var singular: String {
         switch self {
-        case .balls: return "ball"
-        case .shots: return "shot"
-        case .targets: return "target"
-        case .kicks: return "kick"
-        case .banks: return "bank"
-        case .safeties: return "safety"
-        case .breaks: return "break"
-        case .lags: return "lag"
-        case .attempts: return "attempt"
-        case .reps: return "rep"
-        case .routes: return "route"
-        case .caroms: return "carom"
-        case .jumps: return "jump"
+        case .balls: return NSLocalizedString("ball", comment: "")
+        case .shots: return NSLocalizedString("shot", comment: "")
+        case .targets: return NSLocalizedString("target", comment: "")
+        case .kicks: return NSLocalizedString("kick", comment: "")
+        case .banks: return NSLocalizedString("bank", comment: "")
+        case .safeties: return NSLocalizedString("safety", comment: "")
+        case .breaks: return NSLocalizedString("break", comment: "")
+        case .lags: return NSLocalizedString("lag", comment: "")
+        case .attempts: return NSLocalizedString("attempt", comment: "")
+        case .reps: return NSLocalizedString("rep", comment: "")
+        case .routes: return NSLocalizedString("route", comment: "")
+        case .caroms: return NSLocalizedString("carom", comment: "")
+        case .jumps: return NSLocalizedString("jump", comment: "")
         }
     }
 
     var plural: String {
         switch self {
-        case .balls: return "balls"
-        case .shots: return "shots"
-        case .targets: return "targets"
-        case .kicks: return "kicks"
-        case .banks: return "banks"
-        case .safeties: return "safeties"
-        case .breaks: return "breaks"
-        case .lags: return "lags"
-        case .attempts: return "attempts"
-        case .reps: return "reps"
-        case .routes: return "routes"
-        case .caroms: return "caroms"
-        case .jumps: return "jumps"
+        case .balls: return NSLocalizedString("balls", comment: "")
+        case .shots: return NSLocalizedString("shots", comment: "")
+        case .targets: return NSLocalizedString("targets", comment: "")
+        case .kicks: return NSLocalizedString("kicks", comment: "")
+        case .banks: return NSLocalizedString("banks", comment: "")
+        case .safeties: return NSLocalizedString("safeties", comment: "")
+        case .breaks: return NSLocalizedString("breaks", comment: "")
+        case .lags: return NSLocalizedString("lags", comment: "")
+        case .attempts: return NSLocalizedString("attempts", comment: "")
+        case .reps: return NSLocalizedString("reps", comment: "")
+        case .routes: return NSLocalizedString("routes", comment: "")
+        case .caroms: return NSLocalizedString("caroms", comment: "")
+        case .jumps: return NSLocalizedString("jumps", comment: "")
         }
     }
 
     var progressTitle: String {
         switch self {
-        case .balls: return "Potted"
-        case .breaks: return "Breaks"
-        default: return "Completed"
+        case .balls: return NSLocalizedString("Potted", comment: "")
+        case .breaks: return NSLocalizedString("Breaks", comment: "")
+        default: return NSLocalizedString("Completed", comment: "")
         }
     }
 
@@ -189,11 +205,11 @@ enum DrillDifficultyLevel: String, Codable, CaseIterable, Hashable {
 
     var label: String {
         switch self {
-        case .beginner: return "Beginner"
-        case .easy: return "Easy"
-        case .standard: return "Standard"
-        case .hard: return "Hard"
-        case .expert: return "Expert"
+        case .beginner: return NSLocalizedString("Beginner", comment: "")
+        case .easy: return NSLocalizedString("Easy", comment: "")
+        case .standard: return NSLocalizedString("Standard", comment: "")
+        case .hard: return NSLocalizedString("Hard", comment: "")
+        case .expert: return NSLocalizedString("Expert", comment: "")
         }
     }
 }
@@ -204,6 +220,11 @@ struct DrillDifficulty: Identifiable, Codable, Hashable {
     var constraint: String
 
     var id: String { level.rawValue }
+    var localizedConstraint: String { localizedDrillText(constraint) }
+
+    var summaryText: String {
+        "\(level.label) · \(ballCount)"
+    }
 }
 
 enum DrillLibrary {

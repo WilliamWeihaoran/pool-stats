@@ -16,7 +16,7 @@ struct WatchActiveSessionView: View {
     @State private var safetyCount: Int = 0
     @State private var patternCount: Int = 0
     @State private var showEndRackSheet: Bool = false
-    @State private var scoreFlash: ScoreFlash?
+    @State private var scoreFlash: WatchMatchScoreFlash?
     @State private var hasRestoredSheetState = false
     @State private var isFinishingSession = false
 
@@ -25,6 +25,9 @@ struct WatchActiveSessionView: View {
     private var rack: WatchRack? { active.rack }
     private var isPractice: Bool { active.session.type == "practice" }
     private var sessionUUID: String { active.session.sessionUUID }
+    private var effectiveBreaker: String {
+        WatchSyncReconciler.displayedBreakerValue(selectedBreaker)
+    }
 
     private var sectionName: String {
         switch section {
@@ -32,12 +35,6 @@ struct WatchActiveSessionView: View {
         case .layout: return "Layout"
         case .errors: return "Errors"
         }
-    }
-
-    private struct ScoreFlash: Equatable {
-        let wins: Int
-        let losses: Int
-        let rackSeconds: Int?
     }
 
     // MARK: - Colors
@@ -81,7 +78,9 @@ struct WatchActiveSessionView: View {
             .allowsHitTesting(!isFinishingSession)
 
             if let scoreFlash {
-                scoreFlashOverlay(scoreFlash)
+                WatchMatchScoreFlashView(flash: scoreFlash) {
+                    withAnimation(.easeOut(duration: 0.18)) { self.scoreFlash = nil }
+                }
                     .transition(.opacity)
                     .zIndex(10)
             }
@@ -96,7 +95,7 @@ struct WatchActiveSessionView: View {
             if showEndRackSheet {
                 EndRackSheet(
                     isPractice: isPractice,
-                    breakerIsMe: selectedBreaker == "me",
+                    breakerIsMe: effectiveBreaker == "me",
                     breakQualityBalls: selectedBreakBalls,
                     onSaveRack: { result, runout, breakAndRun in
                         let patch = resultPatch(result: result, runout: runout, breakAndRun: breakAndRun)
@@ -149,10 +148,10 @@ struct WatchActiveSessionView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Button {
                         WKInterfaceDevice.current().play(.click)
-                        selectedBreaker = selectedBreaker == "opp" ? "me" : "opp"
+                        selectedBreaker = effectiveBreaker == "opp" ? "me" : "opp"
                         client.patch(.init(breaker: selectedBreaker), sessionUUID: sessionUUID)
                     } label: {
-                        let isMe = selectedBreaker != "opp"
+                        let isMe = effectiveBreaker == "me"
                         Text(isMe ? "Me" : "Opp")
                             .font(.headline.weight(.bold))
                             .foregroundStyle(isMe ? Color.green : Color.orange)
@@ -318,7 +317,7 @@ struct WatchActiveSessionView: View {
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 16)
+                    .frame(height: 22)
                     .background(Capsule(style: .continuous).fill(Color(red: 0.97, green: 0.44, blue: 0.44)))
             }
             .buttonStyle(.plain)
@@ -329,85 +328,12 @@ struct WatchActiveSessionView: View {
         .padding(.horizontal, 6)
     }
 
-    // MARK: - Score flash
-
-    @ViewBuilder
-    private func scoreFlashOverlay(_ flash: ScoreFlash) -> some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            VStack(spacing: 4) {
-                Text("Score")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.5))
-                    .textCase(.uppercase)
-                    .kerning(1.2)
-
-                HStack(alignment: .center, spacing: 0) {
-                    VStack(spacing: 2) {
-                        scoreFlashNumber(flash.wins, color: Color(red: 0.37, green: 0.92, blue: 0.83), flash: flash)
-                        Text("Me")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(Color(red: 0.37, green: 0.92, blue: 0.83).opacity(0.7))
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    Text("–")
-                        .font(.system(size: 32, weight: .light))
-                        .foregroundStyle(.white.opacity(0.3))
-
-                    VStack(spacing: 2) {
-                        scoreFlashNumber(flash.losses, color: Color(red: 0.97, green: 0.44, blue: 0.44), flash: flash)
-                        Text("Opp")
-                            .font(.caption2.weight(.medium))
-                            .foregroundStyle(Color(red: 0.97, green: 0.44, blue: 0.44).opacity(0.7))
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-
-                if let secs = flash.rackSeconds {
-                    let m = secs / 60
-                    let s = secs % 60
-                    Text(String(format: "Rack  %d:%02d", m, s))
-                        .font(.caption2.weight(.semibold).monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.55))
-                }
-
-                Text("Tap to continue")
-                    .font(.caption2)
-                    .foregroundStyle(.white.opacity(0.28))
-                    .padding(.top, 4)
-            }
-            .padding(.horizontal, 12)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            withAnimation(.easeOut(duration: 0.18)) { scoreFlash = nil }
-        }
-    }
-
-    private func scoreFlashNumber(_ score: Int, color: Color, flash: ScoreFlash) -> some View {
-        Text("\(score)")
-            .font(.system(size: scoreFlashNumberSize(for: flash), weight: .black, design: .rounded).monospacedDigit())
-            .foregroundStyle(color)
-            .lineLimit(1)
-            .minimumScaleFactor(0.48)
-            .allowsTightening(true)
-            .contentTransition(.numericText())
-    }
-
-    private func scoreFlashNumberSize(for flash: ScoreFlash) -> CGFloat {
-        let highScore = max(flash.wins, flash.losses)
-        if highScore >= 100 { return 38 }
-        if highScore >= 10 { return 50 }
-        return 64
-    }
-
     private func showNextRackFlash(for result: String?) {
         let rackSeconds: Int? = active.rackStartedAt.flatMap { start in
             let buffered = Int(Date().timeIntervalSince(start)) - 45
             return buffered > 0 ? buffered : nil
         }
-        let flash = ScoreFlash(
+        let flash = WatchMatchScoreFlash(
             wins: active.session.wins + (result == "won" ? 1 : 0),
             losses: active.session.losses + (result == "lost" ? 1 : 0),
             rackSeconds: rackSeconds
@@ -428,9 +354,9 @@ struct WatchActiveSessionView: View {
         let outcome = result == "won" ? (runout ? "runout" : "noRunout") : "noRunout"
         return .init(
             result: result,
-            breaker: selectedBreaker,
-            breakBalls: selectedBreaker == nil ? nil : selectedBreakBalls,
-            breakFoul: selectedBreaker == nil ? nil : breakFoul,
+            breaker: effectiveBreaker,
+            breakBalls: selectedBreakBalls,
+            breakFoul: breakFoul,
             layout: selectedLayout,
             outcome: outcome,
             fouls: rack?.fouls,
@@ -466,6 +392,9 @@ struct WatchActiveSessionView: View {
         guard var finalRack = rack else { return session }
         if let result {
             finalRack.result = result
+            finalRack.breaker = effectiveBreaker
+            finalRack.breakBalls = selectedBreakBalls
+            finalRack.breakFoul = breakFoul
             finalRack.outcome = result == "won" ? (runout ? "runout" : "noRunout") : "noRunout"
             finalRack.runoutFirst = runout
             finalRack.breakAndRun = breakAndRun

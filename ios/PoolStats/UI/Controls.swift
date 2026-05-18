@@ -10,7 +10,7 @@ struct LogSectionCard<Content: View>: View {
                 Capsule()
                     .fill(Theme.border)
                     .frame(width: 18, height: 3)
-                Text(title)
+                Text(LocalizedStringKey(title))
                     .font(.caption.weight(.semibold))
                     .foregroundColor(Theme.text2)
                 Spacer(minLength: 0)
@@ -35,7 +35,7 @@ struct ChoiceButton: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.callout)
                 .foregroundColor(isOn ? color : Theme.text2)
                 .frame(maxWidth: .infinity)
@@ -59,7 +59,7 @@ struct SmallToggleButton: View {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             action()
         } label: {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption2)
                 .foregroundColor(isOn ? color : Theme.text2)
                 .frame(maxWidth: .infinity)
@@ -84,7 +84,7 @@ struct ErrorCounterTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Text(label)
+                Text(LocalizedStringKey(label))
                     .font(.caption)
                     .foregroundColor(color.opacity(0.92))
                 Spacer(minLength: 0)
@@ -137,7 +137,7 @@ struct MiniStatCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.caption2)
                 .foregroundColor(Theme.muted)
             Text(value)
@@ -243,7 +243,7 @@ struct AppTabBar: View {
                     .font(.system(size: 16, weight: .semibold))
                     .frame(width: 28, height: 20)
                     .foregroundColor(selection == tab ? Theme.purple : Theme.text2)
-                Text(tab.label)
+                Text(LocalizedStringKey(tab.label))
                     .font(.caption2.weight(.medium))
                     .foregroundColor(Theme.text2)
                     .lineLimit(1)
@@ -254,7 +254,7 @@ struct AppTabBar: View {
             .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(tab.label)
+        .accessibilityLabel(Text(LocalizedStringKey(tab.label)))
     }
 
     private var logButton: some View {
@@ -272,7 +272,7 @@ struct AppTabBar: View {
             .frame(height: 46, alignment: .center)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Log")
+        .accessibilityLabel(Text(LocalizedStringKey("Log")))
     }
 }
 

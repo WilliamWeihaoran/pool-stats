@@ -32,7 +32,7 @@ final class AuthStore: ObservableObject {
         switch result {
         case .success(let authorization):
             guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential else {
-                lastError = "Sign in failed. Could not read Apple ID credential."
+                lastError = NSLocalizedString("Sign in failed. Could not read Apple ID credential.", comment: "")
                 return
             }
             apply(credential: credential)
@@ -77,7 +77,7 @@ final class AuthStore: ObservableObject {
             }
         } catch {
             // Keep existing local auth data and degrade gracefully when Apple checks fail.
-            lastError = "Could not verify Apple sign-in state right now."
+            lastError = NSLocalizedString("Could not verify Apple sign-in state right now.", comment: "")
             isSignedIn = true
             appleUserID = userID
             loadMetadata()
@@ -95,7 +95,7 @@ final class AuthStore: ObservableObject {
     private func apply(credential: ASAuthorizationAppleIDCredential) {
         let userID = credential.user
         guard !userID.isEmpty else {
-            lastError = "Sign in failed. Missing Apple user id."
+            lastError = NSLocalizedString("Sign in failed. Missing Apple user id.", comment: "")
             return
         }
 

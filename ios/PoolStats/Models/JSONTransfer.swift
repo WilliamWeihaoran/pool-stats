@@ -6,6 +6,7 @@ struct SessionJSON: Codable {
     var label: String
     var opponent: String
     var game: String
+    var raceTo: Int?
     var type: String
     var ts: Int64
     var racks: [RackJSON]
@@ -145,6 +146,7 @@ struct JSONTransfer {
                 label: s.label,
                 opponent: s.opponent,
                 game: s.game,
+                raceTo: s.raceTo,
                 type: s.type,
                 ts: Int64(s.ts.timeIntervalSince1970 * 1000),
                 racks: s.racks.map { r in
@@ -226,6 +228,7 @@ struct JSONTransfer {
                     label: s.label,
                     opponent: s.opponent,
                     game: s.game,
+                    raceTo: s.raceTo,
                     type: s.type,
                     ts: Date(timeIntervalSince1970: TimeInterval(s.ts) / 1000),
                     racks: racks,

@@ -84,7 +84,12 @@ struct GoalCard: View {
                     .font(.headline)
                     .foregroundColor(archived ? Theme.text2 : barColor)
                 Spacer()
-                Text("Target \(goal.metric.format(goal.target, style: goal.valueStyle, basis: goal.averageBasis))")
+                Text(
+                    String(
+                        format: NSLocalizedString("Target %@", comment: ""),
+                        goal.metric.format(goal.target, style: goal.valueStyle, basis: goal.averageBasis)
+                    )
+                )
                     .font(.caption.weight(.medium))
                     .foregroundColor(Theme.text2)
             }
@@ -99,8 +104,8 @@ struct GoalCard: View {
     }
 
     private var statusBadgeText: String? {
-        if goal.completedAt != nil { return "Completed" }
-        if archived { return "Archived" }
+        if goal.completedAt != nil { return NSLocalizedString("Completed", comment: "") }
+        if archived { return NSLocalizedString("Archived", comment: "") }
         return nil
     }
 

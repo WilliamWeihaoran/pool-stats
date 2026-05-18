@@ -25,6 +25,7 @@ struct WatchSessionStartPayload: Codable, Hashable {
     var targetCount: Int? = nil
     var drillDifficulty: String? = nil
     var drillBallCount: Int? = nil
+    var initialRackUUID: String? = nil
     var timestampMs: Int64?
 }
 
@@ -160,6 +161,7 @@ struct WatchSyncEnvelope: Codable, Hashable {
     var action: WatchSyncAction
     var sessionUUID: String?
     var rackUUID: String?
+    var nextRackUUID: String?
     var patch: WatchRackPatch?
     var start: WatchSessionStartPayload?
     var end: WatchEndSessionPayload?

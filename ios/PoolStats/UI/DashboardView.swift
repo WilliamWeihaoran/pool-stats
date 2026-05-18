@@ -75,15 +75,15 @@ struct DashboardView: View {
                 pendingImportData = nil
             }
         } message: {
-            Text("Replace all data with \(pendingImportCount) sessions?")
+            Text(DashboardCopy.importReplaceMessage(pendingImportCount))
         }
         .alert("Import failed.", isPresented: $showImportError) {
             Button("OK", role: .cancel) { }
         }
-        .alert("Fargo Estimate", isPresented: $showFargoInfo) {
-            Button("Got it", role: .cancel) { }
+        .alert(DashboardCopy.fargoInfoTitle, isPresented: $showFargoInfo) {
+            Button(DashboardCopy.fargoInfoButton, role: .cancel) { }
         } message: {
-            Text("Fargo is a skill rating system for pool players. This visual blends your baseline Fargo with tracked match performance, then scores five areas: potting, position, pattern, runout, and overall.")
+            Text(DashboardCopy.fargoInfoMessage)
         }
     }
 
@@ -161,45 +161,9 @@ struct DashboardView: View {
     }
 
     private var recentFormSection: some View {
-        let recent = Array(filteredSessions.filter { $0.type == "match" }.sorted(by: Session.newestFirst).prefix(10))
-        let wins = recent.filter { $0.wins > $0.losses }.count
-        let draws = recent.filter { $0.wins == $0.losses }.count
-        let losses = recent.filter { $0.losses > $0.wins }.count
-        let recordText = recent.isEmpty ? "No matches yet" : "\(wins)W \(draws)D \(losses)L"
-        let subtitle = recent.isEmpty ? "No match results in current filters" : "Last \(recent.count) match results"
-
-        return SectionCard(title: "Recent form") {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .firstTextBaseline) {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(Theme.muted)
-                    Spacer(minLength: 8)
-                    Text(recordText)
-                        .font(.caption.weight(.semibold))
-                        .foregroundColor(recent.isEmpty ? Theme.muted : Theme.text2)
-                }
-
-                if recent.isEmpty {
-                    Text("Log a few matches and your form will appear here.")
-                        .font(.caption)
-                        .foregroundColor(Theme.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    RecentFormVisual(sessions: Array(recent.reversed()))
-                    RecentOutcomeMixBar(wins: wins, draws: draws, losses: losses)
-                    HStack {
-                        Text("Outcome mix")
-                            .font(.caption2)
-                            .foregroundColor(Theme.text2)
-                        Spacer(minLength: 8)
-                        Text("Wins · Draws · Losses")
-                            .font(.caption2.weight(.medium))
-                            .foregroundColor(Theme.text2)
-                    }
-                }
-            }
-        }
+        DashboardRecentFormSection(
+            recentMatches: Array(filteredSessions.filter { $0.type == "match" }.sorted(by: Session.newestFirst).prefix(10))
+        )
     }
 
     private var trendSection: some View {
@@ -221,8 +185,9 @@ struct DashboardView: View {
                     let count = points.count
                     let tickStep = max(1, count / 6)
                     let tickDates = stride(from: 0, to: count, by: tickStep).map { points[$0].0 }
-                    let domainStart = series.dates.first ?? points[0].0
-                    let domainEnd = series.dates.last ?? points[0].0
+                    let fallbackDate = points.first?.0 ?? Date()
+                    let domainStart = series.dates.first ?? fallbackDate
+                    let domainEnd = series.dates.last ?? fallbackDate
                     Chart {
                         ForEach(Array(points.enumerated()), id: \.offset) { _, point in
                             LineMark(x: .value("Date", point.0), y: .value("Match", point.1))
@@ -369,7 +334,7 @@ struct DashboardView: View {
 
     private var insightsSection: some View {
         let insights = Analytics.insights(allRacks: allRacks, matchRacks: matchRacks)
-        let layoutLabels = ["Open", "Clustered", "Problematic", "Snookered"]
+        let layoutLabels = DashboardCopy.layoutLabels
         let leak = Analytics.biggestLeakSummary(matchRacks)
         return SectionCard(title: "Break & layout insights") {
             VStack(alignment: .leading, spacing: 10) {
@@ -409,22 +374,7 @@ struct DashboardView: View {
     }
 
     private var activitySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Training activity")
-                    .font(.subheadline)
-                    .foregroundColor(Theme.text2)
-                Spacer(minLength: 0)
-                Text("\(activityActiveDays) active days")
-                    .font(.caption2)
-                    .foregroundColor(Theme.muted)
-            }
-            ActivityHeatmapView(sessions: store.sessions)
-        }
-        .padding(14)
-        .background(Theme.panel)
-        .cornerRadius(12)
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+        DashboardActivitySection(sessions: store.sessions, activeDays: activityActiveDays)
     }
 
     private var errorTrendSection: some View {
@@ -452,17 +402,17 @@ struct DashboardView: View {
         }
 
         let miss = rolling(recent.map { perRack(\.missCount, $0) })
-        let pos  = rolling(recent.map { perRack(\.positionTrackingCount, $0) })
-        let saf  = rolling(recent.map { perRack(\.safetyCount, $0) })
+        let pos = rolling(recent.map { perRack(\.positionTrackingCount, $0) })
+        let saf = rolling(recent.map { perRack(\.safetyCount, $0) })
         let pattern = rolling(recent.map { perRack(\.patternMistakeCount, $0) })
 
         return recent.enumerated().flatMap { i, session in
             let m = miss[i]; let p = pos[i]; let s = saf[i]; let pat = pattern[i]
             return [
-                ErrorStackPoint(id: "\(session.id)-m", sessionIndex: i, bottom: 0,         top: m,             type: "Miss"),
-                ErrorStackPoint(id: "\(session.id)-p", sessionIndex: i, bottom: m,         top: m + p,         type: "Position"),
-                ErrorStackPoint(id: "\(session.id)-s", sessionIndex: i, bottom: m + p,     top: m + p + s,     type: "Safety"),
-                ErrorStackPoint(id: "\(session.id)-pat", sessionIndex: i, bottom: m + p + s, top: m + p + s + pat, type: "Pattern")
+                ErrorStackPoint(id: "\(session.id)-m", sessionIndex: i, bottom: 0, top: m, kind: .miss),
+                ErrorStackPoint(id: "\(session.id)-p", sessionIndex: i, bottom: m, top: m + p, kind: .position),
+                ErrorStackPoint(id: "\(session.id)-s", sessionIndex: i, bottom: m + p, top: m + p + s, kind: .safety),
+                ErrorStackPoint(id: "\(session.id)-pat", sessionIndex: i, bottom: m + p + s, top: m + p + s + pat, kind: .pattern)
             ]
         }
     }
@@ -483,21 +433,6 @@ struct DashboardView: View {
             .buttonStyle(.bordered)
         }
     }
-
-    private func matchWinPercentText() -> String {
-        let m = matchSessions
-        if m.isEmpty { return "—" }
-        let wins = m.filter { $0.wins > $0.racks.count / 2 }.count
-        return "\(Int(round(Double(wins) / Double(m.count) * 100)))%"
-    }
-
-    private func rackWinPercentText() -> String {
-        let r = matchRacks
-        if r.isEmpty { return "—" }
-        let wins = r.reduce(0) { $0 + ($1.result == "won" ? 1 : 0) }
-        return "\(Int(round(Double(wins) / Double(r.count) * 100)))%"
-    }
-
     private func colorForLayout(_ idx: Int) -> Color {
         switch idx {
         case 0: return Theme.teal
@@ -514,7 +449,7 @@ private struct DashboardKPI: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label)
+            Text(LocalizedStringKey(label))
                 .font(.callout)
                 .foregroundColor(Theme.muted)
             Text(value)
@@ -524,6 +459,79 @@ private struct DashboardKPI: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+        .background(Theme.panel)
+        .cornerRadius(12)
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+    }
+}
+
+private struct DashboardRecentFormSection: View {
+    let recentMatches: [Session]
+
+    var body: some View {
+        let wins = recentMatches.filter { $0.wins > $0.losses }.count
+        let draws = recentMatches.filter { $0.wins == $0.losses }.count
+        let losses = recentMatches.filter { $0.losses > $0.wins }.count
+        let copy = DashboardCopy.recentFormPresentation(
+            recentCount: recentMatches.count,
+            wins: wins,
+            draws: draws,
+            losses: losses
+        )
+
+        SectionCard(title: "Recent form") {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(copy.subtitle)
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+                    Spacer(minLength: 8)
+                    Text(copy.recordText)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(recentMatches.isEmpty ? Theme.muted : Theme.text2)
+                }
+
+                if let emptyStateMessage = copy.emptyStateMessage {
+                    Text(emptyStateMessage)
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    RecentFormVisual(sessions: Array(recentMatches.reversed()))
+                    RecentOutcomeMixBar(wins: wins, draws: draws, losses: losses)
+                    HStack {
+                        Text(copy.legendTitle)
+                            .font(.caption2)
+                            .foregroundColor(Theme.text2)
+                        Spacer(minLength: 8)
+                        Text(copy.legendValue)
+                            .font(.caption2.weight(.medium))
+                            .foregroundColor(Theme.text2)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct DashboardActivitySection: View {
+    let sessions: [Session]
+    let activeDays: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Training activity")
+                    .font(.subheadline)
+                    .foregroundColor(Theme.text2)
+                Spacer(minLength: 0)
+                Text(DashboardCopy.activeDays(activeDays))
+                    .font(.caption2)
+                    .foregroundColor(Theme.muted)
+            }
+            ActivityHeatmapView(sessions: sessions)
+        }
+        .padding(14)
         .background(Theme.panel)
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))

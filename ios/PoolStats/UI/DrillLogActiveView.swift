@@ -233,7 +233,7 @@ struct DrillLogActiveView: View {
                 .opacity(currentDifficultyIndex >= maxDifficultyIndex ? 0.35 : 1)
             }
 
-            if let constraint = currentDifficulty?.constraint {
+            if let constraint = currentDifficulty?.localizedConstraint {
                 Text(constraint)
                     .font(.caption)
                     .foregroundColor(Theme.text2)
@@ -614,10 +614,10 @@ struct DrillLogActiveView: View {
                         Text(difficulty.level.label)
                             .font(.caption.weight(.bold))
                             .foregroundColor(difficultyColor(for: difficulty.level))
-                        Text(template?.countText(difficulty.ballCount) ?? "\(difficulty.ballCount) reps")
+                        Text(template?.countText(difficulty.ballCount) ?? AppLanguageRuntime.localizedFormat("%lld reps", difficulty.ballCount))
                             .font(.caption2.weight(.semibold))
                             .foregroundColor(Theme.text2)
-                        Text(difficulty.constraint)
+                        Text(difficulty.localizedConstraint)
                             .font(.caption2)
                             .foregroundColor(Theme.muted)
                             .lineLimit(3)

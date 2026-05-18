@@ -20,6 +20,7 @@ final class CloudKitStore {
         static let game = "game"
         static let type = "type"
         static let opponent = "opponent"
+        static let raceTo = "raceTo"
         static let ts = "ts"
         static let durationSeconds = "durationSeconds"
         static let performanceRating = "performanceRating"
@@ -188,6 +189,9 @@ final class CloudKitStore {
         record[RecordKeys.label] = session.label
         record[RecordKeys.opponent] = session.opponent
         record[RecordKeys.game] = session.game
+        if let raceTo = session.raceTo {
+            record[RecordKeys.raceTo] = raceTo
+        }
         record[RecordKeys.type] = session.type
         record[RecordKeys.ts] = session.ts
         if let durationSeconds = session.durationSeconds {
@@ -243,6 +247,7 @@ final class CloudKitStore {
         let label = record[RecordKeys.label] as? String ?? ""
         let opponent = record[RecordKeys.opponent] as? String ?? ""
         let game = record[RecordKeys.game] as? String ?? "8ball"
+        let raceTo = record[RecordKeys.raceTo] as? Int
         let type = record[RecordKeys.type] as? String ?? "match"
         let ts = record[RecordKeys.ts] as? Date ?? Date()
         let duration = record[RecordKeys.durationSeconds] as? Int
@@ -262,6 +267,7 @@ final class CloudKitStore {
             label: label,
             opponent: opponent,
             game: game,
+            raceTo: raceTo,
             type: type,
             ts: ts,
             racks: racks,

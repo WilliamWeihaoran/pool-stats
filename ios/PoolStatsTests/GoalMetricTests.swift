@@ -75,4 +75,41 @@ final class GoalMetricTests: XCTestCase {
 
         XCTAssertEqual(value, 2, accuracy: 0.001)
     }
+
+    func testLowerBetterGoalDoesNotCompleteWithoutProgressData() {
+        let goal = Goal(
+            title: "Keep misses low",
+            metric: .missErrors,
+            target: 2,
+            window: .rolling(.init(amount: 10, unit: .sessions)),
+            valueStyle: .average,
+            averageBasis: .racks,
+            createdAt: Date(timeIntervalSince1970: 0)
+        )
+
+        XCTAssertFalse(goal.isComplete(from: []))
+    }
+
+    func testCumulativeRunoutGoalCompletesWhenTargetIsReached() {
+        let session = makeSession(
+            id: 5,
+            ts: Date(timeIntervalSince1970: 5_000),
+            racks: [
+                makeRack(index: 1, outcome: "runout"),
+                makeRack(index: 2, outcome: "runout"),
+                makeRack(index: 3, outcome: "noRunout"),
+            ]
+        )
+        let goal = Goal(
+            title: "Run out twice",
+            metric: .runouts,
+            target: 2,
+            window: .rolling(.init(amount: 10, unit: .sessions)),
+            valueStyle: .cumulative,
+            createdAt: Date(timeIntervalSince1970: 0)
+        )
+
+        XCTAssertTrue(goal.isComplete(from: [session]))
+        XCTAssertTrue(goal.canAutoCompleteFromStats)
+    }
 }

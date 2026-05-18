@@ -44,7 +44,8 @@ final class OpponentStore: ObservableObject {
     private let storageKey = "poolstats.opponents.v1"
 
     init() {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
         localURL = dir.appendingPathComponent("opponents.json")
         loadLocal()

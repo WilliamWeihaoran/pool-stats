@@ -14,6 +14,7 @@ final class SessionLogStore: ObservableObject {
         label: String,
         opponent: String,
         date: Date,
+        raceTo: Int? = nil,
         sessionUUID: String? = nil
     ) {
         let cal = Calendar.current
@@ -23,6 +24,7 @@ final class SessionLogStore: ObservableObject {
             label: label,
             opponent: opponent,
             game: game,
+            raceTo: raceTo,
             type: "match",
             ts: sessionDate
         )
@@ -88,12 +90,20 @@ final class SessionLogStore: ObservableObject {
 
     func matchesActiveSession(_ sessionUUID: String?) -> Bool {
         guard let sessionUUID else { return true }
+        guard let sessionUUID = WatchSyncReconciler.normalizedIdentifier(sessionUUID) else { return false }
         return currentSession?.sessionUUID == sessionUUID
     }
 
     func matchesActiveRack(_ rackUUID: String?) -> Bool {
         guard let rackUUID else { return true }
+        guard let rackUUID = WatchSyncReconciler.normalizedIdentifier(rackUUID) else { return false }
         return currentRack?.rackUUID == rackUUID
+    }
+
+    func setCurrentRackUUID(_ rackUUID: String?) {
+        guard let rackUUID = WatchSyncReconciler.normalizedIdentifier(rackUUID), var rack = currentRack else { return }
+        rack.rackUUID = rackUUID
+        currentRack = rack
     }
 
     func updateRack(_ update: (inout Rack) -> Void) {
@@ -125,14 +135,14 @@ final class SessionLogStore: ObservableObject {
             if let runoutFirst = patch.runoutFirst { rack.runoutFirst = runoutFirst }
             if let breakAndRun = patch.breakAndRun { rack.breakAndRun = breakAndRun }
         }
-        showExternalNotice("Updated from watch")
+        showExternalNotice(NSLocalizedString("Updated from watch", comment: ""))
     }
 
     @discardableResult
     func saveRackFromRemote() -> Bool {
         normalizeRemoteMatchRackForSave()
         let ok = saveRack()
-        if ok { showExternalNotice("Rack saved on watch") }
+        if ok { showExternalNotice(NSLocalizedString("Rack saved on watch", comment: "")) }
         return ok
     }
 
@@ -197,17 +207,18 @@ final class SessionLogStore: ObservableObject {
             targetBallCount: attempt.targetBallCount,
             difficulty: attempt.difficulty
         )
-        if ok { showExternalNotice("Drill attempt saved on watch") }
+        if ok { showExternalNotice(NSLocalizedString("Drill attempt saved on watch", comment: "")) }
         return ok
     }
 
     @discardableResult
     func undoLastRack() -> Bool {
         guard var session = currentSession, !session.racks.isEmpty else { return false }
-        session.racks.removeLast()
+        let restored = session.racks.removeLast()
         currentSession = session
-        resetRack()
-        showExternalNotice("Undo from watch")
+        currentRack = restored
+        rackStart = sessionStart == nil ? nil : Date()
+        showExternalNotice(NSLocalizedString("Undo from watch", comment: ""))
         return true
     }
 
@@ -251,7 +262,7 @@ final class SessionLogStore: ObservableObject {
         normalizeRemoteMatchRackForSave()
         _ = saveRack()
         await endSession(savingTo: store)
-        showExternalNotice("Session ended on watch")
+        showExternalNotice(NSLocalizedString("Session ended on watch", comment: ""))
     }
 
     func discardSession() {

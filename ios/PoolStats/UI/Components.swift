@@ -3,7 +3,7 @@ import UIKit
 
 struct AppBackButton: View {
     @Environment(\.dismiss) private var dismiss
-    var label: String = "Back"
+    var label: String = NSLocalizedString("Back", comment: "")
     var iconOnly: Bool = false
     var action: (() -> Void)? = nil
 
@@ -20,7 +20,7 @@ struct AppBackButton: View {
                 Image(systemName: "chevron.left")
                     .font(.caption.weight(.bold))
                 if !iconOnly {
-                    Text(label)
+                    Text(LocalizedStringKey(label))
                         .font(.subheadline.weight(.semibold))
                 }
             }
@@ -45,7 +45,7 @@ struct AppBackButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label)
+        .accessibilityLabel(Text(LocalizedStringKey(label)))
     }
 }
 

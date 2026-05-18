@@ -87,8 +87,10 @@ struct LogActiveView: View {
 
     private func metaText(_ session: Session) -> String {
         let game = session.game == "8ball" ? "8-ball" : "9-ball"
-        let type = session.isPractice ? "practice" : "match"
-        return session.label.isEmpty ? "\(game) \(type)" : "\(game) \(type) · \(session.label)"
+        let type = session.isPractice ? NSLocalizedString("practice", comment: "") : NSLocalizedString("match", comment: "")
+        return [game, type, session.raceLabel, session.label.isEmpty ? nil : session.label]
+            .compactMap { $0 }
+            .joined(separator: " · ")
     }
 }
 
@@ -382,7 +384,9 @@ private struct LogTimerRow: View {
         .background(Theme.panel)
         .cornerRadius(10)
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.border, lineWidth: 0.5))
-        .accessibilityLabel("Score \(wins) to \(losses)")
+        .accessibilityLabel(
+            Text(AppLanguageRuntime.localizedFormat("Score %lld to %lld", wins, losses))
+        )
 
         if let onScoreCardTap {
             Button(action: onScoreCardTap) {

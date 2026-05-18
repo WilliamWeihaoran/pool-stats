@@ -9,8 +9,7 @@ struct DrillsView: View {
     private var filteredTemplates: [DrillTemplate] {
         DrillLibrary.templates.filter { template in
             let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-            let searchable = ([template.title, template.description] + template.primarySkills + template.secondarySkills)
-                .joined(separator: " ")
+            let searchable = template.searchableText
             let matchesSearch = query.isEmpty || searchable.range(of: query, options: [.caseInsensitive, .diacriticInsensitive]) != nil
             let allSkills = Set((template.primarySkills + template.secondarySkills).map { $0.lowercased() })
             let matchesSkills = selectedSkills.allSatisfy { skill in allSkills.contains(skill.lowercased()) }
@@ -125,16 +124,16 @@ private struct DrillTemplateRow: View {
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border, lineWidth: 0.6))
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(template.title)
+                Text(template.localizedTitle)
                     .font(.headline.weight(.semibold))
                     .foregroundColor(Theme.text)
                     .lineLimit(2)
-                Text(template.description)
+                Text(template.localizedDescription)
                     .font(.caption)
                     .foregroundColor(Theme.muted)
                     .lineLimit(2)
                 HStack(spacing: 7) {
-                    ForEach(Array(template.primarySkills.prefix(2)), id: \.self) { skill in
+                    ForEach(Array(template.localizedPrimarySkills.prefix(2)), id: \.self) { skill in
                         drillBadge(skill, color: drillColor(skill))
                     }
                     drillBadge(template.difficultyRangeText, color: Theme.text2)

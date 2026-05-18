@@ -4,7 +4,7 @@ struct HistoryView: View {
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
     var showsHeader: Bool = true
-    @State private var opponentFilter: String = "All opponents"
+    @State private var opponentFilter: String = NSLocalizedString("All opponents", comment: "")
     @State private var searchText: String = ""
     @State private var selection = Set<Int64>()
     @State private var isSelecting: Bool = false
@@ -176,8 +176,10 @@ struct HistoryView: View {
     }
 
     private func drillSummaryText(_ session: Session) -> String {
-        let rate = session.drillSuccessRate.map { "\($0)% success" } ?? "No attempts"
-        return "\(session.drillAttempts) attempts · \(rate) · \(session.drillDifficultyLabel)"
+        let rate = session.drillSuccessRate.map {
+            AppLanguageRuntime.localizedFormat("%lld%% success", $0)
+        } ?? NSLocalizedString("No attempts", comment: "")
+        return AppLanguageRuntime.localizedFormat("%lld attempts · %@ · %@", session.drillAttempts, rate, session.drillDifficultyLabel)
     }
 
     private func sessionSummaryText(_ session: Session) -> String {
@@ -185,10 +187,12 @@ struct HistoryView: View {
             return drillSummaryText(session)
         }
         if session.isPractice {
-            return "\(session.gameLabel) practice · \(session.racks.count) racks"
+            return AppLanguageRuntime.localizedFormat("%@ practice · %lld racks", session.gameLabel, session.racks.count)
         }
-        let scoreText = session.isDraw ? "Draw \(session.wins):\(session.losses)" : "Score \(session.wins):\(session.losses)"
-        return "\(session.gameLabel) match · \(scoreText)"
+        let scoreText = session.isDraw
+            ? AppLanguageRuntime.localizedFormat("Draw %lld:%lld", session.wins, session.losses)
+            : AppLanguageRuntime.localizedFormat("Score %lld:%lld", session.wins, session.losses)
+        return String(format: NSLocalizedString("%@ match · %@", comment: ""), session.gameLabel, scoreText)
     }
 
     private var syncStatusBadge: some View {
@@ -241,7 +245,7 @@ struct HistoryView: View {
             Button {
                 Task { await store.refresh() }
             } label: {
-                actionChip(label: "Refresh", systemName: "arrow.clockwise", color: Theme.text2)
+                actionChip(label: NSLocalizedString("Refresh", comment: ""), systemName: "arrow.clockwise", color: Theme.text2)
             }
             .buttonStyle(.plain)
 
@@ -252,7 +256,7 @@ struct HistoryView: View {
                     requestDelete(ids: Array(selection))
                 } label: {
                     actionChip(
-                        label: selection.isEmpty ? "Delete" : "Delete \(selection.count)",
+                        label: HistoryCopy.deleteActionLabel(selectedCount: selection.count),
                         systemName: "trash",
                         color: selection.isEmpty ? Theme.muted : Theme.red
                     )
@@ -269,7 +273,7 @@ struct HistoryView: View {
             }
             label: {
                 actionChip(
-                    label: isSelecting ? "Done" : "Select",
+                    label: isSelecting ? NSLocalizedString("Done", comment: "") : NSLocalizedString("Select", comment: ""),
                     systemName: isSelecting ? "checkmark.circle" : "checklist",
                     color: Theme.purple
                 )
@@ -288,12 +292,12 @@ struct HistoryView: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 8) {
-                    summaryPill(text: "\(filteredSessions.count) shown", color: Theme.teal)
-                    if opponentFilter != "All opponents" {
+                    summaryPill(text: AppLanguageRuntime.localizedFormat("%lld shown", filteredSessions.count), color: Theme.teal)
+                    if opponentFilter != allOpponentsLabel {
                         summaryPill(text: opponentFilter, color: Theme.blue)
                     }
                     if !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        summaryPill(text: "Search active", color: Theme.amber)
+                        summaryPill(text: NSLocalizedString("Search active", comment: ""), color: Theme.amber)
                     }
                 }
             }
@@ -303,7 +307,7 @@ struct HistoryView: View {
 
     private var filteredSessions: [Session] {
         var rows = store.sessions.sorted(by: Session.newestFirst)
-        if opponentFilter != "All opponents" {
+        if opponentFilter != allOpponentsLabel {
             rows = rows.filter { opponentStore.matches($0.opponent, selected: opponentFilter) }
         }
         if !searchText.isEmpty {
@@ -313,14 +317,11 @@ struct HistoryView: View {
     }
 
     private var deleteAlertTitle: String {
-        pendingDeleteIDs.count == 1 ? "Delete session?" : "Delete selected sessions?"
+        HistoryCopy.deleteAlertTitle(count: pendingDeleteIDs.count)
     }
 
     private var deleteAlertMessage: String {
-        if pendingDeleteIDs.count == 1 {
-            return "This session will be removed from History."
-        }
-        return "\(pendingDeleteIDs.count) sessions will be removed from History."
+        HistoryCopy.deleteAlertMessage(count: pendingDeleteIDs.count)
     }
 
     private var opponentOptions: [String] {
@@ -329,22 +330,22 @@ struct HistoryView: View {
 
     private var syncTitle: String {
         switch store.syncStatus {
-        case .loading: return "Syncing session data"
-        case .syncing: return "Syncing session data"
-        case .synced: return "iCloud synced"
-        case .localOnly: return "Local cache active"
-        case .error: return "Sync issue"
+        case .loading: return NSLocalizedString("Syncing session data", comment: "")
+        case .syncing: return NSLocalizedString("Syncing session data", comment: "")
+        case .synced: return NSLocalizedString("iCloud synced", comment: "")
+        case .localOnly: return NSLocalizedString("Local cache active", comment: "")
+        case .error: return NSLocalizedString("Sync issue", comment: "")
         }
     }
 
     private var syncSubtitle: String {
         switch store.syncStatus {
         case .loading:
-            return "Loading local cache and checking iCloud."
+            return NSLocalizedString("Loading local cache and checking iCloud.", comment: "")
         case .syncing:
-            return "Saving to iCloud and local cache."
+            return NSLocalizedString("Saving to iCloud and local cache.", comment: "")
         case .synced:
-            return "Latest sessions are stored locally and in CloudKit."
+            return NSLocalizedString("Latest sessions are stored locally and in CloudKit.", comment: "")
         case .localOnly(let message):
             return message
         case .error(let message):
@@ -368,16 +369,13 @@ struct HistoryView: View {
 
     private var historySummaryText: String {
         if filteredSessions.isEmpty {
-            return "No sessions match the current filter, so this is a good place to clear the search or switch opponents."
+            return NSLocalizedString("No sessions match the current filter, so this is a good place to clear the search or switch opponents.", comment: "")
         }
-        return "\(filteredSessions.count) sessions currently visible. \(syncSubtitle)"
+        return HistoryCopy.historySummary(visibleCount: filteredSessions.count, syncSubtitle: syncSubtitle)
     }
 
     private var selectionSummaryText: String {
-        if selection.isEmpty {
-            return "Tap sessions to select them for deletion."
-        }
-        return "\(selection.count) session\(selection.count == 1 ? "" : "s") selected. Deleting removes them from History."
+        HistoryCopy.selectionSummary(count: selection.count)
     }
 
     private var emptyLibraryState: some View {
@@ -402,7 +400,7 @@ struct HistoryView: View {
                     .font(.caption)
                     .foregroundColor(Theme.muted)
                 Button("Clear filters") {
-                    opponentFilter = "All opponents"
+                    opponentFilter = allOpponentsLabel
                     searchText = ""
                     activePickerID = nil
                 }
@@ -432,12 +430,16 @@ struct HistoryView: View {
     }
 
     private func summaryPill(text: String, color: Color) -> some View {
-        Text(text)
+        Text(LocalizedStringKey(text))
             .font(.caption2.weight(.semibold))
             .foregroundColor(color)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
             .background(color.opacity(0.12))
             .clipShape(Capsule())
+    }
+
+    private var allOpponentsLabel: String {
+        NSLocalizedString("All opponents", comment: "")
     }
 }
