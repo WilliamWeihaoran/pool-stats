@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PoolStats Support</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0c0f16;
+      --panel: #151a24;
+      --panel-2: #1c2331;
+      --text: #f3f5fb;
+      --muted: #b8bfd3;
+      --accent: #7cc6ff;
+      --accent-2: #5ce0c5;
+      --border: rgba(255, 255, 255, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(92, 224, 197, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(124, 198, 255, 0.18), transparent 32%),
+        var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    main {
+      width: min(920px, calc(100% - 32px));
+      margin: 40px auto;
+      display: grid;
+      gap: 18px;
+    }
+
+    .hero,
+    .card {
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 28px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.24);
+    }
+
+    h1, h2, h3, p {
+      margin-top: 0;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 2.8rem);
+      line-height: 1.1;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      font-size: 1.25rem;
+      margin-bottom: 12px;
+    }
+
+    p, li {
+      color: var(--muted);
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(124, 198, 255, 0.18);
+      background: rgba(124, 198, 255, 0.1);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 18px;
+    }
+
+    .meta {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .contact {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(92, 224, 197, 0.08);
+      border: 1px solid rgba(92, 224, 197, 0.16);
+    }
+
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: var(--text);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <p class="meta">PoolStats Support</p>
+      <h1>Help for logging, stats, sync, and practice</h1>
+      <p>
+        PoolStats helps you log matches and drills, track goals, review history, and monitor progress
+        with CloudKit-backed sync and watch support. This page is the public support URL for the app.
+      </p>
+      <div class="pill-row">
+        <span class="pill">Match logging</span>
+        <span class="pill">Drill practice</span>
+        <span class="pill">Dashboard analytics</span>
+        <span class="pill">Goals</span>
+        <span class="pill">Cloud sync</span>
+        <span class="pill">Apple Watch companion</span>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>Quick fixes</h2>
+        <ul>
+          <li>If your sessions do not appear right away, open the app again and give CloudKit a moment to sync.</li>
+          <li>If history looks stale, check the sync status chip in History and confirm iCloud is available on the device.</li>
+          <li>If you changed language settings, relaunch the app after switching between English, Simplified Chinese, or Follow System.</li>
+          <li>If watch activity looks out of date, reopen the phone app so the watch and phone can exchange the latest state.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Common questions</h2>
+        <ul>
+          <li><strong>Do I need an account?</strong> No. CloudKit sync uses your iCloud identity. Sign in with Apple is optional profile linking.</li>
+          <li><strong>Can I log practice and matches?</strong> Yes. PoolStats supports both full match logging and drill-based practice sessions.</li>
+          <li><strong>Does the app work offline?</strong> Yes. The app keeps a local cache and syncs when CloudKit becomes available again.</li>
+          <li><strong>Can I share sessions?</strong> Yes. Friend, profile, and match-sharing features are optional.</li>
+        </ul>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>What PoolStats includes</h2>
+        <ul>
+          <li>Rack-by-rack match logging with break, layout, errors, and result tracking.</li>
+          <li>Drill library with skill filtering, difficulty progression, and attempt tracking.</li>
+          <li>Dashboard analytics for recent form, activity, runout and conversion trends, and error composition.</li>
+          <li>Goals, opponent tracking, history review, and social sharing tools.</li>
+          <li>Apple Watch support for quick logging and live session workflows.</li>
+        </ul>
+      </article>
+
+      <article class="card">
+        <h2>Privacy and data</h2>
+        <p>
+          PoolStats stores your session data locally and can sync it with CloudKit through your iCloud account.
+          Social profile and sharing features are optional.
+        </p>
+        <p>
+          Read the full <a href="./privacy-policy.html">Privacy Policy</a>.
+        </p>
+      </article>
+    </section>
+
+    <section class="card">
+      <h2>Contact support</h2>
+      <div class="contact">
+        <p>
+          Replace this line with your real support contact before publishing:
+          <code>support-email@example.com</code>
+        </p>
+        <p class="meta">
+          Tip: once this page is hosted, use the hosted URL in App Store Connect as the app’s Support URL.
+        </p>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -96,6 +96,10 @@
 		AAAABBBBCCCCDDDD00000016 /* WatchPhoneSnapshotTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAAABBBBCCCCDDDD00000006 /* WatchPhoneSnapshotTransport.swift */; };
 		AA1000020000000000000001 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000011 /* Assets.xcassets */; };
 		C1A2B3C4D5E6F708192A3B4C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C1A2B3C4D5E6F708192A3B4D /* Localizable.strings */; };
+		D1E2F301A1B2C3D4E5F60701 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D1E2F301A1B2C3D4E5F60801 /* PrivacyInfo.xcprivacy */; };
+		D1E2F301A1B2C3D4E5F60702 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D1E2F301A1B2C3D4E5F60802 /* PrivacyInfo.xcprivacy */; };
+		D1E2F301A1B2C3D4E5F60703 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D1E2F301A1B2C3D4E5F60802 /* PrivacyInfo.xcprivacy */; };
+		D1E2F301A1B2C3D4E5F60704 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D1E2F301A1B2C3D4E5F60802 /* PrivacyInfo.xcprivacy */; };
 		AB1000010000000000000001 /* GoalMetricTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000001 /* GoalMetricTests.swift */; };
 		AB1000010000000000000002 /* GoalWindowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000002 /* GoalWindowTests.swift */; };
 		AB1000010000000000000003 /* DrillSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000003 /* DrillSessionTests.swift */; };
@@ -198,6 +202,8 @@
 		AA2000010000000000000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA2000010000000000000012 /* Resources/Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Resources/Info.plist; sourceTree = "<group>"; };
 		AA2000010000000000000013 /* PoolStats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = PoolStats.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D1E2F301A1B2C3D4E5F60801 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		D1E2F301A1B2C3D4E5F60802 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA2000010000000000000014 /* SampleData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleData.swift; sourceTree = "<group>"; };
 		AA2000010000000000000015 /* LogStartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStartView.swift; sourceTree = "<group>"; };
 		AA2000010000000000000016 /* LogActiveView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogActiveView.swift; sourceTree = "<group>"; };
@@ -355,6 +361,7 @@
 				5A41B497ECE1C81D983FA4AA /* WatchApp-Info.plist */,
 				B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */,
 				4E5534E7B76A00C357B30B0E /* WatchComplicationState.swift */,
+				D1E2F301A1B2C3D4E5F60802 /* PrivacyInfo.xcprivacy */,
 				FAA5765BC3D4AB7AD4B7CAFC /* PoolStatsWatchExtension.entitlements */,
 			);
 			path = Watch;
@@ -493,6 +500,7 @@
 			children = (
 				AA2000010000000000000011 /* Assets.xcassets */,
 				C1A2B3C4D5E6F708192A3B4D /* Localizable.strings */,
+				D1E2F301A1B2C3D4E5F60801 /* PrivacyInfo.xcprivacy */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -661,6 +669,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				WA1000010000000000000001 /* Assets.xcassets in Resources */,
+				D1E2F301A1B2C3D4E5F60702 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -668,6 +677,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1E2F301A1B2C3D4E5F60704 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -677,6 +687,7 @@
 			files = (
 				AA1000020000000000000001 /* Assets.xcassets in Resources */,
 				C1A2B3C4D5E6F708192A3B4C /* Localizable.strings in Resources */,
+				D1E2F301A1B2C3D4E5F60701 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -691,6 +702,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D1E2F301A1B2C3D4E5F60703 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
