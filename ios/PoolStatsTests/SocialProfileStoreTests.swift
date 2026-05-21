@@ -1,6 +1,7 @@
 import XCTest
 @testable import PoolStats
 
+@MainActor
 final class SocialProfileStoreTests: XCTestCase {
     func testFriendCodeNormalizationAcceptsCommonInputFormats() {
         XCTAssertEqual(SocialProfileStore.normalizeFriendCode("abc123"), "PS-ABC-123")
@@ -89,6 +90,22 @@ final class SocialProfileStoreTests: XCTestCase {
         XCTAssertEqual(first, second)
         XCTAssertNotEqual(first, different)
         XCTAssertGreaterThan(first, 0)
+    }
+
+    func testDisplayNameModerationBlocksObviousProfanityAndLeetspeak() {
+        XCTAssertTrue(SocialProfileStore.isAllowedPublicDisplayName("William"))
+        XCTAssertFalse(SocialProfileStore.isAllowedPublicDisplayName("bad shit"))
+        XCTAssertFalse(SocialProfileStore.isAllowedPublicDisplayName("f4gg0t"))
+        XCTAssertFalse(SocialProfileStore.isAllowedPublicDisplayName("s.h.1.t"))
+        XCTAssertFalse(SocialProfileStore.isAllowedPublicDisplayName("S h i t"))
+        XCTAssertFalse(SocialProfileStore.isAllowedPublicDisplayName("   "))
+    }
+
+    func testPresentableDisplayNameRedactsUnsafeNames() {
+        let store = SocialProfileStore()
+
+        XCTAssertEqual(store.presentableDisplayName("clean name"), "clean name")
+        XCTAssertEqual(store.presentableDisplayName("sh1t talk"), "Hidden player")
     }
 
     private func makePublicProfile(name: String, code: String) -> PublicPlayerProfile {

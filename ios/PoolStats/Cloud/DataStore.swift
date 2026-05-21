@@ -21,17 +21,15 @@ final class DataStore: ObservableObject {
 
     private let service = SessionService()
     private let seedFlagKey = "didSeedSampleData"
-    private let localURL: URL
-    private let deletedSessionIDsURL: URL
+    private let suppressAutoSeedKey = "suppressAutomaticSampleSeed"
+    private let localCache: LocalSessionCache
+    private let deletedSessionIDStore: DeletedSessionIDStore
     private var deletedSessionIDs: Set<Int64> = []
 
     init() {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
-        localURL = dir.appendingPathComponent("sessions.json")
-        deletedSessionIDsURL = dir.appendingPathComponent("deleted-session-ids.json")
-        loadDeletedSessionIDs()
+        localCache = LocalSessionCache()
+        deletedSessionIDStore = DeletedSessionIDStore()
+        deletedSessionIDs = deletedSessionIDStore.load()
         loadLocal()
         sessions.removeAll { deletedSessionIDs.contains($0.id) }
         syncStatus = sessions.isEmpty ? .loading : .localOnly("Loaded local cache")
@@ -81,6 +79,7 @@ final class DataStore: ObservableObject {
     func saveSession(_ session: Session) async {
         markSyncAttempt()
         syncStatus = .syncing
+        setAutoSeedSuppressed(false)
         do {
             try await service.saveSession(session)
             upsertSession(session)
@@ -173,8 +172,8 @@ final class DataStore: ObservableObject {
         }
     }
 
-    func exportJSON() -> Data? {
-        JSONTransfer.exportSessions(sessions)
+    func exportJSON() throws -> Data {
+        try JSONTransfer.exportSessions(sessions)
     }
 
     func importJSON(_ data: Data) async {
@@ -186,15 +185,17 @@ final class DataStore: ObservableObject {
             syncStatus = .synced
             markSyncSuccess()
         } catch {
-            lastError = error.localizedDescription
-            syncStatus = .error("Import failed")
-            markSyncFailure("Import failed")
+            let message = error.localizedDescription
+            lastError = message
+            syncStatus = .error(message)
+            markSyncFailure(message)
         }
     }
 
     func restoreSampleData() async {
         markSyncAttempt()
         let sample = SampleData.makeSessions()
+        setAutoSeedSuppressed(false)
         do {
             let existingIDs = existingIDsIncludingPendingDeletes()
             try await service.replaceAllSessions(existingIDs: existingIDs, with: sample)
@@ -216,6 +217,27 @@ final class DataStore: ObservableObject {
         }
     }
 
+    func deleteAllUserDataForAccountDeletion() async throws {
+        markSyncAttempt()
+        syncStatus = .syncing
+
+        let knownIDs = existingIDsIncludingPendingDeletes()
+        do {
+            try await service.deleteAllUserData(knownSessionIDs: knownIDs)
+            clearLocalDataForAccountDeletion()
+            lastError = nil
+            syncStatus = .synced
+            markSyncSuccess()
+        } catch {
+            clearLocalDataForAccountDeletion()
+            let message = NSLocalizedString("Deleted local session history. iCloud cleanup failed.", comment: "")
+            lastError = message
+            syncStatus = .localOnly(message)
+            markSyncFailure(message)
+            throw error
+        }
+    }
+
     private func replaceAllSessions(_ newSessions: [Session]) async throws {
         let existingIDs = existingIDsIncludingPendingDeletes()
         try await service.replaceAllSessions(existingIDs: existingIDs, with: newSessions)
@@ -226,6 +248,7 @@ final class DataStore: ObservableObject {
 
     private func seedIfNeeded() async {
         guard sessions.isEmpty else { return }
+        if UserDefaults.standard.bool(forKey: suppressAutoSeedKey) { return }
         if UserDefaults.standard.bool(forKey: seedFlagKey) { return }
         let sample = SampleData.makeSessions()
         do {
@@ -242,6 +265,7 @@ final class DataStore: ObservableObject {
 
     private func seedFallback() async {
         guard sessions.isEmpty else { return }
+        if UserDefaults.standard.bool(forKey: suppressAutoSeedKey) { return }
         if UserDefaults.standard.bool(forKey: seedFlagKey) { return }
         sessions = SampleData.makeSessions()
         saveLocal()
@@ -250,40 +274,29 @@ final class DataStore: ObservableObject {
     }
 
     private func loadLocal() {
-        guard let data = try? Data(contentsOf: localURL) else { return }
-        if let loaded = try? JSONTransfer.importSessions(data) {
-            sessions = loaded
-        }
+        sessions = localCache.loadSessions()
     }
 
     private func saveLocal() {
-        guard let data = JSONTransfer.exportSessions(sessions) else { return }
-        let dir = localURL.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try? data.write(to: localURL, options: .atomic)
-    }
-
-    private func loadDeletedSessionIDs() {
-        guard let data = try? Data(contentsOf: deletedSessionIDsURL),
-              let ids = try? JSONDecoder().decode([Int64].self, from: data) else { return }
-        deletedSessionIDs = Set(ids)
+        localCache.saveSessions(sessions)
     }
 
     private func saveDeletedSessionIDs() {
-        let dir = deletedSessionIDsURL.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        guard !deletedSessionIDs.isEmpty else {
-            try? FileManager.default.removeItem(at: deletedSessionIDsURL)
-            return
-        }
-        let ids = Array(deletedSessionIDs).sorted()
-        guard let data = try? JSONEncoder().encode(ids) else { return }
-        try? data.write(to: deletedSessionIDsURL, options: .atomic)
+        deletedSessionIDStore.save(deletedSessionIDs)
     }
 
     private func clearDeletedSessionIDs() {
         deletedSessionIDs.removeAll()
         saveDeletedSessionIDs()
+    }
+
+    private func clearLocalDataForAccountDeletion() {
+        sessions = []
+        clearDeletedSessionIDs()
+        setAutoSeedSuppressed(true)
+        localCache.clear()
+        lastSyncSuccessAt = nil
+        lastSyncFailureReason = nil
     }
 
     private func retryPendingCloudDeletes() async {
@@ -336,5 +349,9 @@ final class DataStore: ObservableObject {
 
     private func markSyncFailure(_ reason: String) {
         lastSyncFailureReason = reason
+    }
+
+    private func setAutoSeedSuppressed(_ suppressed: Bool) {
+        UserDefaults.standard.set(suppressed, forKey: suppressAutoSeedKey)
     }
 }

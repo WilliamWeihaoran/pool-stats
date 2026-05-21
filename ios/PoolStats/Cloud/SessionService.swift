@@ -27,4 +27,8 @@ final class SessionService {
             try await cloud.saveSession(s)
         }
     }
+
+    func deleteAllUserData(knownSessionIDs: [Int64]) async throws {
+        try await cloud.deleteAllUserData(knownSessionIDs: knownSessionIDs)
+    }
 }

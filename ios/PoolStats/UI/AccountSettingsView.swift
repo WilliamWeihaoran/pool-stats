@@ -3,31 +3,44 @@ import AuthenticationServices
 
 struct AccountSettingsView: View {
     @EnvironmentObject private var authStore: AuthStore
+    @EnvironmentObject private var store: DataStore
+    @EnvironmentObject private var socialProfileStore: SocialProfileStore
+
+    @State private var showDeleteConfirmation = false
+
+    private var canDeleteAccount: Bool {
+        authStore.isSignedIn || socialProfileStore.profile != nil
+    }
+
+    private var isDeletingAccount: Bool {
+        if case .deleting = socialProfileStore.accountDeletionState { return true }
+        return false
+    }
 
     var body: some View {
         SectionCard(title: "Account") {
             VStack(alignment: .leading, spacing: 10) {
-                infoRow(label: "Data sync", value: "iCloud account")
-                infoRow(label: "Profile link", value: "Sign in with Apple")
+                infoRow(label: NSLocalizedString("Data sync", comment: ""), value: NSLocalizedString("iCloud account", comment: ""))
+                infoRow(label: NSLocalizedString("Profile link", comment: ""), value: NSLocalizedString("Sign in with Apple", comment: ""))
 
                 HStack(spacing: 6) {
                     Image(systemName: authStore.isSignedIn ? "checkmark.circle.fill" : "minus.circle.fill")
                         .foregroundColor(authStore.isSignedIn ? Theme.green : Theme.text2)
                         .font(.caption)
-                    Text(authStore.isSignedIn ? "Auth linked" : "Not linked")
+                    Text(authStore.isSignedIn ? NSLocalizedString("Auth linked", comment: "") : NSLocalizedString("Not linked", comment: ""))
                         .font(.caption.weight(.semibold))
                         .foregroundColor(Theme.text2)
                 }
 
                 if authStore.isSignedIn {
-                    infoRow(label: "Email", value: authStore.email ?? "—")
-                    infoRow(label: "Apple ID", value: authStore.maskedUserID)
-                    infoRow(label: "Last linked", value: authStore.lastAuthDate.map(AppFormatters.sessionDate) ?? "—")
+                    infoRow(label: NSLocalizedString("Email", comment: ""), value: authStore.email ?? "—")
+                    infoRow(label: NSLocalizedString("Apple ID", comment: ""), value: authStore.maskedUserID)
+                    infoRow(label: NSLocalizedString("Last linked", comment: ""), value: authStore.lastAuthDate.map(AppFormatters.sessionDate) ?? "—")
 
                     Button(role: .destructive) {
                         authStore.signOutLocal()
                     } label: {
-                        Text("Sign out")
+                        Text(NSLocalizedString("Sign out", comment: ""))
                             .font(.subheadline.weight(.semibold))
                             .frame(maxWidth: .infinity)
                     }
@@ -45,11 +58,60 @@ struct AccountSettingsView: View {
                     .cornerRadius(10)
                 }
 
+                if canDeleteAccount {
+                    Text(NSLocalizedString("Deleting the account removes the linked Sign in with Apple profile, public friend code profile, saved friends, shared match records, and session history from this device and iCloud.", comment: ""))
+                        .font(.caption)
+                        .foregroundColor(Theme.muted)
+
+                    Button(role: .destructive) {
+                        showDeleteConfirmation = true
+                    } label: {
+                        HStack(spacing: 8) {
+                            if isDeletingAccount {
+                                ProgressView()
+                                    .tint(Theme.text)
+                            }
+                            Text(isDeletingAccount ? NSLocalizedString("Deleting account…", comment: "") : NSLocalizedString("Delete account", comment: ""))
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.red)
+                    .disabled(isDeletingAccount)
+                }
+
+                switch socialProfileStore.accountDeletionState {
+                case .idle, .deleting:
+                    EmptyView()
+                case .deleted:
+                    Text(NSLocalizedString("Account deleted.", comment: ""))
+                        .font(.caption)
+                        .foregroundColor(Theme.green)
+                case .failed(let message):
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(Theme.amber)
+                }
+
                 if let error = authStore.lastError, !error.isEmpty {
                     Text(error)
                         .font(.caption)
                         .foregroundColor(Theme.amber)
                 }
+            }
+        }
+        .alert(NSLocalizedString("Delete account?", comment: ""), isPresented: $showDeleteConfirmation) {
+            Button(NSLocalizedString("Cancel", comment: ""), role: .cancel) {}
+            Button(NSLocalizedString("Delete", comment: ""), role: .destructive) {
+                Task { await deleteAccount() }
+            }
+        } message: {
+            Text(NSLocalizedString("This removes your linked Apple sign-in metadata, public profile, saved friends, shared match records, and session history.", comment: ""))
+        }
+        .onChange(of: authStore.isSignedIn) { isSignedIn in
+            if isSignedIn {
+                socialProfileStore.resetAccountDeletionState()
             }
         }
     }
@@ -63,6 +125,28 @@ struct AccountSettingsView: View {
             Text(value)
                 .font(.caption.weight(.medium))
                 .foregroundColor(Theme.text)
+        }
+    }
+
+    private func deleteAccount() async {
+        var firstError: Error?
+
+        do {
+            try await store.deleteAllUserDataForAccountDeletion()
+        } catch {
+            firstError = error
+        }
+
+        do {
+            try await socialProfileStore.deleteAccountData()
+        } catch {
+            if firstError == nil { firstError = error }
+        }
+
+        if let _ = firstError {
+            authStore.lastError = NSLocalizedString("Account deletion could not finish. Please try again when iCloud is available.", comment: "")
+        } else {
+            authStore.signOutLocal()
         }
     }
 }

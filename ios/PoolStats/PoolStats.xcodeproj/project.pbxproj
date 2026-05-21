@@ -23,6 +23,9 @@
 		AA1000010000000000000004 /* Filters.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000004 /* Filters.swift */; };
 		AA1000010000000000000005 /* Rack.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000005 /* Rack.swift */; };
 		AA1000010000000000000006 /* JSONTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000006 /* JSONTransfer.swift */; };
+		BA1000010000000000000001 /* DashboardImportExportSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2000010000000000000001 /* DashboardImportExportSupport.swift */; };
+		BA1000010000000000000002 /* LocalSessionPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2000010000000000000002 /* LocalSessionPersistence.swift */; };
+		BA1000010000000000000003 /* JSONTransferPayloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2000010000000000000003 /* JSONTransferPayloads.swift */; };
 		AA1000010000000000000007 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000007 /* Session.swift */; };
 		AA1000010000000000000008 /* Analytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000008 /* Analytics.swift */; };
 		AA1000010000000000000009 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000009 /* Components.swift */; };
@@ -189,6 +192,9 @@
 		AA2000010000000000000004 /* Filters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Filters.swift; sourceTree = "<group>"; };
 		AA2000010000000000000005 /* Rack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rack.swift; sourceTree = "<group>"; };
 		AA2000010000000000000006 /* JSONTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONTransfer.swift; sourceTree = "<group>"; };
+		BA2000010000000000000001 /* DashboardImportExportSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardImportExportSupport.swift; sourceTree = "<group>"; };
+		BA2000010000000000000002 /* LocalSessionPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSessionPersistence.swift; sourceTree = "<group>"; };
+		BA2000010000000000000003 /* JSONTransferPayloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONTransferPayloads.swift; sourceTree = "<group>"; };
 		AA2000010000000000000007 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		AA2000010000000000000008 /* Analytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analytics.swift; sourceTree = "<group>"; };
 		AA2000010000000000000009 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
@@ -410,6 +416,7 @@
 			children = (
 				AA2000010000000000000002 /* CloudKitStore.swift */,
 				AA2000010000000000000003 /* DataStore.swift */,
+				BA2000010000000000000002 /* LocalSessionPersistence.swift */,
 				AA2000010000000000000045 /* WatchSyncStore.swift */,
 				AAAABBBBCCCCDDDD00000006 /* WatchPhoneSnapshotTransport.swift */,
 				AA200001000000000000002F /* SessionLogStore.swift */,
@@ -427,6 +434,7 @@
 				AA2000010000000000000004 /* Filters.swift */,
 				AA2000010000000000000005 /* Rack.swift */,
 				AA2000010000000000000006 /* JSONTransfer.swift */,
+				BA2000010000000000000003 /* JSONTransferPayloads.swift */,
 				AA2000010000000000000007 /* Session.swift */,
 				AA2000010000000000000008 /* Analytics.swift */,
 				AA2000010000000000000017 /* AnalyticsTrend.swift */,
@@ -467,6 +475,7 @@
 				AA2000010000000000000031 /* OnboardingFlowView.swift */,
 				AA200001000000000000000F /* SummaryView.swift */,
 				AA2000010000000000000010 /* DashboardView.swift */,
+				BA2000010000000000000001 /* DashboardImportExportSupport.swift */,
 				AA200001000000000000003D /* DashboardSupportViews.swift */,
 				AA2000010000000000000021 /* GoalsView.swift */,
 				AA2000010000000000000038 /* DrillsView.swift */,
@@ -787,11 +796,13 @@
 				AA1000010000000000000001 /* PoolStatsApp.swift in Sources */,
 				AA1000010000000000000002 /* CloudKitStore.swift in Sources */,
 				AA1000010000000000000003 /* DataStore.swift in Sources */,
+				BA1000010000000000000002 /* LocalSessionPersistence.swift in Sources */,
 				AA1000010000000000000045 /* WatchSyncStore.swift in Sources */,
 				AAAABBBBCCCCDDDD00000016 /* WatchPhoneSnapshotTransport.swift in Sources */,
 				AA1000010000000000000004 /* Filters.swift in Sources */,
 				AA1000010000000000000005 /* Rack.swift in Sources */,
 				AA1000010000000000000006 /* JSONTransfer.swift in Sources */,
+				BA1000010000000000000003 /* JSONTransferPayloads.swift in Sources */,
 				AA1000010000000000000007 /* Session.swift in Sources */,
 				AA1000010000000000000008 /* Analytics.swift in Sources */,
 				AA1000010000000000000009 /* Components.swift in Sources */,
@@ -804,6 +815,7 @@
 				AA100001000000000000000E /* RootView.swift in Sources */,
 				AA100001000000000000000F /* SummaryView.swift in Sources */,
 				AA1000010000000000000010 /* DashboardView.swift in Sources */,
+				BA1000010000000000000001 /* DashboardImportExportSupport.swift in Sources */,
 				AA1000010000000000000011 /* SampleData.swift in Sources */,
 				AA1000010000000000000014 /* AnalyticsTrend.swift in Sources */,
 				AA1000010000000000000015 /* AnalyticsMistakes.swift in Sources */,
@@ -915,7 +927,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 16;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
@@ -941,7 +953,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 16;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -971,7 +983,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -994,7 +1006,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -1017,7 +1029,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchComplications/Info.plist;
@@ -1049,7 +1061,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 16;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				ENABLE_TESTABILITY = YES;
@@ -1080,7 +1092,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 16;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1186,7 +1198,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";

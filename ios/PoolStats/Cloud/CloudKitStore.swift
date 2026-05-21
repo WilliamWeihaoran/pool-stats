@@ -130,18 +130,22 @@ final class CloudKitStore {
 
     func deleteSessions(_ sessionIDs: [Int64]) async throws {
         let recordIDs = sessionIDs.map { CKRecord.ID(recordName: String($0)) }
-        let op = CKModifyRecordsOperation(recordsToSave: nil, recordIDsToDelete: recordIDs)
-        try await withCheckedThrowingContinuation { cont in
-            op.modifyRecordsResultBlock = { result in
-                switch result {
-                case .success:
-                    cont.resume()
-                case .failure(let error):
-                    cont.resume(throwing: error)
-                }
-            }
-            db.add(op)
-        }
+        try await deleteRecordIDs(recordIDs)
+    }
+
+    func deleteAllUserData(knownSessionIDs: [Int64] = []) async throws {
+        let sessionRecords = try await fetchAllRecords(
+            query: CKQuery(recordType: RecordKeys.session, predicate: NSPredicate(value: true))
+        )
+        let rackRecords = try await fetchAllRecords(
+            query: CKQuery(recordType: RecordKeys.rack, predicate: NSPredicate(value: true))
+        )
+
+        var recordIDs = Set(sessionRecords.map(\.recordID))
+        recordIDs.formUnion(rackRecords.map(\.recordID))
+        recordIDs.formUnion(knownSessionIDs.map { CKRecord.ID(recordName: String($0)) })
+
+        try await deleteRecordIDs(Array(recordIDs))
     }
 
     private func fetchAllRecords(query: CKQuery) async throws -> [CKRecord] {
@@ -178,6 +182,26 @@ final class CloudKitStore {
                 }
             }
             db.add(op)
+        }
+    }
+
+    private func deleteRecordIDs(_ recordIDs: [CKRecord.ID]) async throws {
+        guard !recordIDs.isEmpty else { return }
+
+        for batch in stride(from: 0, to: recordIDs.count, by: 200) {
+            let slice = Array(recordIDs[batch..<min(batch + 200, recordIDs.count)])
+            let op = CKModifyRecordsOperation(recordsToSave: nil, recordIDsToDelete: slice)
+            try await withCheckedThrowingContinuation { cont in
+                op.modifyRecordsResultBlock = { result in
+                    switch result {
+                    case .success:
+                        cont.resume()
+                    case .failure(let error):
+                        cont.resume(throwing: error)
+                    }
+                }
+                db.add(op)
+            }
         }
     }
 

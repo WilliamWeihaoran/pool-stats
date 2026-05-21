@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct FriendsSettingsView: View {
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var profileStore: PlayerProfileStore
     @EnvironmentObject private var socialProfileStore: SocialProfileStore
     @EnvironmentObject private var store: DataStore
@@ -37,6 +38,8 @@ struct FriendsSettingsView: View {
                 ) {
                     friendLookupSection
                     friendsListSection
+                    blockedPlayersSection
+                    communitySafetySection
                 }
 
                 socialPanel(
@@ -127,9 +130,15 @@ struct FriendsSettingsView: View {
         case .found(let found):
             HStack(spacing: 10) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(found.displayName)
+                    Text(socialProfileStore.presentableDisplayName(found.displayName))
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(Theme.text)
+                    if socialProfileStore.shouldHideDisplayName(found.displayName) {
+                        Text("Name hidden for safety. You can report or block this profile.")
+                            .font(.caption2)
+                            .foregroundColor(Theme.amber)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                     Text(found.friendCode)
                         .font(.caption2.monospaced())
                         .foregroundColor(Theme.muted)
@@ -150,11 +159,28 @@ struct FriendsSettingsView: View {
                         .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.green.opacity(0.5), lineWidth: 0.7))
                 }
                 .buttonStyle(.plain)
+                .disabled(socialProfileStore.shouldHideDisplayName(found.displayName))
+
+                moderationMenu(
+                    displayName: found.displayName,
+                    friendCode: found.friendCode,
+                    reportReason: "Public profile display name or friend sharing account"
+                ) {
+                    socialProfileStore.block(publicProfile: found)
+                }
             }
             .padding(10)
             .background(Theme.panel2)
             .cornerRadius(10)
-            .overlay(RoundedRectangle(cornerRadius: 10).stroke(Theme.teal.opacity(0.35), lineWidth: 0.7))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(
+                        socialProfileStore.shouldHideDisplayName(found.displayName)
+                            ? Theme.amber.opacity(0.5)
+                            : Theme.teal.opacity(0.35),
+                        lineWidth: 0.7
+                    )
+            )
         case .added(let friend):
             HStack(spacing: 8) {
                 Image(systemName: "checkmark.circle.fill")
@@ -214,16 +240,21 @@ struct FriendsSettingsView: View {
                 .fill(Theme.teal.opacity(0.18))
                 .frame(width: 34, height: 34)
                 .overlay(
-                    Text(friend.displayName.prefix(1).uppercased())
+                    Text(socialProfileStore.presentableDisplayName(friend.displayName).prefix(1).uppercased())
                         .font(.caption.weight(.bold))
                         .foregroundColor(Theme.teal)
                 )
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(friend.displayName)
+                Text(socialProfileStore.presentableDisplayName(friend.displayName))
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(Theme.text)
                     .lineLimit(1)
+                if socialProfileStore.shouldHideDisplayName(friend.displayName) {
+                    Text("Name hidden for safety.")
+                        .font(.caption2)
+                        .foregroundColor(Theme.amber)
+                }
                 Text(friend.friendCode)
                     .font(.caption2.monospaced())
                     .foregroundColor(Theme.muted)
@@ -232,11 +263,20 @@ struct FriendsSettingsView: View {
             Spacer(minLength: 0)
 
             Button {
-                opponentStore.addOpponent(name: friend.displayName)
+                opponentStore.addOpponent(name: socialProfileStore.presentableDisplayName(friend.displayName))
             } label: {
                 actionChip(label: "Add", systemName: "person.badge.plus", color: Theme.green)
             }
             .buttonStyle(.plain)
+            .disabled(socialProfileStore.shouldHideDisplayName(friend.displayName))
+
+            moderationMenu(
+                displayName: friend.displayName,
+                friendCode: friend.friendCode,
+                reportReason: "Saved friend profile or shared-match contact"
+            ) {
+                socialProfileStore.block(friend: friend)
+            }
 
             Button {
                 socialProfileStore.removeFriend(friendCode: friend.friendCode)
@@ -249,6 +289,83 @@ struct FriendsSettingsView: View {
         .background(Theme.panel2)
         .cornerRadius(12)
         .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+    }
+
+    @ViewBuilder
+    private var blockedPlayersSection: some View {
+        if !socialProfileStore.blockedPlayers.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Blocked players")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(Theme.text2)
+
+                VStack(spacing: 8) {
+                    ForEach(socialProfileStore.blockedPlayers) { blocked in
+                        HStack(spacing: 10) {
+                            Circle()
+                                .fill(Theme.red.opacity(0.14))
+                                .frame(width: 34, height: 34)
+                                .overlay(
+                                    Image(systemName: "hand.raised.fill")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundColor(Theme.red)
+                                )
+
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(socialProfileStore.presentableDisplayName(blocked.displayName))
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(Theme.text)
+                                Text(blocked.friendCode)
+                                    .font(.caption2.monospaced())
+                                    .foregroundColor(Theme.muted)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            Button {
+                                socialProfileStore.unblock(friendCode: blocked.friendCode)
+                            } label: {
+                                actionChip(label: "Unblock", systemName: "hand.raised.slash", color: Theme.teal)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(10)
+                        .background(Theme.panel2)
+                        .cornerRadius(12)
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.border, lineWidth: 0.5))
+                    }
+                }
+            }
+        }
+    }
+
+    private var communitySafetySection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Community safety")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(Theme.text2)
+
+            Text("Use the Safety menu on profiles and shared matches to report or block abusive players. Reports go straight to support for review.")
+                .font(.caption2)
+                .foregroundColor(Theme.muted)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 8) {
+                Button {
+                    openSupportWebsite()
+                } label: {
+                    actionChip(label: "Support Website", systemName: "safari", color: Theme.teal)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    emailSupport()
+                } label: {
+                    actionChip(label: "Email Support", systemName: "envelope", color: Theme.purple)
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     private var incomingMatchSharesSection: some View {
@@ -364,40 +481,65 @@ struct FriendsSettingsView: View {
     }
 
     private func outgoingShareRow(_ share: OutgoingMatchShare) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(outgoingShareAccent(share).opacity(0.16))
-                .frame(width: 34, height: 34)
-                .overlay(
-                    Image(systemName: outgoingShareIcon(share))
-                        .font(.caption.weight(.black))
-                        .foregroundColor(outgoingShareAccent(share))
-                )
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top, spacing: 10) {
+                Circle()
+                    .fill(outgoingShareAccent(share).opacity(0.16))
+                    .frame(width: 34, height: 34)
+                    .overlay(
+                        Image(systemName: outgoingShareIcon(share))
+                            .font(.caption.weight(.black))
+                            .foregroundColor(outgoingShareAccent(share))
+                    )
 
-            VStack(alignment: .leading, spacing: 3) {
-                Text(share.recipientDisplayName)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Theme.text)
-                    .lineLimit(1)
-                Text(share.sessionLabel)
-                    .font(.caption2)
-                    .foregroundColor(Theme.text2)
-                    .lineLimit(1)
-                Text("\(AppFormatters.sessionDate(share.createdAt)) · \(share.scoreText)")
-                    .font(.caption2.monospacedDigit())
-                    .foregroundColor(Theme.muted)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(socialProfileStore.presentableDisplayName(share.recipientDisplayName))
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(Theme.text)
+                        .lineLimit(1)
+                    if socialProfileStore.shouldHideDisplayName(share.recipientDisplayName) {
+                        Text("Name hidden for safety.")
+                            .font(.caption2)
+                            .foregroundColor(Theme.amber)
+                    }
+                    Text(share.sessionLabel)
+                        .font(.caption2)
+                        .foregroundColor(Theme.text2)
+                        .lineLimit(1)
+                    Text("\(AppFormatters.sessionDate(share.createdAt)) · \(share.scoreText)")
+                        .font(.caption2.monospacedDigit())
+                        .foregroundColor(Theme.muted)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+
+                Text(outgoingShareStatusText(share))
+                    .font(.caption2.weight(.bold))
+                    .foregroundColor(outgoingShareAccent(share))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(outgoingShareAccent(share).opacity(0.12))
+                    .clipShape(Capsule())
             }
 
-            Spacer(minLength: 0)
+            if socialProfileStore.shouldHideDisplayName(share.recipientDisplayName) {
+                Text("Name hidden for safety. You can report or block this profile.")
+                    .font(.caption2)
+                    .foregroundColor(Theme.amber)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
-            Text(outgoingShareStatusText(share))
-                .font(.caption2.weight(.bold))
-                .foregroundColor(outgoingShareAccent(share))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(outgoingShareAccent(share).opacity(0.12))
-                .clipShape(Capsule())
+            HStack(spacing: 8) {
+                moderationMenu(
+                    displayName: share.recipientDisplayName,
+                    friendCode: share.recipientFriendCode,
+                    reportReason: "Outgoing shared match recipient or public profile"
+                ) {
+                    socialProfileStore.block(friendCode: share.recipientFriendCode, displayName: share.recipientDisplayName)
+                }
+                Spacer(minLength: 0)
+            }
         }
         .padding(10)
         .background(Theme.panel2)
@@ -418,10 +560,15 @@ struct FriendsSettingsView: View {
                     )
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(share.senderDisplayName)
+                    Text(socialProfileStore.presentableDisplayName(share.senderDisplayName))
                         .font(.subheadline.weight(.semibold))
                         .foregroundColor(Theme.text)
                         .lineLimit(1)
+                    if socialProfileStore.shouldHideDisplayName(share.senderDisplayName) {
+                        Text("Name hidden for safety.")
+                            .font(.caption2)
+                            .foregroundColor(Theme.amber)
+                    }
                     Text(share.sessionLabel)
                         .font(.caption2)
                         .foregroundColor(Theme.text2)
@@ -455,7 +602,9 @@ struct FriendsSettingsView: View {
                     Button {
                         Task {
                             await socialProfileStore.acceptIncomingShare(share, savingTo: store)
-                            opponentStore.addOpponent(name: share.senderDisplayName)
+                            if !socialProfileStore.shouldHideDisplayName(share.senderDisplayName) {
+                                opponentStore.addOpponent(name: share.senderDisplayName)
+                            }
                         }
                     } label: {
                         HStack(spacing: 6) {
@@ -501,6 +650,17 @@ struct FriendsSettingsView: View {
                     .buttonStyle(.plain)
                     .disabled(incomingShareIsBusy(share))
                 }
+            }
+
+            HStack(spacing: 8) {
+                moderationMenu(
+                    displayName: share.senderDisplayName,
+                    friendCode: share.senderFriendCode,
+                    reportReason: "Incoming shared match sender or public profile"
+                ) {
+                    socialProfileStore.block(share: share)
+                }
+                Spacer(minLength: 0)
             }
         }
         .padding(10)
@@ -615,6 +775,50 @@ struct FriendsSettingsView: View {
         if share.isDeclined { return "xmark" }
         if share.isFailed { return "exclamationmark" }
         return "paperplane.fill"
+    }
+
+    private func moderationMenu(
+        displayName: String,
+        friendCode: String,
+        reportReason: String,
+        blockAction: @escaping () -> Void
+    ) -> some View {
+        Menu {
+            Button {
+                reportProfile(displayName: displayName, friendCode: friendCode, reason: reportReason)
+            } label: {
+                Label("Report", systemImage: "exclamationmark.bubble")
+            }
+
+            Button(role: .destructive) {
+                blockAction()
+            } label: {
+                Label("Block", systemImage: "hand.raised.fill")
+            }
+        } label: {
+            actionChip(label: "Safety", systemName: "shield.lefthalf.filled", color: Theme.amber)
+        }
+    }
+
+    private func reportProfile(displayName: String, friendCode: String, reason: String) {
+        guard let url = socialProfileStore.reportEmailURL(
+            displayName: displayName,
+            friendCode: friendCode,
+            reason: reason
+        ) else {
+            return
+        }
+        openURL(url)
+    }
+
+    private func openSupportWebsite() {
+        guard let url = URL(string: "https://williamweihaoran.github.io/pool-stats/support.html") else { return }
+        openURL(url)
+    }
+
+    private func emailSupport() {
+        guard let url = URL(string: "mailto:william.weihaoran@gmail.com") else { return }
+        openURL(url)
     }
 
     private func socialPanel<Content: View>(

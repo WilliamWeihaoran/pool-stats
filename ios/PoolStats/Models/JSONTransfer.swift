@@ -1,288 +1,330 @@
 import Foundation
 
-struct SessionJSON: Codable {
-    var id: Int64
-    var sessionUUID: String?
-    var label: String
-    var opponent: String
-    var game: String
-    var raceTo: Int?
-    var type: String
-    var ts: Int64
-    var racks: [RackJSON]
-    var durationSeconds: Int?
-    var performanceRating: Int?
-    var drillID: String?
-    var drillTitle: String?
-    var drillKind: String?
-    var drillDifficulty: String?
-    var drillBallCount: Int?
-    var drillPrimarySkill: String?
-    var drillPrimarySkills: [String]?
-    var drillSubskills: [String]?
-    var drillSecondarySkills: [String]?
-    var drillTargetType: String?
-    var drillTargetCount: Int?
-}
-
-struct RackJSON: Codable {
-    var rackUUID: String?
-    var result: String?
-    var breaker: String
-    var breakBalls: Int
-    var breakFoul: Bool?
-    var layout: String
-    var outcome: String?
-    var fouls: Int
-    var badSafety: Int
-    var badPosition: Int
-    var patternCount: Int?
-    var missCount: Int
-    var runoutFirst: Bool
-    var breakAndRun: Bool
-    var drillOutcome: String?
-    var drillTags: [String]?
-    var drillNotes: String?
-    var drillBallsMade: Int?
-    var drillTargetBallCount: Int?
-    var drillDifficulty: String?
-}
-
-struct WebSessionJSON: Decodable {
-    var id: Int64
-    var label: String?
-    var opponent: String?
-    var game: String?
-    var type: String?
-    var ts: Int64?
-    var racks: [WebRackJSON]
-    var performanceRating: Int?
-}
-
-struct WebRackJSON: Decodable {
-    var result: String?
-    var breaker: String?
-    var breakBalls: Int?
-    var breakFoul: Bool?
-    var layout: String?
-    var outcome: String?
-    var fouls: Int?
-    var badSafety: Int?
-    var badPosition: Int?
-    var patternCount: Int?
-    var missCount: Int?
-    var runoutFirst: Bool?
-    var breakAndRun: Bool?
-
-    private enum CodingKeys: String, CodingKey {
-        case result, breaker, breakBalls, breakFoul, layout, outcome, fouls, badSafety, badPosition, patternCount, missCount, runoutFirst, breakAndRun
-    }
-
-    private enum LegacyCodingKeys: String, CodingKey {
-        case missEasy, missMed, missHard
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        result = try c.decodeIfPresent(String.self, forKey: .result)
-        breaker = try c.decodeIfPresent(String.self, forKey: .breaker)
-        breakBalls = try c.decodeIfPresent(Int.self, forKey: .breakBalls)
-        breakFoul = try c.decodeIfPresent(Bool.self, forKey: .breakFoul)
-        layout = try c.decodeIfPresent(String.self, forKey: .layout)
-        outcome = try c.decodeIfPresent(String.self, forKey: .outcome)
-        fouls = try c.decodeIfPresent(Int.self, forKey: .fouls)
-        badSafety = try c.decodeIfPresent(Int.self, forKey: .badSafety)
-        badPosition = try c.decodeIfPresent(Int.self, forKey: .badPosition)
-        patternCount = try c.decodeIfPresent(Int.self, forKey: .patternCount)
-        missCount = try c.decodeIfPresent(Int.self, forKey: .missCount)
-        if missCount == nil {
-            let legacy = try decoder.container(keyedBy: LegacyCodingKeys.self)
-            let easy = try legacy.decodeIfPresent(Int.self, forKey: .missEasy) ?? 0
-            let med = try legacy.decodeIfPresent(Int.self, forKey: .missMed) ?? 0
-            let hard = try legacy.decodeIfPresent(Int.self, forKey: .missHard) ?? 0
-            missCount = easy + med + hard
-        }
-        runoutFirst = try c.decodeIfPresent(Bool.self, forKey: .runoutFirst)
-        breakAndRun = try c.decodeIfPresent(Bool.self, forKey: .breakAndRun)
-    }
-
-    init(
-        result: String? = nil,
-        breaker: String? = nil,
-        breakBalls: Int? = nil,
-        breakFoul: Bool? = nil,
-        layout: String? = nil,
-        outcome: String? = nil,
-        fouls: Int? = nil,
-        badSafety: Int? = nil,
-        badPosition: Int? = nil,
-        patternCount: Int? = nil,
-        missCount: Int? = nil,
-        runoutFirst: Bool? = nil,
-        breakAndRun: Bool? = nil
-    ) {
-        self.result = result
-        self.breaker = breaker
-        self.breakBalls = breakBalls
-        self.breakFoul = breakFoul
-        self.layout = layout
-        self.outcome = outcome
-        self.fouls = fouls
-        self.badSafety = badSafety
-        self.badPosition = badPosition
-        self.patternCount = patternCount
-        self.missCount = missCount
-        self.runoutFirst = runoutFirst
-        self.breakAndRun = breakAndRun
-    }
-}
-
 struct JSONTransfer {
-    static func exportSessions(_ sessions: [Session]) -> Data? {
-        let payload = sessions.map { s in
-            SessionJSON(
-                id: s.id,
-                sessionUUID: s.sessionUUID,
-                label: s.label,
-                opponent: s.opponent,
-                game: s.game,
-                raceTo: s.raceTo,
-                type: s.type,
-                ts: Int64(s.ts.timeIntervalSince1970 * 1000),
-                racks: s.racks.map { r in
-                    RackJSON(
-                        rackUUID: r.rackUUID,
-                        result: r.result,
-                        breaker: r.breaker,
-                        breakBalls: r.breakBalls,
-                        breakFoul: r.breakFoul,
-                        layout: r.layout,
-                        outcome: r.outcome,
-                        fouls: r.fouls,
-                        badSafety: r.badSafety,
-                        badPosition: r.badPosition,
-                        patternCount: r.patternCount,
-                        missCount: r.missCount,
-                        runoutFirst: r.runoutFirst,
-                        breakAndRun: r.breakAndRun,
-                        drillOutcome: r.drillOutcome,
-                        drillTags: r.drillTags,
-                        drillNotes: r.drillNotes,
-                        drillBallsMade: r.drillBallsMade,
-                        drillTargetBallCount: r.drillTargetBallCount,
-                        drillDifficulty: r.drillDifficulty
-                    )
-                },
-                durationSeconds: s.durationSeconds,
-                performanceRating: s.performanceRating,
-                drillID: s.drillID,
-                drillTitle: s.drillTitle,
-                drillKind: s.drillKind,
-                drillDifficulty: s.drillDifficulty,
-                drillBallCount: s.drillBallCount,
-                drillPrimarySkill: s.drillPrimarySkill,
-                drillPrimarySkills: s.drillPrimarySkills,
-                drillSubskills: s.drillSubskills,
-                drillSecondarySkills: s.drillSecondarySkills,
-                drillTargetType: s.drillTargetType,
-                drillTargetCount: s.drillTargetCount
-            )
+    enum TransferError: LocalizedError {
+        case emptyFile
+        case noSessions
+        case invalidPayload
+
+        var errorDescription: String? {
+            switch self {
+            case .emptyFile:
+                return NSLocalizedString("The selected JSON file is empty.", comment: "")
+            case .noSessions:
+                return NSLocalizedString("The selected JSON file does not contain any sessions to import.", comment: "")
+            case .invalidPayload:
+                return NSLocalizedString("The selected file is not a supported Pool Stats export.", comment: "")
+            }
         }
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        return try? encoder.encode(payload)
+    }
+
+    static func exportSessions(_ sessions: [Session]) throws -> Data {
+        try JSONTransferExporter.exportSessions(sessions)
+    }
+
+    static func previewImportCount(_ data: Data) throws -> Int {
+        try JSONTransferImporter.previewImportCount(data)
     }
 
     static func importSessions(_ data: Data) throws -> [Session] {
-        let decoder = JSONDecoder()
-        if let payload = try? decoder.decode([SessionJSON].self, from: data) {
-            return payload.map { s in
-                let racks = s.racks.enumerated().map { idx, r in
-                    Rack(
-                        rackUUID: r.rackUUID ?? UUID().uuidString,
-                        index: idx + 1,
-                        result: r.result,
-                        breaker: r.breaker,
-                        breakBalls: r.breakBalls,
-                        breakFoul: r.breakFoul ?? false,
-                        layout: r.layout,
-                        outcome: r.outcome,
-                        fouls: r.fouls,
-                        badSafety: r.badSafety,
-                        badPosition: r.badPosition,
-                        patternCount: r.patternCount ?? 0,
-                        missCount: r.missCount,
-                        runoutFirst: r.runoutFirst,
-                        breakAndRun: r.breakAndRun,
-                        drillOutcome: r.drillOutcome,
-                        drillTags: r.drillTags,
-                        drillNotes: r.drillNotes,
-                        drillBallsMade: r.drillBallsMade,
-                        drillTargetBallCount: r.drillTargetBallCount,
-                        drillDifficulty: r.drillDifficulty
-                    )
-                }
-                return Session(
-                    id: s.id,
-                    sessionUUID: s.sessionUUID ?? "session-\(s.id)",
-                    label: s.label,
-                    opponent: s.opponent,
-                    game: s.game,
-                    raceTo: s.raceTo,
-                    type: s.type,
-                    ts: Date(timeIntervalSince1970: TimeInterval(s.ts) / 1000),
-                    racks: racks,
-                    durationSeconds: s.durationSeconds,
-                    performanceRating: s.performanceRating,
-                    drillID: s.drillID,
-                    drillTitle: s.drillTitle,
-                    drillKind: s.drillKind,
-                    drillDifficulty: s.drillDifficulty,
-                    drillBallCount: s.drillBallCount,
-                    drillPrimarySkill: s.drillPrimarySkill,
-                    drillPrimarySkills: s.drillPrimarySkills ?? [],
-                    drillSubskills: s.drillSubskills ?? [],
-                    drillSecondarySkills: s.drillSecondarySkills ?? [],
-                    drillTargetType: s.drillTargetType,
-                    drillTargetCount: s.drillTargetCount
+        try JSONTransferImporter.importSessions(data)
+    }
+}
+
+private enum JSONTransferExporter {
+    static func exportSessions(_ sessions: [Session]) throws -> Data {
+        let payload = sessions.map(sessionJSON(from:))
+        let envelope = JSONTransferEnvelope(
+            format: "pool-stats-export",
+            version: 2,
+            exportedAt: Int64(Date().timeIntervalSince1970 * 1000),
+            sessions: payload
+        )
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        return try encoder.encode(envelope)
+    }
+
+    private static func sessionJSON(from session: Session) -> SessionJSON {
+        SessionJSON(
+            id: session.id,
+            sessionUUID: session.sessionUUID,
+            label: session.label,
+            opponent: session.opponent,
+            game: session.game,
+            raceTo: session.raceTo,
+            type: session.type,
+            ts: Int64(session.ts.timeIntervalSince1970 * 1000),
+            racks: session.racks.map { rack in
+                RackJSON(
+                    rackUUID: rack.rackUUID,
+                    result: rack.result,
+                    breaker: rack.breaker,
+                    breakBalls: rack.breakBalls,
+                    breakFoul: rack.breakFoul,
+                    layout: rack.layout,
+                    outcome: rack.outcome,
+                    fouls: rack.fouls,
+                    badSafety: rack.badSafety,
+                    badPosition: rack.badPosition,
+                    patternCount: rack.patternCount,
+                    missCount: rack.missCount,
+                    runoutFirst: rack.runoutFirst,
+                    breakAndRun: rack.breakAndRun,
+                    drillOutcome: rack.drillOutcome,
+                    drillTags: rack.drillTags,
+                    drillNotes: rack.drillNotes,
+                    drillBallsMade: rack.drillBallsMade,
+                    drillTargetBallCount: rack.drillTargetBallCount,
+                    drillDifficulty: rack.drillDifficulty
                 )
-            }
+            },
+            durationSeconds: session.durationSeconds,
+            performanceRating: session.performanceRating,
+            drillID: session.drillID,
+            drillTitle: session.drillTitle,
+            drillKind: session.drillKind,
+            drillDifficulty: session.drillDifficulty,
+            drillBallCount: session.drillBallCount,
+            drillPrimarySkill: session.drillPrimarySkill,
+            drillPrimarySkills: session.drillPrimarySkills,
+            drillSubskills: session.drillSubskills,
+            drillSecondarySkills: session.drillSecondarySkills,
+            drillTargetType: session.drillTargetType,
+            drillTargetCount: session.drillTargetCount
+        )
+    }
+}
+
+private enum JSONTransferImporter {
+    static func previewImportCount(_ data: Data) throws -> Int {
+        try importSessions(data).count
+    }
+
+    static func importSessions(_ data: Data) throws -> [Session] {
+        guard !trimmedJSONPayload(from: data).isEmpty else {
+            throw JSONTransfer.TransferError.emptyFile
         }
 
-        let web = try decoder.decode([WebSessionJSON].self, from: data)
-        return web.map { s in
-            let racks = s.racks.enumerated().map { idx, r in
-                Rack(
-                    rackUUID: UUID().uuidString,
-                    index: idx + 1,
-                    result: r.result,
-                    breaker: r.breaker ?? "me",
-                    breakBalls: r.breakBalls ?? 0,
-                    breakFoul: r.breakFoul ?? false,
-                    layout: r.layout ?? "open",
-                    outcome: r.outcome,
-                    fouls: r.fouls ?? 0,
-                    badSafety: r.badSafety ?? 0,
-                    badPosition: r.badPosition ?? 0,
-                    patternCount: r.patternCount ?? 0,
-                    missCount: r.missCount ?? 0,
-                    runoutFirst: r.runoutFirst ?? false,
-                    breakAndRun: r.breakAndRun ?? false
-                )
-            }
-            let ts = s.ts.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
-            return Session(
-                id: s.id,
-                sessionUUID: "session-\(s.id)",
-                label: s.label ?? "",
-                opponent: s.opponent ?? "",
-                game: s.game ?? "8ball",
-                type: s.type ?? "match",
-                ts: ts,
-                racks: racks,
-                durationSeconds: nil,
-                performanceRating: s.performanceRating
+        let decoder = JSONDecoder()
+
+        if let envelope = try? decoder.decode(JSONTransferEnvelope.self, from: data) {
+            return try JSONTransferNormalizer.normalizeImportedSessions(envelope.sessions.map(session(from:)))
+        }
+
+        if let payload = try? decoder.decode([SessionJSON].self, from: data) {
+            return try JSONTransferNormalizer.normalizeImportedSessions(payload.map(session(from:)))
+        }
+
+        if let web = try? decoder.decode([WebSessionJSON].self, from: data) {
+            return try JSONTransferNormalizer.normalizeImportedSessions(web.map(session(from:)))
+        }
+
+        throw JSONTransfer.TransferError.invalidPayload
+    }
+
+    private static func trimmedJSONPayload(from data: Data) -> Data {
+        guard let string = String(data: data, encoding: .utf8) else { return data }
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        return Data(trimmed.utf8)
+    }
+
+    private static func session(from payload: SessionJSON) -> Session {
+        let racks = payload.racks.enumerated().map { idx, rack in
+            Rack(
+                rackUUID: rack.rackUUID ?? UUID().uuidString,
+                index: idx + 1,
+                result: rack.result,
+                breaker: rack.breaker,
+                breakBalls: rack.breakBalls,
+                breakFoul: rack.breakFoul ?? false,
+                layout: rack.layout,
+                outcome: rack.outcome,
+                fouls: rack.fouls,
+                badSafety: rack.badSafety,
+                badPosition: rack.badPosition,
+                patternCount: rack.patternCount ?? 0,
+                missCount: rack.missCount,
+                runoutFirst: rack.runoutFirst,
+                breakAndRun: rack.breakAndRun,
+                drillOutcome: rack.drillOutcome,
+                drillTags: rack.drillTags,
+                drillNotes: rack.drillNotes,
+                drillBallsMade: rack.drillBallsMade,
+                drillTargetBallCount: rack.drillTargetBallCount,
+                drillDifficulty: rack.drillDifficulty
             )
         }
+
+        return Session(
+            id: payload.id,
+            sessionUUID: payload.sessionUUID ?? "session-\(payload.id)",
+            label: payload.label,
+            opponent: payload.opponent,
+            game: payload.game,
+            raceTo: payload.raceTo,
+            type: payload.type,
+            ts: Date(timeIntervalSince1970: TimeInterval(payload.ts) / 1000),
+            racks: racks,
+            durationSeconds: payload.durationSeconds,
+            performanceRating: payload.performanceRating,
+            drillID: payload.drillID,
+            drillTitle: payload.drillTitle,
+            drillKind: payload.drillKind,
+            drillDifficulty: payload.drillDifficulty,
+            drillBallCount: payload.drillBallCount,
+            drillPrimarySkill: payload.drillPrimarySkill,
+            drillPrimarySkills: payload.drillPrimarySkills ?? [],
+            drillSubskills: payload.drillSubskills ?? [],
+            drillSecondarySkills: payload.drillSecondarySkills ?? [],
+            drillTargetType: payload.drillTargetType,
+            drillTargetCount: payload.drillTargetCount
+        )
+    }
+
+    private static func session(from payload: WebSessionJSON) -> Session {
+        let racks = payload.racks.enumerated().map { idx, rack in
+            Rack(
+                rackUUID: UUID().uuidString,
+                index: idx + 1,
+                result: rack.result,
+                breaker: rack.breaker ?? "me",
+                breakBalls: rack.breakBalls ?? 0,
+                breakFoul: rack.breakFoul ?? false,
+                layout: rack.layout ?? "open",
+                outcome: rack.outcome,
+                fouls: rack.fouls ?? 0,
+                badSafety: rack.badSafety ?? 0,
+                badPosition: rack.badPosition ?? 0,
+                patternCount: rack.patternCount ?? 0,
+                missCount: rack.missCount ?? 0,
+                runoutFirst: rack.runoutFirst ?? false,
+                breakAndRun: rack.breakAndRun ?? false
+            )
+        }
+        let ts = payload.ts.map { Date(timeIntervalSince1970: TimeInterval($0) / 1000) } ?? Date()
+        return Session(
+            id: payload.id,
+            sessionUUID: "session-\(payload.id)",
+            label: payload.label ?? "",
+            opponent: payload.opponent ?? "",
+            game: payload.game ?? "8ball",
+            type: payload.type ?? "match",
+            ts: ts,
+            racks: racks,
+            durationSeconds: nil,
+            performanceRating: payload.performanceRating
+        )
+    }
+}
+
+private enum JSONTransferNormalizer {
+    private static let supportedGames: Set<String> = ["8ball", "9ball"]
+    private static let supportedTypes: Set<String> = ["match", "practice"]
+    private static let supportedBreakers: Set<String> = ["me", "opp", "open", "none"]
+    private static let supportedLayouts: Set<String> = ["open", "clustered", "problematic", "snookered", "none"]
+    private static let supportedOutcomes: Set<String> = ["runout", "noRunout", "safety", "error", "other"]
+    private static let supportedResults: Set<String> = ["won", "lost"]
+    private static let supportedDrillOutcomes: Set<String> = ["success", "miss"]
+
+    static func normalizeImportedSessions(_ sessions: [Session]) throws -> [Session] {
+        guard !sessions.isEmpty else { throw JSONTransfer.TransferError.noSessions }
+
+        let nowMillis = Int64(Date().timeIntervalSince1970 * 1000)
+        var nextSessionID = max(nowMillis, (sessions.map(\.id).max() ?? 0) + 1)
+        var usedSessionIDs = Set<Int64>()
+        var usedSessionUUIDs = Set<String>()
+
+        let normalized = sessions.map { session -> Session in
+            var session = session
+
+            session.label = session.label.trimmingCharacters(in: .whitespacesAndNewlines)
+            session.opponent = session.opponent.trimmingCharacters(in: .whitespacesAndNewlines)
+            session.game = supportedGames.contains(session.game) ? session.game : "8ball"
+            session.type = supportedTypes.contains(session.type) ? session.type : "match"
+            session.raceTo = session.raceTo.flatMap { $0 > 0 ? $0 : nil }
+            session.durationSeconds = session.durationSeconds.flatMap { $0 >= 0 ? $0 : nil }
+            session.performanceRating = session.performanceRating.map { min(max($0, 1), 10) }
+            session.drillBallCount = session.drillBallCount.flatMap { $0 >= 0 ? $0 : nil }
+            session.drillTargetCount = session.drillTargetCount.flatMap { $0 >= 0 ? $0 : nil }
+            session.drillPrimarySkills = deduplicatedNonEmpty(session.drillPrimarySkills)
+            session.drillSubskills = deduplicatedNonEmpty(session.drillSubskills)
+            session.drillSecondarySkills = deduplicatedNonEmpty(session.drillSecondarySkills)
+
+            if session.id <= 0 || usedSessionIDs.contains(session.id) {
+                session.id = nextSessionID
+                nextSessionID += 1
+            }
+            usedSessionIDs.insert(session.id)
+
+            let trimmedUUID = session.sessionUUID.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedUUID.isEmpty || usedSessionUUIDs.contains(trimmedUUID) {
+                session.sessionUUID = UUID().uuidString
+            } else {
+                session.sessionUUID = trimmedUUID
+            }
+            usedSessionUUIDs.insert(session.sessionUUID)
+
+            session.racks = normalizeRacks(session.racks)
+            return session
+        }
+
+        return normalized.sorted(by: Session.oldestFirst)
+    }
+
+    private static func normalizeRacks(_ racks: [Rack]) -> [Rack] {
+        var usedRackUUIDs = Set<String>()
+        return racks.enumerated().map { idx, original in
+            var rack = original
+            rack.index = idx + 1
+            rack.id = UUID().uuidString
+
+            let trimmedRackUUID = rack.rackUUID.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmedRackUUID.isEmpty || usedRackUUIDs.contains(trimmedRackUUID) {
+                rack.rackUUID = UUID().uuidString
+            } else {
+                rack.rackUUID = trimmedRackUUID
+            }
+            usedRackUUIDs.insert(rack.rackUUID)
+
+            rack.breaker = supportedBreakers.contains(rack.breaker) ? rack.breaker : "me"
+            rack.layout = supportedLayouts.contains(rack.layout) ? rack.layout : "open"
+            rack.result = normalizedOptionalValue(rack.result, supported: supportedResults)
+            rack.outcome = normalizedOptionalValue(rack.outcome, supported: supportedOutcomes)
+            rack.drillOutcome = normalizedOptionalValue(rack.drillOutcome, supported: supportedDrillOutcomes)
+            rack.breakBalls = max(0, rack.breakBalls)
+            rack.fouls = max(0, rack.fouls)
+            rack.badSafety = max(0, rack.badSafety)
+            rack.badPosition = max(0, rack.badPosition)
+            rack.patternCount = max(0, rack.patternCount)
+            rack.missCount = max(0, rack.missCount)
+            rack.drillBallsMade = rack.drillBallsMade.map { max(0, $0) }
+            rack.drillTargetBallCount = rack.drillTargetBallCount.map { max(0, $0) }
+            rack.drillTags = rack.drillTags.map(deduplicatedNonEmpty(_:))
+            rack.drillNotes = rack.drillNotes?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if rack.drillNotes?.isEmpty == true { rack.drillNotes = nil }
+            return rack
+        }
+    }
+
+    private static func normalizedOptionalValue(_ value: String?, supported: Set<String>) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return supported.contains(trimmed) ? trimmed : nil
+    }
+
+    private static func deduplicatedNonEmpty(_ values: [String]) -> [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for value in values {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+            guard !seen.contains(trimmed) else { continue }
+            seen.insert(trimmed)
+            result.append(trimmed)
+        }
+        return result
     }
 }

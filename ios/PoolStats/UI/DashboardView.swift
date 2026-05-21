@@ -1,6 +1,5 @@
 import SwiftUI
 import Charts
-import UniformTypeIdentifiers
 
 struct DashboardView: View {
     @EnvironmentObject private var store: DataStore
@@ -10,13 +9,7 @@ struct DashboardView: View {
     @State private var activePickerID: String? = nil
     @State private var shotGame: String = "8ball"
     @State private var wlGame: String = "8ball"
-    @State private var showExporter: Bool = false
-    @State private var showImporter: Bool = false
-    @State private var exportDocument = JSONDocument(data: Data())
-    @State private var pendingImportData: Data?
-    @State private var pendingImportCount: Int = 0
-    @State private var showImportConfirm: Bool = false
-    @State private var showImportError: Bool = false
+    @State private var importExportState = DashboardImportExportState()
     @State private var showFargoInfo: Bool = false
 
     @Environment(\.horizontalSizeClass) private var hSizeClass
@@ -38,7 +31,10 @@ struct DashboardView: View {
                     if !isPracticeMode { outcomesSection }
                     skillSection
                     insightsSection
-                    exportImportSection
+                    DashboardImportExportSection(
+                        onExport: presentExportSheet,
+                        onImport: { importExportState.isShowingImporter = true }
+                    )
                 }
                 .padding(.horizontal, Layout.pagePadding)
                 .padding(.top, 0)
@@ -47,39 +43,7 @@ struct DashboardView: View {
             pickerOverlay
         }
         .background(Theme.bg)
-        .fileExporter(isPresented: $showExporter, document: exportDocument, contentType: .json, defaultFilename: "pool.json") { _ in }
-        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
-            switch result {
-            case .success(let url):
-                if let data = try? Data(contentsOf: url) {
-                    if let sessions = try? JSONTransfer.importSessions(data) {
-                        pendingImportData = data
-                        pendingImportCount = sessions.count
-                        showImportConfirm = true
-                    } else {
-                        showImportError = true
-                    }
-                }
-            case .failure:
-                break
-            }
-        }
-        .alert("Replace all data?", isPresented: $showImportConfirm) {
-            Button("Replace", role: .destructive) {
-                if let data = pendingImportData {
-                    Task { await store.importJSON(data) }
-                }
-                pendingImportData = nil
-            }
-            Button("Cancel", role: .cancel) {
-                pendingImportData = nil
-            }
-        } message: {
-            Text(DashboardCopy.importReplaceMessage(pendingImportCount))
-        }
-        .alert("Import failed.", isPresented: $showImportError) {
-            Button("OK", role: .cancel) { }
-        }
+        .dashboardImportExportPresentation(state: $importExportState, store: store)
         .alert(DashboardCopy.fargoInfoTitle, isPresented: $showFargoInfo) {
             Button(DashboardCopy.fargoInfoButton, role: .cancel) { }
         } message: {
@@ -417,22 +381,17 @@ struct DashboardView: View {
         }
     }
 
-    private var exportImportSection: some View {
-        HStack(spacing: 10) {
-            Button("↓ Export JSON") {
-                if let data = store.exportJSON() {
-                    exportDocument = JSONDocument(data: data)
-                    showExporter = true
-                }
-            }
-            .buttonStyle(.bordered)
-
-            Button("↑ Import JSON") {
-                showImporter = true
-            }
-            .buttonStyle(.bordered)
+    private func presentExportSheet() {
+        do {
+            let data = try store.exportJSON()
+            importExportState.exportDocument = JSONDocument(data: data)
+            importExportState.isShowingExporter = true
+        } catch {
+            importExportState.exportErrorMessage = error.localizedDescription
+            importExportState.isShowingExportError = true
         }
     }
+
     private func colorForLayout(_ idx: Int) -> Color {
         switch idx {
         case 0: return Theme.teal

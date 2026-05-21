@@ -5,6 +5,9 @@ struct SettingsDetailView: View {
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var opponentStore: OpponentStore
     private let tabBarClearance: CGFloat = 74
+    private let privacyPolicyURL = URL(string: "https://williamweihaoran.github.io/pool-stats/privacy-policy.html")
+    private let supportURL = URL(string: "https://williamweihaoran.github.io/pool-stats/support.html")
+    private let supportEmailURL = URL(string: "mailto:william.weihaoran@gmail.com")
 
     var body: some View {
         Group {
@@ -108,6 +111,28 @@ struct SettingsDetailView: View {
                 infoRow(label: "App", value: appName)
                 infoRow(label: "Version", value: appVersion)
                 infoRow(label: "Build", value: appBuild)
+                Divider().overlay(Theme.border)
+                if let privacyPolicyURL {
+                    externalLinkRow(
+                        label: NSLocalizedString("Privacy Policy", comment: ""),
+                        detail: NSLocalizedString("View how PoolStats handles your data", comment: ""),
+                        url: privacyPolicyURL
+                    )
+                }
+                if let supportURL {
+                    externalLinkRow(
+                        label: NSLocalizedString("Support Website", comment: ""),
+                        detail: NSLocalizedString("Open help, support, and contact information", comment: ""),
+                        url: supportURL
+                    )
+                }
+                if let supportEmailURL {
+                    externalLinkRow(
+                        label: NSLocalizedString("Email Support", comment: ""),
+                        detail: NSLocalizedString("william.weihaoran@gmail.com", comment: ""),
+                        url: supportEmailURL
+                    )
+                }
             }
         }
     }
@@ -122,6 +147,31 @@ struct SettingsDetailView: View {
                 .font(.caption.weight(.medium))
                 .foregroundColor(Theme.text)
         }
+    }
+
+    private func externalLinkRow(label: String, detail: String, url: URL) -> some View {
+        Link(destination: url) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundColor(Theme.text)
+                    Text(detail)
+                        .font(.caption2)
+                        .foregroundColor(Theme.muted)
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: "arrow.up.right.square")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(Theme.purple)
+            }
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var appName: String {

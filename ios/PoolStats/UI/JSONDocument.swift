@@ -10,7 +10,10 @@ struct JSONDocument: FileDocument {
     }
 
     init(configuration: ReadConfiguration) throws {
-        self.data = configuration.file.regularFileContents ?? Data()
+        guard let data = configuration.file.regularFileContents, !data.isEmpty else {
+            throw JSONTransfer.TransferError.emptyFile
+        }
+        self.data = data
     }
 
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
