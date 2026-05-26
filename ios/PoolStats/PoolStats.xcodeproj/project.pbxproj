@@ -26,6 +26,9 @@
 		BA1000010000000000000001 /* DashboardImportExportSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2000010000000000000001 /* DashboardImportExportSupport.swift */; };
 		BA1000010000000000000002 /* LocalSessionPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2000010000000000000002 /* LocalSessionPersistence.swift */; };
 		BA1000010000000000000003 /* JSONTransferPayloads.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2000010000000000000003 /* JSONTransferPayloads.swift */; };
+		BA1000010000000000000004 /* SocialProfileLocalPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2000010000000000000004 /* SocialProfileLocalPersistence.swift */; };
+		BA1000010000000000000005 /* SocialProfileIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2000010000000000000005 /* SocialProfileIdentity.swift */; };
+		BA1000010000000000000006 /* FriendsSettingsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2000010000000000000006 /* FriendsSettingsComponents.swift */; };
 		AA1000010000000000000007 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000007 /* Session.swift */; };
 		AA1000010000000000000008 /* Analytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000008 /* Analytics.swift */; };
 		AA1000010000000000000009 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA2000010000000000000009 /* Components.swift */; };
@@ -108,6 +111,9 @@
 		AB1000010000000000000003 /* DrillSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000003 /* DrillSessionTests.swift */; };
 		AB1000010000000000000004 /* TestFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000004 /* TestFixtures.swift */; };
 		AB1000010000000000000008 /* CompatibilityRegressionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000008 /* CompatibilityRegressionTests.swift */; };
+		AB1000010000000000000009 /* CloudKitStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000009 /* CloudKitStoreTests.swift */; };
+		AB1000010000000000000010 /* DataStoreDeletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000010 /* DataStoreDeletionTests.swift */; };
+		AB1000010000000000000011 /* LocalSessionPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000011 /* LocalSessionPersistenceTests.swift */; };
 		AB1000010000000000000006 /* SocialProfileStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000006 /* SocialProfileStoreTests.swift */; };
 		AB1000010000000000000007 /* WatchSyncReconciliationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000007 /* WatchSyncReconciliationTests.swift */; };
 		B2C3D4E5F6A7B8C9D0E1F2A3 /* WatchActiveSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */; };
@@ -195,6 +201,9 @@
 		BA2000010000000000000001 /* DashboardImportExportSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardImportExportSupport.swift; sourceTree = "<group>"; };
 		BA2000010000000000000002 /* LocalSessionPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSessionPersistence.swift; sourceTree = "<group>"; };
 		BA2000010000000000000003 /* JSONTransferPayloads.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONTransferPayloads.swift; sourceTree = "<group>"; };
+		BA2000010000000000000004 /* SocialProfileLocalPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialProfileLocalPersistence.swift; sourceTree = "<group>"; };
+		BA2000010000000000000005 /* SocialProfileIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialProfileIdentity.swift; sourceTree = "<group>"; };
+		BA2000010000000000000006 /* FriendsSettingsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsSettingsComponents.swift; sourceTree = "<group>"; };
 		AA2000010000000000000007 /* Session.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
 		AA2000010000000000000008 /* Analytics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Analytics.swift; sourceTree = "<group>"; };
 		AA2000010000000000000009 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
@@ -279,6 +288,9 @@
 		AB2000010000000000000006 /* SocialProfileStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SocialProfileStoreTests.swift; sourceTree = "<group>"; };
 		AB2000010000000000000007 /* WatchSyncReconciliationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncReconciliationTests.swift; sourceTree = "<group>"; };
 		AB2000010000000000000008 /* CompatibilityRegressionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompatibilityRegressionTests.swift; sourceTree = "<group>"; };
+		AB2000010000000000000009 /* CloudKitStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitStoreTests.swift; sourceTree = "<group>"; };
+		AB2000010000000000000010 /* DataStoreDeletionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStoreDeletionTests.swift; sourceTree = "<group>"; };
+		AB2000010000000000000011 /* LocalSessionPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSessionPersistenceTests.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionStartView.swift; sourceTree = "<group>"; };
 		B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "WatchExtension-Info.plist"; sourceTree = "<group>"; };
 		C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchActiveSessionView.swift; sourceTree = "<group>"; };
@@ -417,6 +429,8 @@
 				AA2000010000000000000002 /* CloudKitStore.swift */,
 				AA2000010000000000000003 /* DataStore.swift */,
 				BA2000010000000000000002 /* LocalSessionPersistence.swift */,
+				BA2000010000000000000004 /* SocialProfileLocalPersistence.swift */,
+				BA2000010000000000000005 /* SocialProfileIdentity.swift */,
 				AA2000010000000000000045 /* WatchSyncStore.swift */,
 				AAAABBBBCCCCDDDD00000006 /* WatchPhoneSnapshotTransport.swift */,
 				AA200001000000000000002F /* SessionLogStore.swift */,
@@ -496,6 +510,7 @@
 				AA2000010000000000000032 /* MeSettingsView.swift */,
 				AA200001000000000000003F /* FriendsSettingsView.swift */,
 				AA2000010000000000000044 /* FriendsPublicProfileSection.swift */,
+				BA2000010000000000000006 /* FriendsSettingsComponents.swift */,
 				AA2000010000000000000033 /* AccountSettingsView.swift */,
 				AA2000010000000000000034 /* AppearanceSettingsView.swift */,
 				AA2000010000000000000035 /* DataSettingsView.swift */,
@@ -518,9 +533,12 @@
 			isa = PBXGroup;
 			children = (
 				AB2000010000000000000008 /* CompatibilityRegressionTests.swift */,
+				AB2000010000000000000009 /* CloudKitStoreTests.swift */,
+				AB2000010000000000000010 /* DataStoreDeletionTests.swift */,
 				AB2000010000000000000003 /* DrillSessionTests.swift */,
 				AB2000010000000000000001 /* GoalMetricTests.swift */,
 				AB2000010000000000000002 /* GoalWindowTests.swift */,
+				AB2000010000000000000011 /* LocalSessionPersistenceTests.swift */,
 				AB2000010000000000000006 /* SocialProfileStoreTests.swift */,
 				AB2000010000000000000007 /* WatchSyncReconciliationTests.swift */,
 				AB2000010000000000000004 /* TestFixtures.swift */,
@@ -797,6 +815,8 @@
 				AA1000010000000000000002 /* CloudKitStore.swift in Sources */,
 				AA1000010000000000000003 /* DataStore.swift in Sources */,
 				BA1000010000000000000002 /* LocalSessionPersistence.swift in Sources */,
+				BA1000010000000000000004 /* SocialProfileLocalPersistence.swift in Sources */,
+				BA1000010000000000000005 /* SocialProfileIdentity.swift in Sources */,
 				AA1000010000000000000045 /* WatchSyncStore.swift in Sources */,
 				AAAABBBBCCCCDDDD00000016 /* WatchPhoneSnapshotTransport.swift in Sources */,
 				AA1000010000000000000004 /* Filters.swift in Sources */,
@@ -861,6 +881,7 @@
 				AA100001000000000000003D /* DashboardSupportViews.swift in Sources */,
 				AA100001000000000000003E /* FriendMatchSharing.swift in Sources */,
 				AA100001000000000000003F /* FriendsSettingsView.swift in Sources */,
+				BA1000010000000000000006 /* FriendsSettingsComponents.swift in Sources */,
 				AA1000010000000000000040 /* DrillDetailView.swift in Sources */,
 				AA1000010000000000000041 /* DrillLogActiveView.swift in Sources */,
 				AA1000010000000000000042 /* DrillSharedViews.swift in Sources */,
@@ -875,6 +896,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				AB1000010000000000000008 /* CompatibilityRegressionTests.swift in Sources */,
+				AB1000010000000000000009 /* CloudKitStoreTests.swift in Sources */,
+				AB1000010000000000000010 /* DataStoreDeletionTests.swift in Sources */,
+				AB1000010000000000000011 /* LocalSessionPersistenceTests.swift in Sources */,
 				AB1000010000000000000003 /* DrillSessionTests.swift in Sources */,
 				AB1000010000000000000001 /* GoalMetricTests.swift in Sources */,
 				AB1000010000000000000002 /* GoalWindowTests.swift in Sources */,
@@ -927,7 +951,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
@@ -953,7 +977,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -983,7 +1007,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CODE_SIGN_ENTITLEMENTS = Watch/PoolStatsWatchExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchExtension-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -1006,7 +1030,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";
@@ -1029,7 +1053,7 @@
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_ENTITLEMENTS = WatchComplications/PoolStatsWatchComplications.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = WatchComplications/Info.plist;
@@ -1061,7 +1085,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				ENABLE_TESTABILITY = YES;
@@ -1092,7 +1116,7 @@
 				CODE_SIGN_ENTITLEMENTS = PoolStats.entitlements;
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 18;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -1198,7 +1222,7 @@
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 16;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = SM6Y3D2D55;
 				INFOPLIST_FILE = "Watch/WatchApp-Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = "";

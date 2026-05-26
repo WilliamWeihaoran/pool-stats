@@ -102,10 +102,58 @@ final class SocialProfileStoreTests: XCTestCase {
     }
 
     func testPresentableDisplayNameRedactsUnsafeNames() {
-        let store = SocialProfileStore()
+        let store = makeIsolatedStore()
 
         XCTAssertEqual(store.presentableDisplayName("clean name"), "clean name")
         XCTAssertEqual(store.presentableDisplayName("sh1t talk"), "Hidden player")
+    }
+
+    func testDeleteAccountDataWithoutSavedProfileIsIdempotentSuccess() async throws {
+        let store = makeIsolatedStore()
+
+        try await store.deleteAccountData()
+
+        XCTAssertEqual(store.accountDeletionState, .deleted)
+        XCTAssertNil(store.profile)
+        XCTAssertTrue(store.friends.isEmpty)
+        XCTAssertTrue(store.outgoingShares.isEmpty)
+        XCTAssertTrue(store.incomingShares.isEmpty)
+    }
+
+    func testHasLocalAccountDataIncludesBlockedPlayersWithoutProfile() {
+        let store = makeIsolatedStore()
+
+        XCTAssertFalse(store.hasLocalAccountData)
+
+        store.block(friendCode: "abc123", displayName: "Blocked player")
+
+        XCTAssertTrue(store.hasLocalAccountData)
+    }
+
+    func testHasLocalAccountDataIncludesSavedFriendsWithoutProfile() {
+        let store = makeIsolatedStore()
+
+        XCTAssertFalse(store.hasLocalAccountData)
+
+        _ = store.addFriend(
+            makePublicProfile(name: "Alex", code: "abc123")
+        )
+
+        XCTAssertTrue(store.hasLocalAccountData)
+    }
+
+    private func makeIsolatedStore() -> SocialProfileStore {
+        let tempDir = makeTempDir()
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+        return SocialProfileStore(baseDirectory: tempDir)
+    }
+
+    private func makeTempDir() -> URL {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
     }
 
     private func makePublicProfile(name: String, code: String) -> PublicPlayerProfile {

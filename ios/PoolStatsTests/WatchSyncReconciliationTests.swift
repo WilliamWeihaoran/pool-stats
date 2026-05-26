@@ -272,4 +272,5 @@ final class WatchSyncReconciliationTests: XCTestCase {
         XCTAssertEqual(decoded.rackUUID, "rack-current")
         XCTAssertEqual(decoded.nextRackUUID, "rack-next")
     }
+
 }

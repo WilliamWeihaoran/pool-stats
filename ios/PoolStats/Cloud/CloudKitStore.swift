@@ -148,6 +148,13 @@ final class CloudKitStore {
         try await deleteRecordIDs(Array(recordIDs))
     }
 
+    func hasAnyUserData() async throws -> Bool {
+        if try await hasAnyRecords(recordType: RecordKeys.session) {
+            return true
+        }
+        return try await hasAnyRecords(recordType: RecordKeys.rack)
+    }
+
     private func fetchAllRecords(query: CKQuery) async throws -> [CKRecord] {
         var records: [CKRecord] = []
         var cursor: CKQueryOperation.Cursor?
@@ -185,6 +192,30 @@ final class CloudKitStore {
         }
     }
 
+    private func hasAnyRecords(recordType: String) async throws -> Bool {
+        try await withCheckedThrowingContinuation { cont in
+            let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
+            let op = CKQueryOperation(query: query)
+            op.resultsLimit = 1
+
+            var foundRecord = false
+            op.recordMatchedBlock = { _, result in
+                if case .success = result {
+                    foundRecord = true
+                }
+            }
+            op.queryResultBlock = { result in
+                switch result {
+                case .success:
+                    cont.resume(returning: foundRecord)
+                case .failure(let error):
+                    cont.resume(throwing: error)
+                }
+            }
+            db.add(op)
+        }
+    }
+
     private func deleteRecordIDs(_ recordIDs: [CKRecord.ID]) async throws {
         guard !recordIDs.isEmpty else { return }
 
@@ -197,11 +228,34 @@ final class CloudKitStore {
                     case .success:
                         cont.resume()
                     case .failure(let error):
-                        cont.resume(throwing: error)
+                        if Self.isIgnorableDeletionError(error) {
+                            cont.resume()
+                        } else {
+                            cont.resume(throwing: error)
+                        }
                     }
                 }
                 db.add(op)
             }
+        }
+    }
+
+    static func isIgnorableDeletionError(_ error: Error) -> Bool {
+        guard let ckError = error as? CKError else { return false }
+
+        switch ckError.code {
+        case .unknownItem:
+            return true
+        case .partialFailure:
+            guard
+                let partials = ckError.userInfo[CKPartialErrorsByItemIDKey] as? [AnyHashable: Error],
+                !partials.isEmpty
+            else {
+                return false
+            }
+            return partials.values.allSatisfy(isIgnorableDeletionError)
+        default:
+            return false
         }
     }
 

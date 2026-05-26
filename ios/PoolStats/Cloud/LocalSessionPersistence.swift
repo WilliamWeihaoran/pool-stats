@@ -9,7 +9,14 @@ struct LocalSessionCache {
 
     func loadSessions() -> [Session] {
         guard let data = try? Data(contentsOf: url) else { return [] }
-        guard let loaded = try? JSONTransfer.importSessions(data) else { return [] }
+        guard data.isEmpty == false else {
+            clear()
+            return []
+        }
+        guard let loaded = try? JSONTransfer.importSessions(data) else {
+            clear()
+            return []
+        }
         return loaded
     }
 
@@ -50,8 +57,15 @@ struct DeletedSessionIDStore {
     }
 
     func load() -> Set<Int64> {
-        guard let data = try? Data(contentsOf: url),
-              let ids = try? JSONDecoder().decode([Int64].self, from: data) else {
+        guard let data = try? Data(contentsOf: url) else {
+            return []
+        }
+        guard data.isEmpty == false else {
+            clear()
+            return []
+        }
+        guard let ids = try? JSONDecoder().decode([Int64].self, from: data) else {
+            clear()
             return []
         }
         return Set(ids)
@@ -60,13 +74,17 @@ struct DeletedSessionIDStore {
     func save(_ ids: Set<Int64>) {
         createDirectoryIfNeeded()
         guard !ids.isEmpty else {
-            try? FileManager.default.removeItem(at: url)
+            clear()
             return
         }
 
         let sortedIDs = Array(ids).sorted()
         guard let data = try? JSONEncoder().encode(sortedIDs) else { return }
         try? data.write(to: url, options: .atomic)
+    }
+
+    func clear() {
+        try? FileManager.default.removeItem(at: url)
     }
 
     private func createDirectoryIfNeeded() {

@@ -2,18 +2,26 @@ import SwiftUI
 import AuthenticationServices
 
 struct AccountSettingsView: View {
+    private enum DeletionFlowState: Equatable {
+        case idle
+        case deleting
+        case deleted
+        case failed(String)
+    }
+
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var socialProfileStore: SocialProfileStore
 
     @State private var showDeleteConfirmation = false
+    @State private var deletionFlowState: DeletionFlowState = .idle
 
     private var canDeleteAccount: Bool {
-        authStore.isSignedIn || socialProfileStore.profile != nil
+        authStore.isSignedIn || socialProfileStore.hasLocalAccountData
     }
 
     private var isDeletingAccount: Bool {
-        if case .deleting = socialProfileStore.accountDeletionState { return true }
+        if case .deleting = deletionFlowState { return true }
         return false
     }
 
@@ -46,6 +54,7 @@ struct AccountSettingsView: View {
                     }
                     .buttonStyle(.bordered)
                     .tint(Theme.red)
+                    .disabled(isDeletingAccount)
                 } else {
                     SignInWithAppleButton(.signIn) { request in
                         authStore.signIn()
@@ -56,6 +65,7 @@ struct AccountSettingsView: View {
                     .signInWithAppleButtonStyle(.white)
                     .frame(height: 44)
                     .cornerRadius(10)
+                    .disabled(isDeletingAccount)
                 }
 
                 if canDeleteAccount {
@@ -81,7 +91,7 @@ struct AccountSettingsView: View {
                     .disabled(isDeletingAccount)
                 }
 
-                switch socialProfileStore.accountDeletionState {
+                switch deletionFlowState {
                 case .idle, .deleting:
                     EmptyView()
                 case .deleted:
@@ -94,7 +104,7 @@ struct AccountSettingsView: View {
                         .foregroundColor(Theme.amber)
                 }
 
-                if let error = authStore.lastError, !error.isEmpty {
+                if let error = authStore.lastError, !error.isEmpty, deletionFlowState == .idle {
                     Text(error)
                         .font(.caption)
                         .foregroundColor(Theme.amber)
@@ -112,6 +122,7 @@ struct AccountSettingsView: View {
         .onChange(of: authStore.isSignedIn) { isSignedIn in
             if isSignedIn {
                 socialProfileStore.resetAccountDeletionState()
+                deletionFlowState = .idle
             }
         }
     }
@@ -129,6 +140,10 @@ struct AccountSettingsView: View {
     }
 
     private func deleteAccount() async {
+        guard !isDeletingAccount else { return }
+
+        deletionFlowState = .deleting
+        authStore.lastError = nil
         var firstError: Error?
 
         do {
@@ -143,10 +158,15 @@ struct AccountSettingsView: View {
             if firstError == nil { firstError = error }
         }
 
-        if let _ = firstError {
-            authStore.lastError = NSLocalizedString("Account deletion could not finish. Please try again when iCloud is available.", comment: "")
+        if firstError != nil {
+            socialProfileStore.resetAccountDeletionState()
+            deletionFlowState = .failed(
+                NSLocalizedString("Account deletion could not finish. Please try again when iCloud is available.", comment: "")
+            )
         } else {
             authStore.signOutLocal()
+            socialProfileStore.resetAccountDeletionState()
+            deletionFlowState = .deleted
         }
     }
 }

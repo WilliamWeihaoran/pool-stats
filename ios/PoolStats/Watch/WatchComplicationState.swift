@@ -38,10 +38,14 @@ struct WatchComplicationSnapshot: Codable, Equatable {
 enum WatchComplicationStateStore {
     static let appGroupID = "group.com.poolstats.appi.watchshared"
     private static let snapshotKey = "poolstats.watch.complication.snapshot.v1"
+    private static let fallbackURL = URL(fileURLWithPath: "/")
 
     static func load() -> WatchComplicationSnapshot {
-        guard let data = defaults.data(forKey: snapshotKey),
-              let decoded = try? JSONDecoder().decode(WatchComplicationSnapshot.self, from: data) else {
+        guard let data = defaults.data(forKey: snapshotKey) else {
+            return .inactive
+        }
+        guard let decoded = try? JSONDecoder().decode(WatchComplicationSnapshot.self, from: data) else {
+            defaults.removeObject(forKey: snapshotKey)
             return .inactive
         }
         return decoded
@@ -89,7 +93,10 @@ enum WatchComplicationStateStore {
     }
 
     static func url(for route: WatchLaunchRoute) -> URL {
-        URL(string: "poolstatswatch://\(route.rawValue)")!
+        var components = URLComponents()
+        components.scheme = "poolstatswatch"
+        components.host = route.rawValue
+        return components.url ?? fallbackURL
     }
 
     private static func persist(_ snapshot: WatchComplicationSnapshot, reload: Bool) {

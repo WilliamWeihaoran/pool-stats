@@ -11,8 +11,12 @@ enum WatchSessionPersistence {
     private static let closedSessionKey = "poolstats.watch.closed.session.v1"
 
     static func restoreActive() -> ActiveSessionSnapshot? {
-        guard let data = UserDefaults.standard.data(forKey: activeKey),
-              let snapshot = try? JSONDecoder().decode(ActiveSessionSnapshot.self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: activeKey) else {
+            return nil
+        }
+        guard let snapshot = try? JSONDecoder().decode(ActiveSessionSnapshot.self, from: data) else {
+            UserDefaults.standard.removeObject(forKey: activeKey)
+            WatchComplicationStateStore.clear()
             return nil
         }
         WatchComplicationStateStore.save(active: snapshot)
@@ -20,8 +24,11 @@ enum WatchSessionPersistence {
     }
 
     static func saveActive(_ snapshot: ActiveSessionSnapshot?) {
-        guard let snapshot,
-              let data = try? JSONEncoder().encode(snapshot) else {
+        guard let snapshot else {
+            clearActive(clearComplication: false)
+            return
+        }
+        guard let data = try? JSONEncoder().encode(snapshot) else {
             return
         }
         UserDefaults.standard.set(data, forKey: activeKey)
@@ -36,8 +43,11 @@ enum WatchSessionPersistence {
     }
 
     static func restoreDrills() -> [WatchDrillTemplatePayload] {
-        guard let data = UserDefaults.standard.data(forKey: drillsKey),
-              let drills = try? JSONDecoder().decode([WatchDrillTemplatePayload].self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: drillsKey) else {
+            return []
+        }
+        guard let drills = try? JSONDecoder().decode([WatchDrillTemplatePayload].self, from: data) else {
+            UserDefaults.standard.removeObject(forKey: drillsKey)
             return []
         }
         return drills
@@ -56,8 +66,11 @@ enum WatchSessionPersistence {
     }
 
     static func restoreClosedSessionMarker() -> WatchClosedSessionMarker? {
-        guard let data = UserDefaults.standard.data(forKey: closedSessionKey),
-              let marker = try? JSONDecoder().decode(WatchClosedSessionMarker.self, from: data) else {
+        guard let data = UserDefaults.standard.data(forKey: closedSessionKey) else {
+            return nil
+        }
+        guard let marker = try? JSONDecoder().decode(WatchClosedSessionMarker.self, from: data) else {
+            clearClosedSessionMarker()
             return nil
         }
         guard WatchSyncReconciler.shouldSuppressActiveSnapshotAfterLocalClose(

@@ -25,14 +25,14 @@ struct FriendsSettingsView: View {
     private var publicProfileCard: some View {
         SectionCard(title: "Friends & sharing") {
             VStack(alignment: .leading, spacing: 12) {
-                socialPanel(
+                SocialPanel(
                     title: "Public profile",
                     subtitle: "Set a public display name and friend code so people can find you."
                 ) {
                     FriendsPublicProfileSection(didCopyFriendCode: $didCopyFriendCode)
                 }
 
-                socialPanel(
+                SocialPanel(
                     title: "Friends",
                     subtitle: "Search by friend code, save people you play with, and keep them ready for match sharing."
                 ) {
@@ -42,7 +42,7 @@ struct FriendsSettingsView: View {
                     communitySafetySection
                 }
 
-                socialPanel(
+                SocialPanel(
                     title: "Shared matches",
                     subtitle: "Bring incoming matches into History and keep tabs on the ones you’ve sent out."
                 ) {
@@ -223,7 +223,7 @@ struct FriendsSettingsView: View {
             }
 
             if socialProfileStore.friends.isEmpty {
-                emptyState("No friends saved yet.")
+                SocialEmptyState(message: "No friends saved yet.")
             } else {
                 VStack(spacing: 8) {
                     ForEach(socialProfileStore.friends) { friend in
@@ -265,7 +265,7 @@ struct FriendsSettingsView: View {
             Button {
                 opponentStore.addOpponent(name: socialProfileStore.presentableDisplayName(friend.displayName))
             } label: {
-                actionChip(label: "Add", systemName: "person.badge.plus", color: Theme.green)
+                SocialActionChip(label: "Add", systemName: "person.badge.plus", color: Theme.green)
             }
             .buttonStyle(.plain)
             .disabled(socialProfileStore.shouldHideDisplayName(friend.displayName))
@@ -281,7 +281,7 @@ struct FriendsSettingsView: View {
             Button {
                 socialProfileStore.removeFriend(friendCode: friend.friendCode)
             } label: {
-                actionChip(label: "Remove", systemName: "trash", color: Theme.red)
+                SocialActionChip(label: "Remove", systemName: "trash", color: Theme.red)
             }
             .buttonStyle(.plain)
         }
@@ -325,7 +325,7 @@ struct FriendsSettingsView: View {
                             Button {
                                 socialProfileStore.unblock(friendCode: blocked.friendCode)
                             } label: {
-                                actionChip(label: "Unblock", systemName: "hand.raised.slash", color: Theme.teal)
+                                SocialActionChip(label: "Unblock", systemName: "hand.raised.slash", color: Theme.teal)
                             }
                             .buttonStyle(.plain)
                         }
@@ -354,14 +354,14 @@ struct FriendsSettingsView: View {
                 Button {
                     openSupportWebsite()
                 } label: {
-                    actionChip(label: "Support Website", systemName: "safari", color: Theme.teal)
+                    SocialActionChip(label: "Support Website", systemName: "safari", color: Theme.teal)
                 }
                 .buttonStyle(.plain)
 
                 Button {
                     emailSupport()
                 } label: {
-                    actionChip(label: "Email Support", systemName: "envelope", color: Theme.purple)
+                    SocialActionChip(label: "Email Support", systemName: "envelope", color: Theme.purple)
                 }
                 .buttonStyle(.plain)
             }
@@ -396,7 +396,7 @@ struct FriendsSettingsView: View {
                     Button {
                         socialProfileStore.simulateIncomingMatchShare()
                     } label: {
-                        actionChip(label: "Simulate", systemName: "sparkles", color: Theme.purple)
+                        SocialActionChip(label: "Simulate", systemName: "sparkles", color: Theme.purple)
                     }
                     .buttonStyle(.plain)
                 }
@@ -419,9 +419,9 @@ struct FriendsSettingsView: View {
             }
 
             if socialProfileStore.profile == nil {
-                emptyState("Create your public profile first so friends know where to send matches.")
+                SocialEmptyState(message: "Create your public profile first so friends know where to send matches.")
             } else if socialProfileStore.incomingShares.isEmpty {
-                emptyState("No shared matches waiting.")
+                SocialEmptyState(message: "No shared matches waiting.")
             } else {
                 VStack(spacing: 8) {
                     ForEach(socialProfileStore.incomingShares.prefix(6)) { share in
@@ -465,9 +465,9 @@ struct FriendsSettingsView: View {
             }
 
             if socialProfileStore.profile == nil {
-                emptyState("Create your public profile first before sending matches.")
+                SocialEmptyState(message: "Create your public profile first before sending matches.")
             } else if socialProfileStore.outgoingShares.isEmpty {
-                emptyState("No sent matches yet.")
+                SocialEmptyState(message: "No sent matches yet.")
             } else {
                 VStack(spacing: 8) {
                     ForEach(socialProfileStore.outgoingShares.prefix(6)) { share in
@@ -484,12 +484,12 @@ struct FriendsSettingsView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 10) {
                 Circle()
-                    .fill(outgoingShareAccent(share).opacity(0.16))
+                    .fill(MatchSharePresentation.accent(for: share).opacity(0.16))
                     .frame(width: 34, height: 34)
                     .overlay(
-                        Image(systemName: outgoingShareIcon(share))
+                        Image(systemName: MatchSharePresentation.icon(for: share))
                             .font(.caption.weight(.black))
-                            .foregroundColor(outgoingShareAccent(share))
+                            .foregroundColor(MatchSharePresentation.accent(for: share))
                     )
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -514,12 +514,12 @@ struct FriendsSettingsView: View {
 
                 Spacer(minLength: 0)
 
-                Text(outgoingShareStatusText(share))
+                Text(MatchSharePresentation.statusText(for: share))
                     .font(.caption2.weight(.bold))
-                    .foregroundColor(outgoingShareAccent(share))
+                    .foregroundColor(MatchSharePresentation.accent(for: share))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
-                    .background(outgoingShareAccent(share).opacity(0.12))
+                    .background(MatchSharePresentation.accent(for: share).opacity(0.12))
                     .clipShape(Capsule())
             }
 
@@ -551,12 +551,12 @@ struct FriendsSettingsView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top, spacing: 10) {
                 Circle()
-                    .fill(incomingShareAccent(share).opacity(0.16))
+                    .fill(MatchSharePresentation.accent(for: share).opacity(0.16))
                     .frame(width: 34, height: 34)
                     .overlay(
                         Image(systemName: share.isAccepted ? "checkmark" : "person.2")
                             .font(.caption.weight(.black))
-                            .foregroundColor(incomingShareAccent(share))
+                            .foregroundColor(MatchSharePresentation.accent(for: share))
                     )
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -588,12 +588,12 @@ struct FriendsSettingsView: View {
 
                 Spacer(minLength: 0)
 
-                Text(incomingShareStatusText(share))
+                Text(MatchSharePresentation.statusText(for: share))
                     .font(.caption2.weight(.bold))
-                    .foregroundColor(incomingShareAccent(share))
+                    .foregroundColor(MatchSharePresentation.accent(for: share))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
-                    .background(incomingShareAccent(share).opacity(0.12))
+                    .background(MatchSharePresentation.accent(for: share).opacity(0.12))
                     .clipShape(Capsule())
             }
 
@@ -744,39 +744,6 @@ struct FriendsSettingsView: View {
         incomingShareIsAccepting(share) || incomingShareIsDeclining(share)
     }
 
-    private func incomingShareStatusText(_ share: IncomingMatchShare) -> String {
-        if share.isAccepted { return NSLocalizedString("Accepted", comment: "") }
-        if share.isDeclined { return NSLocalizedString("Declined", comment: "") }
-        return NSLocalizedString("Pending", comment: "")
-    }
-
-    private func incomingShareAccent(_ share: IncomingMatchShare) -> Color {
-        if share.isAccepted { return Theme.green }
-        if share.isDeclined { return Theme.muted }
-        return Theme.amber
-    }
-
-    private func outgoingShareStatusText(_ share: OutgoingMatchShare) -> String {
-        if share.isAccepted { return NSLocalizedString("Accepted", comment: "") }
-        if share.isDeclined { return NSLocalizedString("Declined", comment: "") }
-        if share.isFailed { return NSLocalizedString("Failed", comment: "") }
-        return NSLocalizedString("Pending", comment: "")
-    }
-
-    private func outgoingShareAccent(_ share: OutgoingMatchShare) -> Color {
-        if share.isAccepted { return Theme.green }
-        if share.isDeclined { return Theme.red }
-        if share.isFailed { return Theme.red }
-        return Theme.amber
-    }
-
-    private func outgoingShareIcon(_ share: OutgoingMatchShare) -> String {
-        if share.isAccepted { return "checkmark" }
-        if share.isDeclined { return "xmark" }
-        if share.isFailed { return "exclamationmark" }
-        return "paperplane.fill"
-    }
-
     private func moderationMenu(
         displayName: String,
         friendCode: String,
@@ -796,7 +763,7 @@ struct FriendsSettingsView: View {
                 Label("Block", systemImage: "hand.raised.fill")
             }
         } label: {
-            actionChip(label: "Safety", systemName: "shield.lefthalf.filled", color: Theme.amber)
+            SocialActionChip(label: "Safety", systemName: "shield.lefthalf.filled", color: Theme.amber)
         }
     }
 
@@ -819,57 +786,5 @@ struct FriendsSettingsView: View {
     private func emailSupport() {
         guard let url = URL(string: "mailto:william.weihaoran@gmail.com") else { return }
         openURL(url)
-    }
-
-    private func socialPanel<Content: View>(
-        title: String,
-        subtitle: String,
-        @ViewBuilder content: () -> Content
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(LocalizedStringKey(title))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundColor(Theme.text)
-                Text(LocalizedStringKey(subtitle))
-                    .font(.caption2)
-                    .foregroundColor(Theme.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            content()
-        }
-        .padding(12)
-        .background(Theme.panel2.opacity(0.42))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Theme.border.opacity(0.65), lineWidth: 0.5)
-        )
-    }
-
-    private func emptyState(_ message: String) -> some View {
-        Text(LocalizedStringKey(message))
-            .font(.caption2)
-            .foregroundColor(Theme.muted)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(10)
-            .background(Theme.panel2.opacity(0.7))
-            .cornerRadius(10)
-    }
-
-    private func actionChip(label: String, systemName: String, color: Color) -> some View {
-        HStack(spacing: 5) {
-            Image(systemName: systemName)
-                .font(.caption2.weight(.bold))
-            Text(LocalizedStringKey(label))
-                .font(.caption2.weight(.semibold))
-        }
-        .foregroundColor(color)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(color.opacity(0.1))
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(color.opacity(0.35), lineWidth: 0.6))
     }
 }

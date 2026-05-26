@@ -227,9 +227,9 @@ struct DrillPictureView: View {
             route([(progressiveCueX(level), 0.50), (0.32, 0.50), (0.14, 0.50)], color: Theme.amber, in: size)
             spotTarget(x: 0.32, y: 0.50, label: "CB stop", color: Theme.amber, in: size)
         case "stun_tangent_line":
-            route([(0.64 + step * 0.025, 0.66), (0.38, 0.44), (0.14, 0.16)], color: Theme.amber, in: size)
-            route([(0.38, 0.44), (0.58, 0.62), (0.72, 0.34)], color: Theme.blue, in: size)
-            zone(x: 0.50, y: 0.22, w: targetSize, h: targetHeight, label: "Tangent", color: Theme.blue, in: size)
+            route([(0.62 + step * 0.025, 0.62 + step * 0.018), (0.44, 0.43), (0.14, 0.16)], color: Theme.amber, in: size)
+            route([(0.44, 0.43), (0.61, 0.25), (0.72, 0.18)], color: Theme.blue, in: size)
+            zone(x: 0.58, y: 0.10, w: targetSize, h: targetHeight, label: "Tangent", color: Theme.blue, in: size)
         case "rail_cut_progressive":
             zone(x: 0.09, y: 0.13, w: 0.18, h: 0.72, label: "Rail ball", color: Theme.blue, in: size)
             route([(0.62, 0.72), (0.23, 0.26), (0.14, 0.16)], color: Theme.blue, in: size)
@@ -246,9 +246,9 @@ struct DrillPictureView: View {
             route([(0.72, 0.72), (0.38, 0.46), (0.14, 0.16)], color: Theme.red, in: size)
             zone(x: 0.56, y: 0.58, w: targetSize, h: targetHeight, label: "Thinner angle", color: Theme.red, in: size)
         case "back_cut_ladder":
-            route([(0.28, 0.72), (0.58, 0.42), (0.86, 0.16)], color: Theme.amber, in: size)
-            route([(0.58, 0.42), (0.34, 0.66)], color: Theme.red, in: size)
-            zone(x: 0.18, y: 0.58, w: targetSize, h: targetHeight, label: "Avoid scratch", color: Theme.red, in: size)
+            route([(0.72, 0.72), (0.48, 0.42), (0.86, 0.16)], color: Theme.amber, in: size)
+            route([(0.48, 0.42), (0.30, 0.58), (0.18, 0.70)], color: Theme.red, in: size)
+            zone(x: 0.16, y: 0.58, w: targetSize, h: targetHeight, label: "Avoid scratch", color: Theme.red, in: size)
         case "wagon_wheel":
             Circle()
                 .fill(Theme.purple.opacity(0.08))
@@ -259,7 +259,8 @@ struct DrillPictureView: View {
             tableLine(from: (0.52, 0.55), to: (0.74, 0.26), color: Theme.purple, in: size)
             tableLine(from: (0.52, 0.55), to: (0.78, 0.72), color: Theme.purple, in: size)
             tableLine(from: (0.52, 0.55), to: (0.28, 0.72), color: Theme.purple, in: size)
-            route([(0.34, 0.50), (0.52, 0.55), (0.72, 0.28)], color: Theme.purple, in: size)
+            route([(0.34, 0.50), (0.52, 0.55), (0.86, 0.84)], color: Theme.amber, in: size)
+            route([(0.52, 0.55), (0.72, 0.28)], color: Theme.purple, in: size)
         case "target_pool":
             route([(0.62, 0.68), (0.34, 0.46), (0.14, 0.16)], color: Theme.amber, in: size)
             route([(0.34, 0.46), (0.55, 0.62), (0.70, 0.34)], color: Theme.teal, in: size)
@@ -275,7 +276,8 @@ struct DrillPictureView: View {
             spotTarget(x: 0.66, y: 0.66, label: "Outside", color: Theme.green, in: size)
             zone(x: 0.58, y: 0.30, w: targetSize, h: targetHeight, label: "Natural lane", color: Theme.teal, in: size)
         case "clock_system_spin":
-            route([(0.64, 0.68), (0.36, 0.43), (0.50, 0.74), (0.76, 0.36)], color: Theme.blue, in: size)
+            route([(0.64, 0.68), (0.36, 0.43), (0.14, 0.16)], color: Theme.amber, in: size)
+            route([(0.36, 0.43), (0.50, 0.74), (0.76, 0.36)], color: Theme.blue, in: size)
             spotTarget(x: 0.64, y: 0.68, label: "Clock", color: Theme.blue, in: size)
             zone(x: 0.58, y: 0.22, w: targetSize, h: targetHeight, label: "Called finish", color: Theme.blue, in: size)
         case "carom_touch":
@@ -312,7 +314,8 @@ struct DrillPictureView: View {
         case "inside_outside_english":
             zone(x: 0.22, y: 0.24, w: 0.22, h: 0.54, label: "Inside", color: Theme.blue, in: size)
             zone(x: 0.56, y: 0.22, w: 0.22, h: 0.54, label: "Outside", color: Theme.green, in: size)
-            route([(0.24, 0.72), (0.34, 0.32), (0.62, 0.58), (0.36, 0.72), (0.70, 0.38)], color: Theme.blue, in: size)
+            route([(0.24, 0.72), (0.34, 0.32), (0.50, 0.08)], color: Theme.amber, in: size)
+            route([(0.34, 0.32), (0.62, 0.58), (0.36, 0.72), (0.70, 0.38)], color: Theme.blue, in: size)
         case "side_pocket_cut_ladder":
             route([(0.24, 0.72), (0.46, 0.48), (0.50, 0.08)], color: Theme.amber, in: size)
             route([(0.46, 0.48), (0.62, 0.74), (0.76, 0.84)], color: Theme.blue, in: size)
@@ -325,8 +328,9 @@ struct DrillPictureView: View {
             tableLine(from: (0.46, 0.55), to: (0.74, 0.30), color: Theme.red, in: size)
             spotTarget(x: 0.70, y: 0.36, label: "Contact", color: Theme.amber, in: size)
         case "cross_side_bank":
-            route([(0.54, 0.70), (0.38, 0.36), (0.50, 0.08)], color: Theme.amber, in: size)
-            route([(0.38, 0.36), (0.50, 0.50)], color: Theme.blue, in: size)
+            route([(0.60, 0.70), (0.42, 0.42)], color: Theme.blue, in: size)
+            route([(0.42, 0.42), (0.28, 0.14), (0.50, 0.08)], color: Theme.amber, in: size)
+            spotTarget(x: 0.28, y: 0.14, label: "Bank rail", color: Theme.amber, in: size)
             spotTarget(x: 0.50, y: 0.08, label: "Side pocket", color: Theme.amber, in: size)
         case "jump_escape_basic":
             zone(x: 0.41, y: 0.46, w: 0.10, h: 0.18, label: "Blocker", color: Theme.purple, in: size)
@@ -525,7 +529,7 @@ struct DrillPictureView: View {
         case "thin_cut_ladder":
             return cuePlus((0.72, 0.72), [(0.38, 0.46)])
         case "back_cut_ladder":
-            return cuePlus((0.28, 0.72), [(0.58, 0.42)])
+            return cuePlus((0.72, 0.72), [(0.48, 0.42)])
         case "target_pool":
             return cuePlus((0.62, 0.68), [(0.34, 0.46)])
         case "side_spin_ladder":
@@ -537,7 +541,7 @@ struct DrillPictureView: View {
         case "follow_progressive", "draw_progressive", "stop_shot_ladder":
             return cuePlus((progressiveCueX(level), 0.50), [(0.32, 0.50)])
         case "stun_tangent_line":
-            return cuePlus((0.64 + difficultyStep(level) * 0.025, 0.66), [(0.38, 0.44)])
+            return cuePlus((0.62 + difficultyStep(level) * 0.025, 0.62 + difficultyStep(level) * 0.018), [(0.44, 0.43)])
         case "gearing_outside_spin":
             return cuePlus((0.66, 0.66), [(0.36, 0.42)])
         case "clock_system_spin":
@@ -557,7 +561,7 @@ struct DrillPictureView: View {
         case "one_rail_kick":
             return cuePlusNumbered((0.25, 0.73), [(1, 0.70, 0.36), (8, 0.47, 0.55)])
         case "cross_side_bank":
-            return cuePlus((0.54, 0.70), [(0.38, 0.36), (0.50, 0.50)], limit: 2)
+            return cuePlus((0.60, 0.70), [(0.42, 0.42), (0.28, 0.14)], limit: 2)
         case "jump_escape_basic":
             return cuePlusNumbered((0.26, 0.73), [(1, 0.70, 0.36), (8, 0.46, 0.55)])
         case "break_control":

@@ -19,21 +19,30 @@ final class DataStore: ObservableObject {
     @Published var lastSyncSuccessAt: Date?
     @Published var lastSyncFailureReason: String?
 
-    private let service = SessionService()
+    private let service: any SessionServicing
     private let seedFlagKey = "didSeedSampleData"
     private let suppressAutoSeedKey = "suppressAutomaticSampleSeed"
+    private let pendingAccountDeletionCleanupKey = "pendingAccountDeletionCloudCleanup"
     private let localCache: LocalSessionCache
     private let deletedSessionIDStore: DeletedSessionIDStore
     private var deletedSessionIDs: Set<Int64> = []
 
-    init() {
-        localCache = LocalSessionCache()
-        deletedSessionIDStore = DeletedSessionIDStore()
+    init(
+        service: any SessionServicing = SessionService(),
+        localCache: LocalSessionCache = LocalSessionCache(),
+        deletedSessionIDStore: DeletedSessionIDStore = DeletedSessionIDStore(),
+        autoRefresh: Bool = true
+    ) {
+        self.service = service
+        self.localCache = localCache
+        self.deletedSessionIDStore = deletedSessionIDStore
         deletedSessionIDs = deletedSessionIDStore.load()
         loadLocal()
         sessions.removeAll { deletedSessionIDs.contains($0.id) }
         syncStatus = sessions.isEmpty ? .loading : .localOnly("Loaded local cache")
-        Task { await refresh() }
+        if autoRefresh {
+            Task { await refresh() }
+        }
     }
 
     func refresh() async {
@@ -44,6 +53,7 @@ final class DataStore: ObservableObject {
         let localSnapshot = sessions.filter { !deletedSessionIDs.contains($0.id) }
         do {
             await retryPendingCloudDeletes()
+            guard await retryPendingAccountDeletionCleanupIfNeeded() else { return }
             let fetched = try await service.fetchAllSessions()
             let visibleFetched = fetched.filter { !deletedSessionIDs.contains($0.id) }
             if visibleFetched.isEmpty && !localSnapshot.isEmpty {
@@ -225,11 +235,21 @@ final class DataStore: ObservableObject {
         do {
             try await service.deleteAllUserData(knownSessionIDs: knownIDs)
             clearLocalDataForAccountDeletion()
+            setPendingAccountDeletionCleanup(false)
             lastError = nil
             syncStatus = .synced
             markSyncSuccess()
         } catch {
-            clearLocalDataForAccountDeletion()
+            let cloudStillHasData = try? await service.hasAnyUserData()
+            let needsRetry = cloudStillHasData != false
+            clearLocalDataForAccountDeletion(pendingCloudDeleteIDs: needsRetry ? knownIDs : [])
+            setPendingAccountDeletionCleanup(needsRetry)
+            if cloudStillHasData != true {
+                lastError = nil
+                syncStatus = .synced
+                markSyncSuccess()
+                return
+            }
             let message = NSLocalizedString("Deleted local session history. iCloud cleanup failed.", comment: "")
             lastError = message
             syncStatus = .localOnly(message)
@@ -290,13 +310,44 @@ final class DataStore: ObservableObject {
         saveDeletedSessionIDs()
     }
 
-    private func clearLocalDataForAccountDeletion() {
+    private func clearLocalDataForAccountDeletion(pendingCloudDeleteIDs: [Int64] = []) {
         sessions = []
-        clearDeletedSessionIDs()
+        deletedSessionIDs = Set(pendingCloudDeleteIDs)
+        saveDeletedSessionIDs()
         setAutoSeedSuppressed(true)
         localCache.clear()
         lastSyncSuccessAt = nil
         lastSyncFailureReason = nil
+    }
+
+    private func retryPendingAccountDeletionCleanupIfNeeded() async -> Bool {
+        guard UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey) else {
+            return true
+        }
+
+        do {
+            try await service.deleteAllUserData(knownSessionIDs: existingIDsIncludingPendingDeletes())
+            let cloudStillHasData = try? await service.hasAnyUserData()
+            if cloudStillHasData == true {
+                throw AccountDeletionCleanupError.remoteDataStillExists
+            }
+
+            setPendingAccountDeletionCleanup(false)
+            clearDeletedSessionIDs()
+            lastError = nil
+            syncStatus = .synced
+            markSyncSuccess()
+            return true
+        } catch {
+            sessions = []
+            saveLocal()
+            setAutoSeedSuppressed(true)
+            let message = NSLocalizedString("Account deletion will finish when iCloud is available.", comment: "")
+            lastError = nil
+            syncStatus = .localOnly(message)
+            markSyncFailure(message)
+            return false
+        }
     }
 
     private func retryPendingCloudDeletes() async {
@@ -353,5 +404,17 @@ final class DataStore: ObservableObject {
 
     private func setAutoSeedSuppressed(_ suppressed: Bool) {
         UserDefaults.standard.set(suppressed, forKey: suppressAutoSeedKey)
+    }
+
+    private func setPendingAccountDeletionCleanup(_ pending: Bool) {
+        if pending {
+            UserDefaults.standard.set(true, forKey: pendingAccountDeletionCleanupKey)
+        } else {
+            UserDefaults.standard.removeObject(forKey: pendingAccountDeletionCleanupKey)
+        }
+    }
+
+    private enum AccountDeletionCleanupError: Error {
+        case remoteDataStillExists
     }
 }

@@ -1,17 +1,24 @@
 import XCTest
 
 final class ExportCompliancePlistTests: XCTestCase {
-    func testShippedPlistsDeclareOnlyExemptEncryptionUsage() throws {
+    func testMainAppPlistDeclaresOnlyExemptEncryptionUsage() throws {
+        let relativePath = "ios/PoolStats/Resources/Info.plist"
+        let plist = try readPlist(relativePath: relativePath)
+        let value = plist["ITSAppUsesNonExemptEncryption"] as? Bool
+        XCTAssertEqual(value, false, "\(relativePath) should declare ITSAppUsesNonExemptEncryption = NO")
+    }
+
+    func testWatchBundlePlistsDoNotDeclareEncryptionKey() throws {
         for relativePath in [
-            "ios/PoolStats/Resources/Info.plist",
             "ios/PoolStats/Watch/WatchApp-Info.plist",
             "ios/PoolStats/Watch/WatchExtension-Info.plist",
             "ios/PoolStats/WatchComplications/Info.plist",
         ] {
-            let plistURL = try XCTUnwrap(plistURL(relativePath: relativePath))
-            let plist = try XCTUnwrap(NSDictionary(contentsOf: plistURL) as? [String: Any], "Could not read \(relativePath)")
-            let value = plist["ITSAppUsesNonExemptEncryption"] as? Bool
-            XCTAssertEqual(value, false, "\(relativePath) should declare ITSAppUsesNonExemptEncryption = NO")
+            let plist = try readPlist(relativePath: relativePath)
+            XCTAssertNil(
+                plist["ITSAppUsesNonExemptEncryption"],
+                "\(relativePath) should not declare ITSAppUsesNonExemptEncryption"
+            )
         }
     }
 
@@ -22,5 +29,10 @@ final class ExportCompliancePlistTests: XCTestCase {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
         return repoRoot.appendingPathComponent(relativePath)
+    }
+
+    private func readPlist(relativePath: String) throws -> [String: Any] {
+        let plistURL = try XCTUnwrap(plistURL(relativePath: relativePath))
+        return try XCTUnwrap(NSDictionary(contentsOf: plistURL) as? [String: Any], "Could not read \(relativePath)")
     }
 }

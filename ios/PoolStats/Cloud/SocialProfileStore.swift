@@ -101,32 +101,6 @@ struct IncomingMatchShare: Codable, Equatable, Identifiable {
 
 @MainActor
 final class SocialProfileStore: ObservableObject {
-    nonisolated private static let hiddenPlayerName = NSLocalizedString("Hidden player", comment: "")
-    nonisolated private static let objectionableTerms = [
-        "asshole",
-        "bitch",
-        "chink",
-        "cunt",
-        "faggot",
-        "fuck",
-        "kike",
-        "nigger",
-        "shit",
-        "slut",
-        "spic",
-        "whore",
-    ]
-    nonisolated private static let leetspeakMap: [Character: Character] = [
-        "@": "a",
-        "$": "s",
-        "0": "o",
-        "1": "i",
-        "3": "e",
-        "4": "a",
-        "5": "s",
-        "7": "t",
-    ]
-
     enum PublishState: Equatable {
         case idle
         case loading
@@ -175,6 +149,12 @@ final class SocialProfileStore: ObservableObject {
         case failed(String)
     }
 
+    private enum RemoteAccountDataState {
+        case present
+        case absent
+        case unknown
+    }
+
     @Published private(set) var profile: PublicPlayerProfile?
     @Published private(set) var publishState: PublishState = .idle
     @Published private(set) var friends: [SocialFriend] = []
@@ -190,6 +170,14 @@ final class SocialProfileStore: ObservableObject {
     @Published var friendCodeQuery: String = ""
     @Published var lastError: String?
 
+    var hasLocalAccountData: Bool {
+        profile != nil
+            || !friends.isEmpty
+            || !blockedPlayers.isEmpty
+            || !outgoingShares.isEmpty
+            || !incomingShares.isEmpty
+    }
+
     private enum Constants {
         static let recordType = "PublicPlayerProfile"
         static let matchShareRecordType = "FriendMatchShare"
@@ -197,12 +185,6 @@ final class SocialProfileStore: ObservableObject {
         static let friendCode = "friendCode"
         static let ownerRecordName = "ownerRecordName"
         static let updatedAt = "updatedAt"
-        static let localFilename = "social-profile.json"
-        static let friendsFilename = "social-friends.json"
-        static let blockedPlayersFilename = "social-blocked-players.json"
-        static let outgoingSharesFilename = "social-outgoing-shares.json"
-        static let incomingSharesFilename = "social-incoming-shares.json"
-
         static let inviteUUID = "inviteUUID"
         static let senderFriendCode = "senderFriendCode"
         static let senderDisplayName = "senderDisplayName"
@@ -224,30 +206,19 @@ final class SocialProfileStore: ObservableObject {
 
     private let container: CKContainer
     private let db: CKDatabase
-    private let localURL: URL
-    private let friendsURL: URL
-    private let blockedPlayersURL: URL
-    private let outgoingSharesURL: URL
-    private let incomingSharesURL: URL
+    private let localPersistence: SocialProfileLocalPersistence
 
-    init(container: CKContainer = .default()) {
+    init(container: CKContainer = .default(), baseDirectory: URL? = nil) {
         self.container = container
         self.db = container.publicCloudDatabase
-
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
-        localURL = dir.appendingPathComponent(Constants.localFilename)
-        friendsURL = dir.appendingPathComponent(Constants.friendsFilename)
-        blockedPlayersURL = dir.appendingPathComponent(Constants.blockedPlayersFilename)
-        outgoingSharesURL = dir.appendingPathComponent(Constants.outgoingSharesFilename)
-        incomingSharesURL = dir.appendingPathComponent(Constants.incomingSharesFilename)
+        self.localPersistence = SocialProfileLocalPersistence(baseDirectory: baseDirectory)
 
         loadLocal()
         loadBlockedPlayersLocal()
         loadFriendsLocal()
         loadOutgoingSharesLocal()
         loadIncomingSharesLocal()
+        Task { await retryPendingAccountDeletionIfNeeded() }
     }
 
     func refresh() async {
@@ -457,7 +428,7 @@ final class SocialProfileStore: ObservableObject {
     }
 
     func presentableDisplayName(_ displayName: String) -> String {
-        Self.isAllowedPublicDisplayName(displayName) ? displayName : Self.hiddenPlayerName
+        SocialProfileIdentity.presentableDisplayName(displayName)
     }
 
     func shouldHideDisplayName(_ displayName: String) -> Bool {
@@ -485,15 +456,40 @@ final class SocialProfileStore: ObservableObject {
         accountDeletionState = .deleting
         lastError = nil
 
+        guard profile != nil || !friends.isEmpty || !outgoingShares.isEmpty || !incomingShares.isEmpty else {
+            clearLocalAccountData()
+            accountDeletionState = .deleted
+            return
+        }
+
+        let currentProfile = profile
         do {
-            if let currentProfile = profile {
+            if let currentProfile {
                 try await deletePublicProfileIfOwned(currentProfile)
                 try await deleteAllSharedMatchRecords(for: currentProfile)
             }
 
+            clearPendingDeletionProfile()
             clearLocalAccountData()
             accountDeletionState = .deleted
         } catch {
+            let remoteState = await accountDataRemoteState(for: currentProfile)
+            switch remoteState {
+            case .absent:
+                clearPendingDeletionProfile()
+                clearLocalAccountData()
+                lastError = nil
+                accountDeletionState = .deleted
+                return
+            case .unknown:
+                savePendingDeletionProfile(currentProfile)
+                clearLocalAccountData()
+                lastError = nil
+                accountDeletionState = .deleted
+                return
+            case .present:
+                savePendingDeletionProfile(currentProfile)
+            }
             let message = readableMessage(for: error)
             lastError = message
             accountDeletionState = .failed(message)
@@ -828,7 +824,7 @@ final class SocialProfileStore: ObservableObject {
         if localProfile.recordName == existing.recordID.recordName && existingOwner == nil { return false }
         if localProfile.recordName == existing.recordID.recordName && localProfile.ownerRecordName == currentOwnerRecordName { return false }
 
-        return true
+        return false
     }
 
     private func profile(from record: CKRecord, fallback: PublicPlayerProfile) -> PublicPlayerProfile {
@@ -848,9 +844,7 @@ final class SocialProfileStore: ObservableObject {
     }
 
     private func loadLocal() {
-        let decoder = Self.makeJSONDecoder()
-        guard let data = try? Data(contentsOf: localURL),
-              let decoded = try? decoder.decode(PublicPlayerProfile.self, from: data) else { return }
+        guard let decoded = localPersistence.load(PublicPlayerProfile.self, from: localPersistence.profileURL) else { return }
         profile = decoded
         displayName = decoded.displayName
     }
@@ -858,59 +852,41 @@ final class SocialProfileStore: ObservableObject {
     private func saveLocal() {
         guard let profile else { return }
         do {
-            try FileManager.default.createDirectory(at: localURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(profile)
-            try data.write(to: localURL, options: [.atomic])
+            try localPersistence.save(profile, to: localPersistence.profileURL)
         } catch {
             lastError = NSLocalizedString("Could not save public profile locally.", comment: "")
         }
     }
 
     private func loadFriendsLocal() {
-        let decoder = Self.makeJSONDecoder()
-        guard let data = try? Data(contentsOf: friendsURL),
-              let decoded = try? decoder.decode([SocialFriend].self, from: data) else { return }
+        guard let decoded = localPersistence.load([SocialFriend].self, from: localPersistence.friendsURL) else { return }
         friends = decoded.filter { !isBlockedFriendCode($0.friendCode) }
         sortFriends()
     }
 
     private func saveFriendsLocal() {
         do {
-            try FileManager.default.createDirectory(at: friendsURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(friends)
-            try data.write(to: friendsURL, options: [.atomic])
+            try localPersistence.save(friends, to: localPersistence.friendsURL)
         } catch {
             lastError = NSLocalizedString("Could not save friends locally.", comment: "")
         }
     }
 
     private func loadBlockedPlayersLocal() {
-        let decoder = Self.makeJSONDecoder()
-        guard let data = try? Data(contentsOf: blockedPlayersURL),
-              let decoded = try? decoder.decode([BlockedPlayer].self, from: data) else { return }
+        guard let decoded = localPersistence.load([BlockedPlayer].self, from: localPersistence.blockedPlayersURL) else { return }
         blockedPlayers = decoded.sorted { $0.blockedAt > $1.blockedAt }
     }
 
     private func saveBlockedPlayersLocal() {
         do {
-            try FileManager.default.createDirectory(at: blockedPlayersURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(blockedPlayers)
-            try data.write(to: blockedPlayersURL, options: [.atomic])
+            try localPersistence.save(blockedPlayers, to: localPersistence.blockedPlayersURL)
         } catch {
             lastError = NSLocalizedString("Could not save blocked players locally.", comment: "")
         }
     }
 
     private func loadOutgoingSharesLocal() {
-        let decoder = Self.makeJSONDecoder()
-        guard let data = try? Data(contentsOf: outgoingSharesURL),
-              let decoded = try? decoder.decode([OutgoingMatchShare].self, from: data) else { return }
+        guard let decoded = localPersistence.load([OutgoingMatchShare].self, from: localPersistence.outgoingSharesURL) else { return }
         outgoingShares = decoded
             .filter { !isBlockedFriendCode($0.recipientFriendCode) }
             .sorted { $0.createdAt > $1.createdAt }
@@ -918,20 +894,14 @@ final class SocialProfileStore: ObservableObject {
 
     private func saveOutgoingSharesLocal() {
         do {
-            try FileManager.default.createDirectory(at: outgoingSharesURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(outgoingShares)
-            try data.write(to: outgoingSharesURL, options: [.atomic])
+            try localPersistence.save(outgoingShares, to: localPersistence.outgoingSharesURL)
         } catch {
             lastError = NSLocalizedString("Could not save shared match status locally.", comment: "")
         }
     }
 
     private func loadIncomingSharesLocal() {
-        let decoder = Self.makeJSONDecoder()
-        guard let data = try? Data(contentsOf: incomingSharesURL),
-              let decoded = try? decoder.decode([IncomingMatchShare].self, from: data) else { return }
+        guard let decoded = localPersistence.load([IncomingMatchShare].self, from: localPersistence.incomingSharesURL) else { return }
         incomingShares = decoded
             .filter { !isBlockedFriendCode($0.senderFriendCode) }
             .filter { !$0.isDeclined }
@@ -940,11 +910,7 @@ final class SocialProfileStore: ObservableObject {
 
     private func saveIncomingSharesLocal() {
         do {
-            try FileManager.default.createDirectory(at: incomingSharesURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            let encoder = JSONEncoder()
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(incomingShares)
-            try data.write(to: incomingSharesURL, options: [.atomic])
+            try localPersistence.save(incomingShares, to: localPersistence.incomingSharesURL)
         } catch {
             lastError = NSLocalizedString("Could not save incoming match invites locally.", comment: "")
         }
@@ -1101,6 +1067,57 @@ final class SocialProfileStore: ObservableObject {
         }
     }
 
+    private func retryPendingAccountDeletionIfNeeded() async {
+        guard let pendingProfile = localPersistence.load(PublicPlayerProfile.self, from: localPersistence.pendingDeletionProfileURL) else {
+            return
+        }
+
+        do {
+            try await deletePublicProfileIfOwned(pendingProfile)
+            try await deleteAllSharedMatchRecords(for: pendingProfile)
+            clearPendingDeletionProfile()
+        } catch {
+            let remoteState = await accountDataRemoteState(for: pendingProfile)
+            if remoteState == .absent {
+                clearPendingDeletionProfile()
+            }
+        }
+    }
+
+    private func accountDataRemoteState(for currentProfile: PublicPlayerProfile?) async -> RemoteAccountDataState {
+        guard let currentProfile else { return .absent }
+
+        let recordName = currentProfile.recordName ?? Self.recordName(for: currentProfile.friendCode)
+        let recordID = CKRecord.ID(recordName: recordName)
+        do {
+            if let existing = try await fetchRecordIfExists(recordID),
+               profileRecordBelongsToCurrentUser(existing, currentProfile: currentProfile) {
+                return .present
+            }
+        } catch {
+            return .unknown
+        }
+
+        let senderPredicate = NSPredicate(format: "%K == %@", Constants.senderFriendCode, currentProfile.friendCode)
+        let recipientPredicate = NSPredicate(format: "%K == %@", Constants.recipientFriendCode, currentProfile.friendCode)
+        let predicate = NSCompoundPredicate(orPredicateWithSubpredicates: [senderPredicate, recipientPredicate])
+        let query = CKQuery(recordType: Constants.matchShareRecordType, predicate: predicate)
+        do {
+            let records = try await fetchAllPublicRecords(query: query)
+            return records.isEmpty ? .absent : .present
+        } catch {
+            return .unknown
+        }
+    }
+
+    private func profileRecordBelongsToCurrentUser(_ record: CKRecord, currentProfile: PublicPlayerProfile) -> Bool {
+        let existingOwner = record[Constants.ownerRecordName] as? String
+        guard let currentOwner = currentProfile.ownerRecordName, !currentOwner.isEmpty else {
+            return existingOwner == nil || record.recordID.recordName == (currentProfile.recordName ?? Self.recordName(for: currentProfile.friendCode))
+        }
+        return existingOwner == nil || existingOwner == currentOwner
+    }
+
     private func clearLocalAccountData() {
         profile = nil
         publishState = .idle
@@ -1115,20 +1132,27 @@ final class SocialProfileStore: ObservableObject {
         displayName = ""
         friendCodeQuery = ""
 
-        removeLocalFile(at: localURL)
-        removeLocalFile(at: friendsURL)
-        removeLocalFile(at: blockedPlayersURL)
-        removeLocalFile(at: outgoingSharesURL)
-        removeLocalFile(at: incomingSharesURL)
-    }
-
-    private func removeLocalFile(at url: URL) {
         do {
-            if FileManager.default.fileExists(atPath: url.path) {
-                try FileManager.default.removeItem(at: url)
-            }
+            try localPersistence.removeAll()
         } catch {
             lastError = NSLocalizedString("Could not remove local account data.", comment: "")
+        }
+    }
+
+    private func savePendingDeletionProfile(_ currentProfile: PublicPlayerProfile?) {
+        guard let currentProfile else { return }
+        do {
+            try localPersistence.save(currentProfile, to: localPersistence.pendingDeletionProfileURL)
+        } catch {
+            lastError = NSLocalizedString("Could not save pending account cleanup locally.", comment: "")
+        }
+    }
+
+    private func clearPendingDeletionProfile() {
+        do {
+            try localPersistence.removePendingDeletionProfile()
+        } catch {
+            lastError = NSLocalizedString("Could not clear pending account cleanup locally.", comment: "")
         }
     }
 
@@ -1221,34 +1245,19 @@ final class SocialProfileStore: ObservableObject {
     }
 
     nonisolated static func normalizeFriendCode(_ raw: String) -> String {
-        let compact = raw.uppercased().filter { $0.isLetter || $0.isNumber }
-        let body = compact.hasPrefix("PS") ? String(compact.dropFirst(2)) : compact
-        guard body.count >= 6 else {
-            return raw.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
-        }
-        let prefix = body.prefix(3)
-        let suffix = body.dropFirst(3).prefix(3)
-        return "PS-\(prefix)-\(suffix)"
+        SocialProfileIdentity.normalizeFriendCode(raw)
     }
 
     nonisolated static func isValidFriendCode(_ raw: String) -> Bool {
-        let normalized = normalizeFriendCode(raw)
-        let compact = normalized.uppercased().filter { $0.isLetter || $0.isNumber }
-        guard compact.hasPrefix("PS") else { return false }
-        return compact.dropFirst(2).count == 6
+        SocialProfileIdentity.isValidFriendCode(raw)
     }
 
     nonisolated static func isAllowedPublicDisplayName(_ raw: String) -> Bool {
-        let normalized = normalizedModerationText(raw)
-        guard !normalized.isEmpty else { return false }
-        return !objectionableTerms.contains(where: { normalized.contains($0) })
+        SocialProfileIdentity.isAllowedPublicDisplayName(raw)
     }
 
     private static func generateFriendCode() -> String {
-        let alphabet = Array("ABCDEFGHJKLMNPQRSTUVWXYZ23456789")
-        let first = String((0..<3).map { _ in alphabet.randomElement()! })
-        let second = String((0..<3).map { _ in alphabet.randomElement()! })
-        return "PS-\(first)-\(second)"
+        SocialProfileIdentity.generateFriendCode()
     }
 
 #if DEBUG
@@ -1325,7 +1334,7 @@ final class SocialProfileStore: ObservableObject {
         }
         let trimmedName = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
         let entry = BlockedPlayer(
-            displayName: trimmedName.isEmpty ? Self.hiddenPlayerName : trimmedName,
+            displayName: trimmedName.isEmpty ? SocialProfileIdentity.hiddenPlayerName : trimmedName,
             friendCode: normalized,
             blockedAt: Date()
         )
@@ -1353,29 +1362,8 @@ final class SocialProfileStore: ObservableObject {
         saveIncomingSharesLocal()
     }
 
-    private static func makeJSONDecoder() -> JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }
-
-    nonisolated private static func normalizedModerationText(_ raw: String) -> String {
-        let mapped = raw
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-            .lowercased()
-            .map { leetspeakMap[$0] ?? $0 }
-        return String(mapped.filter { $0.isLetter })
-    }
-
     nonisolated private static func mailtoURL(email: String, subject: String, body: String) -> URL? {
-        var components = URLComponents()
-        components.scheme = "mailto"
-        components.path = email
-        components.queryItems = [
-            URLQueryItem(name: "subject", value: subject),
-            URLQueryItem(name: "body", value: body),
-        ]
-        return components.url
+        SocialProfileIdentity.mailtoURL(email: email, subject: subject, body: body)
     }
 
     private static func stableSharedSessionID(for inviteUUID: String) -> Int64 {

@@ -1,6 +1,16 @@
 import Foundation
 
-final class SessionService {
+protocol SessionServicing {
+    func fetchAllSessions() async throws -> [Session]
+    func saveSession(_ session: Session) async throws
+    func updateSessionMeta(_ session: Session) async throws
+    func deleteSessions(_ ids: [Int64]) async throws
+    func replaceAllSessions(existingIDs: [Int64], with newSessions: [Session]) async throws
+    func deleteAllUserData(knownSessionIDs: [Int64]) async throws
+    func hasAnyUserData() async throws -> Bool
+}
+
+final class SessionService: SessionServicing {
     private let cloud = CloudKitStore()
 
     func fetchAllSessions() async throws -> [Session] {
@@ -30,5 +40,9 @@ final class SessionService {
 
     func deleteAllUserData(knownSessionIDs: [Int64]) async throws {
         try await cloud.deleteAllUserData(knownSessionIDs: knownSessionIDs)
+    }
+
+    func hasAnyUserData() async throws -> Bool {
+        try await cloud.hasAnyUserData()
     }
 }

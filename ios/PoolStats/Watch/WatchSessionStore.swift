@@ -17,6 +17,7 @@ final class WatchSessionStore: ObservableObject {
     func startSession(game: String, opponent: String) -> String {
         let sessionUUID = UUID().uuidString
         let now = Date()
+        clearStoredClosedSessionMarker()
         let session = WatchSessionFactory.matchSession(
             game: game,
             opponent: opponent,
@@ -42,6 +43,7 @@ final class WatchSessionStore: ObservableObject {
     ) -> String {
         let sessionUUID = UUID().uuidString
         let now = Date()
+        clearStoredClosedSessionMarker()
         let session = WatchSessionFactory.drillPracticeSession(
             drill: drill,
             difficulty: difficulty,
