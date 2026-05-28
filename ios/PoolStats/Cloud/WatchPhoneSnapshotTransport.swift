@@ -22,6 +22,11 @@ enum WatchPhoneSnapshotTransport {
     }
 
     static func sendSnapshot(payload: [String: Any], using session: WCSession) {
+        guard session.activationState == .activated else { return }
+        #if os(iOS)
+        guard session.isPaired, session.isWatchAppInstalled else { return }
+        #endif
+
         let message = snapshotMessage(payload: payload)
         try? session.updateApplicationContext(message)
         if session.isReachable {

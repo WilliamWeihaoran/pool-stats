@@ -71,6 +71,14 @@ final class JSONTransferTests: XCTestCase {
         }
     }
 
+    func testImportRejectsOversizedPayloads() {
+        let data = Data(repeating: UInt8(ascii: " "), count: JSONTransfer.maximumImportByteCount + 1)
+
+        XCTAssertThrowsError(try JSONTransfer.importSessions(data)) { error in
+            XCTAssertEqual(error.localizedDescription, JSONTransfer.TransferError.fileTooLarge.localizedDescription)
+        }
+    }
+
     func testImportNormalizesDuplicateIdentifiersAndInvalidValues() throws {
         let json = """
         [

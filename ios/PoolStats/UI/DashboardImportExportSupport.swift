@@ -142,6 +142,10 @@ private struct DashboardImportExportModifier: ViewModifier {
                 }
             }
 
+            let values = try url.resourceValues(forKeys: [.fileSizeKey])
+            if let fileSize = values.fileSize, fileSize > JSONTransfer.maximumImportByteCount {
+                throw JSONTransfer.TransferError.fileTooLarge
+            }
             let data = try Data(contentsOf: url)
             let count = try JSONTransfer.previewImportCount(data)
             state.stageImport(data: data, count: count)

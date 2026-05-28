@@ -167,11 +167,7 @@ struct DrillPictureView: View {
             zone(x: 0.48, y: 0.18, w: 0.24, h: 0.60, label: "Right side", color: Theme.green, in: size)
             route([(0.34, 0.78), (0.46, 0.24), (0.54, 0.42), (0.62, 0.60), (0.52, 0.76)], color: Theme.green, in: size)
         case "centerline_control":
-            Circle()
-                .fill(Theme.teal.opacity(0.10))
-                .overlay(Circle().stroke(Theme.teal.opacity(0.40), style: StrokeStyle(lineWidth: 1, dash: [6, 5])))
-                .frame(width: size.width * max(0.32, 0.54 - step * 0.045), height: size.width * max(0.32, 0.54 - step * 0.045))
-                .position(x: size.width * 0.50, y: size.height * 0.52)
+            centerlineTarget(step: step, in: size)
             route([(0.50, 0.52), (0.62, 0.38), (0.45, 0.64), (0.34, 0.46)], color: Theme.teal, in: size)
         case "rail_avoidance":
             zone(x: 0.10, y: 0.26, w: 0.22, h: 0.48, label: "Odd row", color: Theme.blue, in: size)
@@ -250,11 +246,7 @@ struct DrillPictureView: View {
             route([(0.48, 0.42), (0.30, 0.58), (0.18, 0.70)], color: Theme.red, in: size)
             zone(x: 0.16, y: 0.58, w: targetSize, h: targetHeight, label: "Avoid scratch", color: Theme.red, in: size)
         case "wagon_wheel":
-            Circle()
-                .fill(Theme.purple.opacity(0.08))
-                .overlay(Circle().stroke(Theme.purple.opacity(0.34), style: StrokeStyle(lineWidth: 1, dash: [5, 5])))
-                .frame(width: size.width * max(0.40, 0.66 - step * 0.045), height: size.width * max(0.40, 0.66 - step * 0.045))
-                .position(x: size.width * 0.50, y: size.height * 0.52)
+            wagonWheelTarget(step: step, in: size)
             tableLine(from: (0.52, 0.55), to: (0.30, 0.22), color: Theme.purple, in: size)
             tableLine(from: (0.52, 0.55), to: (0.74, 0.26), color: Theme.purple, in: size)
             tableLine(from: (0.52, 0.55), to: (0.78, 0.72), color: Theme.purple, in: size)
@@ -380,11 +372,7 @@ struct DrillPictureView: View {
             case "break_control":
                 zone(x: 0.35, y: 0.42, w: max(0.16, 0.32 - step * 0.025), h: max(0.13, 0.22 - step * 0.018), label: "CB finish", color: Theme.teal, in: size)
             case "circle_drill":
-                Circle()
-                    .fill(Theme.teal.opacity(0.10))
-                    .overlay(Circle().stroke(Theme.teal.opacity(0.40), style: StrokeStyle(lineWidth: 1, dash: [6, 5])))
-                    .frame(width: size.width * max(0.32, 0.54 - step * 0.045), height: size.width * max(0.32, 0.54 - step * 0.045))
-                    .position(x: size.width * 0.50, y: size.height * 0.52)
+                centerlineTarget(step: step, in: size)
             case "one_to_ten":
                 zone(x: 0.10, y: 0.26, w: 0.22, h: 0.48, label: "A", color: Theme.blue, in: size)
                 zone(x: 0.68, y: 0.26, w: 0.22, h: 0.48, label: "B", color: Theme.purple, in: size)
@@ -442,18 +430,52 @@ struct DrillPictureView: View {
         .position(x: size.width * x, y: size.height * y)
     }
 
+    private func centerlineTarget(step: Double, in size: CGSize) -> some View {
+        let diameter = size.width * max(0.32, 0.54 - step * 0.045)
+        let stroke = StrokeStyle(lineWidth: 1, dash: [6, 5])
+
+        return Circle()
+            .fill(Theme.teal.opacity(0.10))
+            .overlay {
+                Circle().stroke(Theme.teal.opacity(0.40), style: stroke)
+            }
+            .frame(width: diameter, height: diameter)
+            .position(x: size.width * 0.50, y: size.height * 0.52)
+    }
+
+    private func wagonWheelTarget(step: Double, in size: CGSize) -> some View {
+        let diameter = size.width * max(0.40, 0.66 - step * 0.045)
+        let stroke = StrokeStyle(lineWidth: 1, dash: [5, 5])
+
+        return Circle()
+            .fill(Theme.purple.opacity(0.08))
+            .overlay {
+                Circle().stroke(Theme.purple.opacity(0.34), style: stroke)
+            }
+            .frame(width: diameter, height: diameter)
+            .position(x: size.width * 0.50, y: size.height * 0.52)
+    }
+
     private func zone(x: Double, y: Double, w: Double, h: Double, label: String, color: Color, in size: CGSize) -> some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
+        let labelFontSize = max(7, min(size.width, size.height) * 0.04)
+        let width = size.width * w
+        let height = size.height * h
+        let position = CGPoint(x: size.width * (x + w / 2), y: size.height * (y + h / 2))
+        let stroke = StrokeStyle(lineWidth: 1, dash: [6, 5])
+
+        return RoundedRectangle(cornerRadius: 12, style: .continuous)
             .fill(color.opacity(0.12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(color.opacity(0.42), style: StrokeStyle(lineWidth: 1, dash: [6, 5])))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12).stroke(color.opacity(0.42), style: stroke)
+            }
             .overlay(alignment: .topLeading) {
                 Text(LocalizedStringKey(label))
-                    .font(.system(size: max(7, min(size.width, size.height) * 0.04), weight: .bold))
+                    .font(.system(size: labelFontSize, weight: .bold))
                     .foregroundColor(color.opacity(0.8))
                     .padding(6)
             }
-            .frame(width: size.width * w, height: size.height * h)
-            .position(x: size.width * (x + w / 2), y: size.height * (y + h / 2))
+            .frame(width: width, height: height)
+            .position(position)
     }
 
     private func balls(for template: DrillTemplate, ballCount: Int, level: DrillDifficultyLevel) -> [PictureBall] {

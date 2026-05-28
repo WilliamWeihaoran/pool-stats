@@ -114,6 +114,7 @@
 		AB1000010000000000000009 /* CloudKitStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000009 /* CloudKitStoreTests.swift */; };
 		AB1000010000000000000010 /* DataStoreDeletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000010 /* DataStoreDeletionTests.swift */; };
 		AB1000010000000000000011 /* LocalSessionPersistenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000011 /* LocalSessionPersistenceTests.swift */; };
+		AB1000010000000000000012 /* JSONTransferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000012 /* JSONTransferTests.swift */; };
 		AB1000010000000000000006 /* SocialProfileStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000006 /* SocialProfileStoreTests.swift */; };
 		AB1000010000000000000007 /* WatchSyncReconciliationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB2000010000000000000007 /* WatchSyncReconciliationTests.swift */; };
 		B2C3D4E5F6A7B8C9D0E1F2A3 /* WatchActiveSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */; };
@@ -291,6 +292,7 @@
 		AB2000010000000000000009 /* CloudKitStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudKitStoreTests.swift; sourceTree = "<group>"; };
 		AB2000010000000000000010 /* DataStoreDeletionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataStoreDeletionTests.swift; sourceTree = "<group>"; };
 		AB2000010000000000000011 /* LocalSessionPersistenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSessionPersistenceTests.swift; sourceTree = "<group>"; };
+		AB2000010000000000000012 /* JSONTransferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONTransferTests.swift; sourceTree = "<group>"; };
 		B1C2D3E4F5A6B7C8D9E0F1A2 /* WatchSessionStartView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchSessionStartView.swift; sourceTree = "<group>"; };
 		B95EF770F4471EEB79F44729 /* WatchExtension-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "WatchExtension-Info.plist"; sourceTree = "<group>"; };
 		C2D3E4F5A6B7C8D9E0F1A2B3 /* WatchActiveSessionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WatchActiveSessionView.swift; sourceTree = "<group>"; };
@@ -538,6 +540,7 @@
 				AB2000010000000000000003 /* DrillSessionTests.swift */,
 				AB2000010000000000000001 /* GoalMetricTests.swift */,
 				AB2000010000000000000002 /* GoalWindowTests.swift */,
+				AB2000010000000000000012 /* JSONTransferTests.swift */,
 				AB2000010000000000000011 /* LocalSessionPersistenceTests.swift */,
 				AB2000010000000000000006 /* SocialProfileStoreTests.swift */,
 				AB2000010000000000000007 /* WatchSyncReconciliationTests.swift */,
@@ -899,6 +902,7 @@
 				AB1000010000000000000009 /* CloudKitStoreTests.swift in Sources */,
 				AB1000010000000000000010 /* DataStoreDeletionTests.swift in Sources */,
 				AB1000010000000000000011 /* LocalSessionPersistenceTests.swift in Sources */,
+				AB1000010000000000000012 /* JSONTransferTests.swift in Sources */,
 				AB1000010000000000000003 /* DrillSessionTests.swift in Sources */,
 				AB1000010000000000000001 /* GoalMetricTests.swift in Sources */,
 				AB1000010000000000000002 /* GoalWindowTests.swift in Sources */,

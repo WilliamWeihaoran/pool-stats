@@ -250,8 +250,12 @@ final class OpponentStore: ObservableObject {
         guard let data = try? makeEncoder().encode(profiles) else { return }
         let dir = localURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try? data.write(to: localURL, options: .atomic)
+        try? data.write(to: localURL, options: Self.protectedWriteOptions)
         UserDefaults.standard.set(true, forKey: storageKey)
+    }
+
+    private static var protectedWriteOptions: Data.WritingOptions {
+        [.atomic, .completeFileProtection]
     }
 
     private static func normalize(_ text: String) -> String {

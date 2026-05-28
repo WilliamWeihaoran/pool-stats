@@ -627,6 +627,10 @@ final class SocialProfileStore: ObservableObject {
 
     func acceptIncomingShare(_ share: IncomingMatchShare, savingTo store: DataStore) async {
         guard share.isPending else { return }
+        guard let profile, Self.share(share, isAddressedTo: profile) else {
+            incomingShareState = .failed("This shared match is not addressed to your profile.")
+            return
+        }
         guard !isBlockedFriendCode(share.senderFriendCode) else {
             incomingShareState = .failed("Unblock this player before accepting a shared match.")
             return
@@ -636,14 +640,14 @@ final class SocialProfileStore: ObservableObject {
         do {
             let sanitizedShare = sanitizedIncomingShare(share)
             let session = try acceptedSession(from: sanitizedShare)
-            await store.saveSession(session)
 
             var accepted = sanitizedShare
             accepted.status = "accepted"
             accepted.acceptedAt = Date()
             accepted.failureMessage = nil
 
-            try await updateIncomingShareRecord(accepted)
+            try await updateIncomingShareRecord(accepted, currentProfile: profile)
+            await store.saveSession(session)
             upsertIncomingShare(accepted)
             incomingShareState = .accepted(accepted)
             lastError = nil
@@ -657,13 +661,17 @@ final class SocialProfileStore: ObservableObject {
 
     func declineIncomingShare(_ share: IncomingMatchShare) async {
         guard share.isPending else { return }
+        guard let profile, Self.share(share, isAddressedTo: profile) else {
+            incomingShareState = .failed("This shared match is not addressed to your profile.")
+            return
+        }
         incomingShareState = .declining(share.inviteUUID)
 
         do {
             var declined = share
             declined.status = "declined"
             declined.failureMessage = nil
-            try await updateIncomingShareRecord(declined)
+            try await updateIncomingShareRecord(declined, currentProfile: profile)
             upsertIncomingShare(declined)
             incomingShares.removeAll { $0.inviteUUID == declined.inviteUUID }
             saveIncomingSharesLocal()
@@ -819,12 +827,9 @@ final class SocialProfileStore: ObservableObject {
         let existingOwner = existing[Constants.ownerRecordName] as? String
         if existingOwner == currentOwnerRecordName { return false }
 
-        // If this device already had the record name saved, assume it is an update path
-        // unless CloudKit clearly says the record belongs to another owner.
-        if localProfile.recordName == existing.recordID.recordName && existingOwner == nil { return false }
         if localProfile.recordName == existing.recordID.recordName && localProfile.ownerRecordName == currentOwnerRecordName { return false }
 
-        return false
+        return true
     }
 
     private func profile(from record: CKRecord, fallback: PublicPlayerProfile) -> PublicPlayerProfile {
@@ -1029,9 +1034,13 @@ final class SocialProfileStore: ObservableObject {
         }
     }
 
-    private func updateIncomingShareRecord(_ share: IncomingMatchShare) async throws {
+    private func updateIncomingShareRecord(_ share: IncomingMatchShare, currentProfile: PublicPlayerProfile) async throws {
         let recordName = share.recordName ?? matchShareRecordName(for: share.inviteUUID)
         let record = try await db.record(for: CKRecord.ID(recordName: recordName))
+        let recipient = Self.normalizeFriendCode(record[Constants.recipientFriendCode] as? String ?? "")
+        guard recipient == currentProfile.friendCode else {
+            throw SocialProfileError.shareNotAddressedToCurrentProfile
+        }
         record[Constants.status] = share.status as CKRecordValue
         if let acceptedAt = share.acceptedAt {
             record[Constants.acceptedAt] = acceptedAt as CKRecordValue
@@ -1256,6 +1265,10 @@ final class SocialProfileStore: ObservableObject {
         SocialProfileIdentity.isAllowedPublicDisplayName(raw)
     }
 
+    nonisolated static func share(_ share: IncomingMatchShare, isAddressedTo profile: PublicPlayerProfile) -> Bool {
+        normalizeFriendCode(share.recipientFriendCode) == profile.friendCode
+    }
+
     private static func generateFriendCode() -> String {
         SocialProfileIdentity.generateFriendCode()
     }
@@ -1375,6 +1388,7 @@ enum SocialProfileError: LocalizedError {
     case couldNotAllocateFriendCode
     case couldNotEncodeMatch
     case couldNotDecodeMatch
+    case shareNotAddressedToCurrentProfile
 
     var errorDescription: String? {
         switch self {
@@ -1384,6 +1398,8 @@ enum SocialProfileError: LocalizedError {
             return "Could not prepare this match for sharing."
         case .couldNotDecodeMatch:
             return "Could not read this shared match."
+        case .shareNotAddressedToCurrentProfile:
+            return "This shared match is not addressed to your profile."
         }
     }
 }

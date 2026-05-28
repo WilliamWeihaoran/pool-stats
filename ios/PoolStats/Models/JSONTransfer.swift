@@ -5,6 +5,7 @@ struct JSONTransfer {
         case emptyFile
         case noSessions
         case invalidPayload
+        case fileTooLarge
 
         var errorDescription: String? {
             switch self {
@@ -14,9 +15,13 @@ struct JSONTransfer {
                 return NSLocalizedString("The selected JSON file does not contain any sessions to import.", comment: "")
             case .invalidPayload:
                 return NSLocalizedString("The selected file is not a supported Pool Stats export.", comment: "")
+            case .fileTooLarge:
+                return NSLocalizedString("The selected JSON file is too large to import.", comment: "")
             }
         }
     }
+
+    static let maximumImportByteCount = 5 * 1024 * 1024
 
     static func exportSessions(_ sessions: [Session]) throws -> Data {
         try JSONTransferExporter.exportSessions(sessions)
@@ -103,6 +108,9 @@ private enum JSONTransferImporter {
     }
 
     static func importSessions(_ data: Data) throws -> [Session] {
+        guard data.count <= JSONTransfer.maximumImportByteCount else {
+            throw JSONTransfer.TransferError.fileTooLarge
+        }
         guard !trimmedJSONPayload(from: data).isEmpty else {
             throw JSONTransfer.TransferError.emptyFile
         }

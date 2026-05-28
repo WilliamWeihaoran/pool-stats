@@ -52,6 +52,10 @@ final class WatchQueueStore {
         guard let data = try? JSONEncoder().encode(queued) else { return }
         let dir = localURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try? data.write(to: localURL, options: .atomic)
+        try? data.write(to: localURL, options: Self.protectedWriteOptions)
+    }
+
+    private static var protectedWriteOptions: Data.WritingOptions {
+        [.atomic, .completeFileProtection]
     }
 }

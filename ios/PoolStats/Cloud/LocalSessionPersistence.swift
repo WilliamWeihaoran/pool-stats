@@ -23,7 +23,7 @@ struct LocalSessionCache {
     func saveSessions(_ sessions: [Session]) {
         guard let data = try? JSONTransfer.exportSessions(sessions) else { return }
         createDirectoryIfNeeded()
-        try? data.write(to: url, options: .atomic)
+        try? data.write(to: url, options: Self.protectedWriteOptions)
     }
 
     func clear() {
@@ -46,6 +46,10 @@ struct LocalSessionCache {
         let base = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? fileManager.temporaryDirectory
         return base.appendingPathComponent("PoolStats", isDirectory: true)
+    }
+
+    private static var protectedWriteOptions: Data.WritingOptions {
+        [.atomic, .completeFileProtection]
     }
 }
 
@@ -80,7 +84,7 @@ struct DeletedSessionIDStore {
 
         let sortedIDs = Array(ids).sorted()
         guard let data = try? JSONEncoder().encode(sortedIDs) else { return }
-        try? data.write(to: url, options: .atomic)
+        try? data.write(to: url, options: Self.protectedWriteOptions)
     }
 
     func clear() {
@@ -99,5 +103,9 @@ struct DeletedSessionIDStore {
             .defaultURL(fileManager: fileManager)
             .deletingLastPathComponent()
             .appendingPathComponent("deleted-session-ids.json")
+    }
+
+    private static var protectedWriteOptions: Data.WritingOptions {
+        [.atomic, .completeFileProtection]
     }
 }

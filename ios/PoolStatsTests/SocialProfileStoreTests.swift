@@ -12,7 +12,7 @@ final class SocialProfileStoreTests: XCTestCase {
     }
 
     func testOutgoingShareCapturesMatchMetadataAndScoreWithoutCloudKit() throws {
-        let session = makeSession(
+        var session = makeSession(
             id: 40,
             ts: Date(timeIntervalSince1970: 10_000),
             racks: [
@@ -23,6 +23,10 @@ final class SocialProfileStoreTests: XCTestCase {
             game: "9ball",
             type: "match"
         )
+        session.label = "Private finals with Alex"
+        session.opponent = "Alex"
+        session.performanceRating = 10
+        session.drillTitle = "Secret practice set"
         let sender = makePublicProfile(name: "William", code: "PS-ME1-234")
         let friend = makeFriend(name: "Alex", code: "abc123")
         let createdAt = Date(timeIntervalSince1970: 20_000)
@@ -49,10 +53,16 @@ final class SocialProfileStoreTests: XCTestCase {
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let decoded = try decoder.decode(Session.self, from: XCTUnwrap(share.sessionJSON.data(using: .utf8)))
+        let decoded = try decoder.decode(FriendMatchSharing.SharedMatchPayload.self, from: XCTUnwrap(share.sessionJSON.data(using: .utf8)))
         XCTAssertEqual(decoded.sessionUUID, session.sessionUUID)
-        XCTAssertEqual(decoded.wins, session.wins)
-        XCTAssertEqual(decoded.losses, session.losses)
+        XCTAssertEqual(decoded.racks.filter { $0.result == "won" }.count, session.wins)
+        XCTAssertEqual(decoded.racks.filter { $0.result == "lost" }.count, session.losses)
+        let payloadJSON = try XCTUnwrap(String(data: try JSONEncoder().encode(decoded), encoding: .utf8))
+        XCTAssertFalse(payloadJSON.contains("Alex"))
+        XCTAssertFalse(payloadJSON.contains("Private finals"))
+        XCTAssertFalse(payloadJSON.contains("Secret practice"))
+        XCTAssertFalse(payloadJSON.contains("performanceRating"))
+        XCTAssertEqual(share.opponent, "")
     }
 
     func testAcceptingShareMirrorsPlayerRelativeRackDataForRecipient() throws {
@@ -80,6 +90,79 @@ final class SocialProfileStoreTests: XCTestCase {
         XCTAssertEqual(mirrored.racks.map(\.result), ["lost", "won", "lost"])
         XCTAssertEqual(mirrored.racks.map(\.breaker), ["opp", "me", "me"])
         XCTAssertEqual(mirrored.racks.map(\.breakAndRun), [false, true, false])
+    }
+
+    func testAcceptingCurrentSharePayloadMirrorsPlayerRelativeRackDataForRecipient() throws {
+        let original = makeSession(
+            id: 51,
+            ts: Date(timeIntervalSince1970: 31_000),
+            racks: [
+                makeRack(index: 1, result: "won", breaker: "me", breakBalls: 2, outcome: "runout", runoutFirst: true, breakAndRun: true),
+                makeRack(index: 2, result: "lost", breaker: "opp", breakBalls: 1, outcome: "noRunout", runoutFirst: false, breakAndRun: false),
+            ],
+            game: "9ball",
+            type: "match",
+            performanceRating: 9
+        )
+        let outgoing = try FriendMatchSharing.makeOutgoingShare(
+            session: original,
+            friend: makeFriend(name: "Recipient", code: "rcv123"),
+            sender: makePublicProfile(name: "Alex", code: "snd123"),
+            inviteUUID: "shared-current-1",
+            createdAt: Date(timeIntervalSince1970: 32_000)
+        )
+        let incoming = IncomingMatchShare(
+            inviteUUID: outgoing.inviteUUID,
+            recordName: "FriendMatchShare-\(outgoing.inviteUUID)",
+            senderFriendCode: outgoing.senderFriendCode,
+            senderDisplayName: outgoing.senderDisplayName,
+            recipientFriendCode: outgoing.recipientFriendCode,
+            sessionUUID: outgoing.sessionUUID,
+            sessionJSON: outgoing.sessionJSON,
+            sessionLabel: outgoing.sessionLabel,
+            game: outgoing.game,
+            type: outgoing.type,
+            opponent: outgoing.opponent,
+            wins: outgoing.wins,
+            losses: outgoing.losses,
+            createdAt: outgoing.createdAt,
+            acceptedAt: nil,
+            status: "pending",
+            failureMessage: nil
+        )
+
+        let mirrored = try FriendMatchSharing.acceptedSession(from: incoming)
+
+        XCTAssertEqual(mirrored.game, "9ball")
+        XCTAssertEqual(mirrored.opponent, "Alex")
+        XCTAssertNil(mirrored.performanceRating)
+        XCTAssertEqual(mirrored.racks.map(\.result), ["lost", "won"])
+        XCTAssertEqual(mirrored.racks.map(\.breaker), ["opp", "me"])
+    }
+
+    func testIncomingSharesMustBeAddressedToCurrentProfile() {
+        let profile = makePublicProfile(name: "Recipient", code: "rcv123")
+        let share = IncomingMatchShare(
+            inviteUUID: "wrong-recipient",
+            recordName: nil,
+            senderFriendCode: "PS-SND-123",
+            senderDisplayName: "Sender",
+            recipientFriendCode: "PS-OTHER1",
+            sessionUUID: "session-1",
+            sessionJSON: "{}",
+            sessionLabel: "Shared match",
+            game: "8ball",
+            type: "match",
+            opponent: "",
+            wins: 1,
+            losses: 0,
+            createdAt: Date(timeIntervalSince1970: 1),
+            acceptedAt: nil,
+            status: "pending",
+            failureMessage: nil
+        )
+
+        XCTAssertFalse(SocialProfileStore.share(share, isAddressedTo: profile))
     }
 
     func testSharedSessionIDIsStableAndPositive() {

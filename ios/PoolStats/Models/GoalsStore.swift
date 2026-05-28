@@ -205,7 +205,11 @@ final class GoalsStore: ObservableObject {
         guard let data = try? encoder.encode(goals) else { return }
         let dir = localURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        try? data.write(to: localURL, options: Data.WritingOptions.atomic)
+        try? data.write(to: localURL, options: Self.protectedWriteOptions)
+    }
+
+    private static var protectedWriteOptions: Data.WritingOptions {
+        [.atomic, .completeFileProtection]
     }
 
     private static func sampleGoals() -> [Goal] {

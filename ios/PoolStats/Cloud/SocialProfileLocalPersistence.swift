@@ -26,7 +26,7 @@ struct SocialProfileLocalPersistence {
     func save<Value: Encodable>(_ value: Value, to url: URL) throws {
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let data = try Self.encoder.encode(value)
-        try data.write(to: url, options: [.atomic])
+        try data.write(to: url, options: Self.protectedWriteOptions)
     }
 
     func removeAll() throws {
@@ -66,5 +66,9 @@ struct SocialProfileLocalPersistence {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         return encoder
+    }
+
+    private static var protectedWriteOptions: Data.WritingOptions {
+        [.atomic, .completeFileProtection]
     }
 }
