@@ -23,6 +23,8 @@ final class DataStore: ObservableObject {
     private let seedFlagKey = "didSeedSampleData"
     private let suppressAutoSeedKey = "suppressAutomaticSampleSeed"
     private let pendingAccountDeletionCleanupKey = "pendingAccountDeletionCloudCleanup"
+    private let pendingAccountDeletionMessage = NSLocalizedString("Account deletion will finish when iCloud is available.", comment: "")
+    private let failedAccountDeletionMessage = NSLocalizedString("Deleted local session history. iCloud cleanup failed.", comment: "")
     private let localCache: LocalSessionCache
     private let deletedSessionIDStore: DeletedSessionIDStore
     private var deletedSessionIDs: Set<Int64> = []
@@ -234,27 +236,27 @@ final class DataStore: ObservableObject {
         let knownIDs = existingIDsIncludingPendingDeletes()
         do {
             try await service.deleteAllUserData(knownSessionIDs: knownIDs)
-            clearLocalDataForAccountDeletion()
-            setPendingAccountDeletionCleanup(false)
-            lastError = nil
-            syncStatus = .synced
-            markSyncSuccess()
-        } catch {
-            let cloudStillHasData = try? await service.hasAnyUserData()
-            let needsRetry = cloudStillHasData != false
-            clearLocalDataForAccountDeletion(pendingCloudDeleteIDs: needsRetry ? knownIDs : [])
-            setPendingAccountDeletionCleanup(needsRetry)
-            if cloudStillHasData != true {
-                lastError = nil
-                syncStatus = .synced
-                markSyncSuccess()
-                return
+            switch await remoteDeletionVerificationState() {
+            case .absent:
+                finishVerifiedAccountDeletionCleanup()
+            case .present:
+                persistPendingAccountDeletionCleanup(knownIDs: knownIDs, message: failedAccountDeletionMessage)
+                throw AccountDeletionCleanupError.remoteDataStillExists
+            case .unknown:
+                persistPendingAccountDeletionCleanup(knownIDs: knownIDs, message: pendingAccountDeletionMessage)
+                throw AccountDeletionCleanupError.remoteVerificationUnavailable
             }
-            let message = NSLocalizedString("Deleted local session history. iCloud cleanup failed.", comment: "")
-            lastError = message
-            syncStatus = .localOnly(message)
-            markSyncFailure(message)
-            throw error
+        } catch {
+            switch await remoteDeletionVerificationState() {
+            case .absent:
+                finishVerifiedAccountDeletionCleanup()
+            case .present:
+                persistPendingAccountDeletionCleanup(knownIDs: knownIDs, message: failedAccountDeletionMessage)
+                throw error
+            case .unknown:
+                persistPendingAccountDeletionCleanup(knownIDs: knownIDs, message: pendingAccountDeletionMessage)
+                throw error
+            }
         }
     }
 
@@ -320,6 +322,22 @@ final class DataStore: ObservableObject {
         lastSyncFailureReason = nil
     }
 
+    private func finishVerifiedAccountDeletionCleanup() {
+        clearLocalDataForAccountDeletion()
+        setPendingAccountDeletionCleanup(false)
+        lastError = nil
+        syncStatus = .synced
+        markSyncSuccess()
+    }
+
+    private func persistPendingAccountDeletionCleanup(knownIDs: [Int64], message: String) {
+        clearLocalDataForAccountDeletion(pendingCloudDeleteIDs: knownIDs)
+        setPendingAccountDeletionCleanup(true)
+        lastError = message
+        syncStatus = .localOnly(message)
+        markSyncFailure(message)
+    }
+
     private func retryPendingAccountDeletionCleanupIfNeeded() async -> Bool {
         guard UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey) else {
             return true
@@ -327,26 +345,34 @@ final class DataStore: ObservableObject {
 
         do {
             try await service.deleteAllUserData(knownSessionIDs: existingIDsIncludingPendingDeletes())
-            let cloudStillHasData = try? await service.hasAnyUserData()
-            if cloudStillHasData == true {
+            switch await remoteDeletionVerificationState() {
+            case .absent:
+                finishVerifiedAccountDeletionCleanup()
+                // Stop this refresh cycle so stale CloudKit query results cannot rehydrate
+                // just-deleted sessions immediately after cleanup succeeds.
+                return false
+            case .present:
                 throw AccountDeletionCleanupError.remoteDataStillExists
+            case .unknown:
+                throw AccountDeletionCleanupError.remoteVerificationUnavailable
             }
-
-            setPendingAccountDeletionCleanup(false)
-            clearDeletedSessionIDs()
-            lastError = nil
-            syncStatus = .synced
-            markSyncSuccess()
-            return true
         } catch {
             sessions = []
-            saveLocal()
+            localCache.clear()
             setAutoSeedSuppressed(true)
-            let message = NSLocalizedString("Account deletion will finish when iCloud is available.", comment: "")
-            lastError = nil
-            syncStatus = .localOnly(message)
-            markSyncFailure(message)
+            setPendingAccountDeletionCleanup(true)
+            lastError = pendingAccountDeletionMessage
+            syncStatus = .localOnly(pendingAccountDeletionMessage)
+            markSyncFailure(pendingAccountDeletionMessage)
             return false
+        }
+    }
+
+    private func remoteDeletionVerificationState() async -> RemoteDeletionVerificationState {
+        do {
+            return try await service.hasAnyUserData() ? .present : .absent
+        } catch {
+            return .unknown
         }
     }
 
@@ -416,5 +442,12 @@ final class DataStore: ObservableObject {
 
     private enum AccountDeletionCleanupError: Error {
         case remoteDataStillExists
+        case remoteVerificationUnavailable
+    }
+
+    private enum RemoteDeletionVerificationState {
+        case present
+        case absent
+        case unknown
     }
 }

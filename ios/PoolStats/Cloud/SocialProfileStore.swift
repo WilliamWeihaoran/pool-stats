@@ -155,6 +155,8 @@ final class SocialProfileStore: ObservableObject {
         case unknown
     }
 
+    private let pendingAccountDeletionMessage = NSLocalizedString("Account deletion will finish when iCloud is available.", comment: "")
+
     @Published private(set) var profile: PublicPlayerProfile?
     @Published private(set) var publishState: PublishState = .idle
     @Published private(set) var friends: [SocialFriend] = []
@@ -484,13 +486,13 @@ final class SocialProfileStore: ObservableObject {
             case .unknown:
                 savePendingDeletionProfile(currentProfile)
                 clearLocalAccountData()
-                lastError = nil
-                accountDeletionState = .deleted
-                return
+                lastError = pendingAccountDeletionMessage
+                accountDeletionState = .failed(pendingAccountDeletionMessage)
+                throw error
             case .present:
                 savePendingDeletionProfile(currentProfile)
             }
-            let message = readableMessage(for: error)
+            let message = pendingAccountDeletionMessage
             lastError = message
             accountDeletionState = .failed(message)
             throw error
