@@ -155,7 +155,9 @@ final class SocialProfileStore: ObservableObject {
         case unknown
     }
 
-    private let pendingAccountDeletionMessage = NSLocalizedString("Account deletion will finish when iCloud is available.", comment: "")
+    private let pendingAccountDeletionMessage = NSLocalizedString("Public profile and shared match cleanup will finish when iCloud is available.", comment: "")
+    private let profilePreflightFailedMessage = NSLocalizedString("Public profile and shared match cleanup cannot start because iCloud could not be verified. No data was deleted.", comment: "")
+    private let profileDeletionFailedMessage = NSLocalizedString("Public profile and shared match cleanup did not complete, so account data was kept. Please try again when iCloud is available.", comment: "")
 
     @Published private(set) var profile: PublicPlayerProfile?
     @Published private(set) var publishState: PublishState = .idle
@@ -484,15 +486,32 @@ final class SocialProfileStore: ObservableObject {
                 accountDeletionState = .deleted
                 return
             case .unknown:
-                savePendingDeletionProfile(currentProfile)
-                clearLocalAccountData()
-                lastError = pendingAccountDeletionMessage
-                accountDeletionState = .failed(pendingAccountDeletionMessage)
+                let message = detailedAccountDeletionMessage(prefix: profileDeletionFailedMessage, error: error)
+                lastError = message
+                accountDeletionState = .failed(message)
                 throw error
             case .present:
-                savePendingDeletionProfile(currentProfile)
+                break
             }
-            let message = pendingAccountDeletionMessage
+            let message = detailedAccountDeletionMessage(prefix: profileDeletionFailedMessage, error: error)
+            lastError = message
+            accountDeletionState = .failed(message)
+            throw error
+        }
+    }
+
+    func verifyAccountDeletionReadinessForAccountDeletion() async throws {
+        lastError = nil
+        accountDeletionState = .idle
+
+        guard let currentProfile = profile else { return }
+
+        do {
+            try await verifyPublicProfileCanBeDeleted(currentProfile)
+            _ = try await sharedMatchRecords(for: currentProfile)
+            lastError = nil
+        } catch {
+            let message = detailedAccountDeletionMessage(prefix: profilePreflightFailedMessage, error: error)
             lastError = message
             accountDeletionState = .failed(message)
             throw error
@@ -1062,12 +1081,20 @@ final class SocialProfileStore: ObservableObject {
         _ = try await db.deleteRecord(withID: recordID)
     }
 
+    private func verifyPublicProfileCanBeDeleted(_ currentProfile: PublicPlayerProfile) async throws {
+        let recordName = currentProfile.recordName ?? Self.recordName(for: currentProfile.friendCode)
+        let recordID = CKRecord.ID(recordName: recordName)
+        guard let existing = try await fetchRecordIfExists(recordID) else { return }
+
+        let owner = try await currentOwnerRecordName()
+        let existingOwner = existing[Constants.ownerRecordName] as? String
+        guard existingOwner == nil || existingOwner == owner else {
+            throw SocialProfileError.publicProfileOwnedByAnotherAccount
+        }
+    }
+
     private func deleteAllSharedMatchRecords(for currentProfile: PublicPlayerProfile) async throws {
-        let senderPredicate = NSPredicate(format: "%K == %@", Constants.senderFriendCode, currentProfile.friendCode)
-        let recipientPredicate = NSPredicate(format: "%K == %@", Constants.recipientFriendCode, currentProfile.friendCode)
-        let predicate = NSCompoundPredicate(orPredicateWithSubpredicates: [senderPredicate, recipientPredicate])
-        let query = CKQuery(recordType: Constants.matchShareRecordType, predicate: predicate)
-        let records = try await fetchAllPublicRecords(query: query)
+        let records = try await sharedMatchRecords(for: currentProfile)
 
         for record in records {
             do {
@@ -1076,6 +1103,14 @@ final class SocialProfileStore: ObservableObject {
                 continue
             }
         }
+    }
+
+    private func sharedMatchRecords(for currentProfile: PublicPlayerProfile) async throws -> [CKRecord] {
+        let senderPredicate = NSPredicate(format: "%K == %@", Constants.senderFriendCode, currentProfile.friendCode)
+        let recipientPredicate = NSPredicate(format: "%K == %@", Constants.recipientFriendCode, currentProfile.friendCode)
+        let predicate = NSCompoundPredicate(orPredicateWithSubpredicates: [senderPredicate, recipientPredicate])
+        let query = CKQuery(recordType: Constants.matchShareRecordType, predicate: predicate)
+        return try await fetchAllPublicRecords(query: query)
     }
 
     private func retryPendingAccountDeletionIfNeeded() async {
@@ -1109,16 +1144,18 @@ final class SocialProfileStore: ObservableObject {
             return .unknown
         }
 
-        let senderPredicate = NSPredicate(format: "%K == %@", Constants.senderFriendCode, currentProfile.friendCode)
-        let recipientPredicate = NSPredicate(format: "%K == %@", Constants.recipientFriendCode, currentProfile.friendCode)
-        let predicate = NSCompoundPredicate(orPredicateWithSubpredicates: [senderPredicate, recipientPredicate])
-        let query = CKQuery(recordType: Constants.matchShareRecordType, predicate: predicate)
         do {
-            let records = try await fetchAllPublicRecords(query: query)
+            let records = try await sharedMatchRecords(for: currentProfile)
             return records.isEmpty ? .absent : .present
         } catch {
             return .unknown
         }
+    }
+
+    private func detailedAccountDeletionMessage(prefix: String, error: Error) -> String {
+        let detail = readableMessage(for: error).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !detail.isEmpty else { return prefix }
+        return "\(prefix) \(detail)"
     }
 
     private func profileRecordBelongsToCurrentUser(_ record: CKRecord, currentProfile: PublicPlayerProfile) -> Bool {
@@ -1391,6 +1428,7 @@ enum SocialProfileError: LocalizedError {
     case couldNotEncodeMatch
     case couldNotDecodeMatch
     case shareNotAddressedToCurrentProfile
+    case publicProfileOwnedByAnotherAccount
 
     var errorDescription: String? {
         switch self {
@@ -1402,6 +1440,8 @@ enum SocialProfileError: LocalizedError {
             return "Could not read this shared match."
         case .shareNotAddressedToCurrentProfile:
             return "This shared match is not addressed to your profile."
+        case .publicProfileOwnedByAnotherAccount:
+            return "The public friend-code profile belongs to a different iCloud account."
         }
     }
 }

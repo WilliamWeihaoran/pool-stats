@@ -133,7 +133,17 @@ final class CloudKitStore {
         try await deleteRecordIDs(recordIDs)
     }
 
+    func verifyAccountDeletionReadiness(knownSessionIDs: [Int64] = []) async throws {
+        _ = try await accountDeletionRecordIDs(knownSessionIDs: knownSessionIDs)
+        _ = try await hasAnyUserData()
+    }
+
     func deleteAllUserData(knownSessionIDs: [Int64] = []) async throws {
+        let recordIDs = try await accountDeletionRecordIDs(knownSessionIDs: knownSessionIDs)
+        try await deleteRecordIDs(Array(recordIDs))
+    }
+
+    private func accountDeletionRecordIDs(knownSessionIDs: [Int64]) async throws -> Set<CKRecord.ID> {
         let sessionRecords = try await fetchAllRecords(
             query: CKQuery(recordType: RecordKeys.session, predicate: NSPredicate(value: true))
         )
@@ -144,8 +154,7 @@ final class CloudKitStore {
         var recordIDs = Set(sessionRecords.map(\.recordID))
         recordIDs.formUnion(rackRecords.map(\.recordID))
         recordIDs.formUnion(knownSessionIDs.map { CKRecord.ID(recordName: String($0)) })
-
-        try await deleteRecordIDs(Array(recordIDs))
+        return recordIDs
     }
 
     func hasAnyUserData() async throws -> Bool {

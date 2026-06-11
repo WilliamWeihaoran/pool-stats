@@ -51,18 +51,18 @@ final class DataStoreDeletionTests: XCTestCase {
         } catch {
         }
 
-        XCTAssertTrue(store.sessions.isEmpty)
-        XCTAssertEqual(store.lastError, "Deleted local session history. iCloud cleanup failed.")
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey))
+        XCTAssertEqual(store.sessions.map(\.id), [session.id])
+        XCTAssertTrue(store.lastError?.contains("Session history cleanup did not complete, so local history was kept. Please try again when iCloud is available.") == true)
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey))
         if case .localOnly(let message) = store.syncStatus {
-            XCTAssertEqual(message, "Deleted local session history. iCloud cleanup failed.")
+            XCTAssertTrue(message.contains("Session history cleanup did not complete, so local history was kept. Please try again when iCloud is available."))
         } else {
             XCTFail("Expected localOnly status after real iCloud delete failure.")
         }
-        XCTAssertFalse(FileManager.default.fileExists(atPath: localCache.url.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: localCache.url.path))
     }
 
-    func testDeleteAccountKeepsPendingCleanupWhenCloudVerificationIsInconclusive() async {
+    func testDeleteAccountKeepsLocalHistoryWhenCloudVerificationIsInconclusive() async {
         let service = FakeSessionService()
         service.hasAnyUserDataError = FakeError.sample
         let (store, localCache, tempDir) = makeStore(service: service)
@@ -78,17 +78,17 @@ final class DataStoreDeletionTests: XCTestCase {
         } catch {
         }
 
-        XCTAssertTrue(store.sessions.isEmpty)
-        XCTAssertEqual(store.lastError, "Account deletion will finish when iCloud is available.")
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey))
+        XCTAssertEqual(store.sessions.map(\.id), [session.id])
+        XCTAssertTrue(store.lastError?.contains("Session history cleanup did not complete, so local history was kept. Please try again when iCloud is available.") == true)
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey))
         let deletedStore = DeletedSessionIDStore(url: tempDir.appendingPathComponent("deleted-session-ids.json"))
-        XCTAssertEqual(deletedStore.load(), Set([session.id]))
+        XCTAssertTrue(deletedStore.load().isEmpty)
         if case .localOnly(let message) = store.syncStatus {
-            XCTAssertEqual(message, "Account deletion will finish when iCloud is available.")
+            XCTAssertTrue(message.contains("Session history cleanup did not complete, so local history was kept. Please try again when iCloud is available."))
         } else {
-            XCTFail("Expected localOnly status while iCloud cleanup is pending.")
+            XCTFail("Expected localOnly status after unverified delete.")
         }
-        XCTAssertFalse(FileManager.default.fileExists(atPath: localCache.url.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: localCache.url.path))
     }
 
     func testDeleteAccountVerifiesRemoteDataIsGoneEvenWhenDeleteCallSucceeds() async {
@@ -105,9 +105,32 @@ final class DataStoreDeletionTests: XCTestCase {
         } catch {
         }
 
-        XCTAssertTrue(store.sessions.isEmpty)
-        XCTAssertTrue(UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey))
-        XCTAssertEqual(store.lastError, "Deleted local session history. iCloud cleanup failed.")
+        XCTAssertEqual(store.sessions.map(\.id), [4])
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey))
+        XCTAssertTrue(store.lastError?.contains("iCloud still reports remaining session history after the delete request.") == true)
+    }
+
+    func testDeleteAccountPreflightFailureDoesNotDeleteLocalHistory() async {
+        let service = FakeSessionService()
+        service.verifyAccountDeletionReadinessError = FakeError.sample
+        let (store, localCache, tempDir) = makeStore(service: service)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let session = makeSession(id: 7, ts: Date(timeIntervalSince1970: 7_000), racks: [makeRack(index: 1)])
+        localCache.saveSessions([session])
+        store.sessions = [session]
+
+        do {
+            try await store.verifyAccountDeletionReadinessForAccountDeletion()
+            XCTFail("Expected preflight to throw before deletion.")
+        } catch {
+        }
+
+        XCTAssertEqual(store.sessions.map(\.id), [session.id])
+        XCTAssertEqual(service.deleteAllUserDataCallCount, 0)
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: localCache.url.path))
+        XCTAssertTrue(store.lastError?.contains("Session history cleanup cannot start because iCloud could not be verified. No data was deleted.") == true)
     }
 
     func testPendingAccountDeletionRefreshDoesNotRehydrateCloudSessionsWhenCleanupStillPending() async {
@@ -119,12 +142,16 @@ final class DataStoreDeletionTests: XCTestCase {
         let (store, localCache, tempDir) = makeStore(service: service)
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
+        let localSession = makeSession(id: 8, ts: Date(timeIntervalSince1970: 8_000), racks: [makeRack(index: 1)])
+        localCache.saveSessions([localSession])
+        store.sessions = [localSession]
+
         await store.refresh()
 
-        XCTAssertTrue(store.sessions.isEmpty)
+        XCTAssertEqual(store.sessions.map(\.id), [localSession.id])
         XCTAssertEqual(service.fetchAllSessionsCallCount, 0)
         XCTAssertTrue(UserDefaults.standard.bool(forKey: pendingAccountDeletionCleanupKey))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: localCache.url.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: localCache.url.path))
         if case .localOnly(let message) = store.syncStatus {
             XCTAssertEqual(message, "Account deletion will finish when iCloud is available.")
         } else {
@@ -170,11 +197,13 @@ private enum FakeError: Error {
 }
 
 private final class FakeSessionService: SessionServicing {
+    var verifyAccountDeletionReadinessError: Error?
     var deleteAllUserDataError: Error?
     var hasAnyUserDataError: Error?
     var hasAnyUserDataResult = false
     var fetchedSessions: [Session] = []
     var fetchAllSessionsCallCount = 0
+    var deleteAllUserDataCallCount = 0
 
     func fetchAllSessions() async throws -> [Session] {
         fetchAllSessionsCallCount += 1
@@ -185,7 +214,14 @@ private final class FakeSessionService: SessionServicing {
     func deleteSessions(_ ids: [Int64]) async throws {}
     func replaceAllSessions(existingIDs: [Int64], with newSessions: [Session]) async throws {}
 
+    func verifyAccountDeletionReadiness(knownSessionIDs: [Int64]) async throws {
+        if let verifyAccountDeletionReadinessError {
+            throw verifyAccountDeletionReadinessError
+        }
+    }
+
     func deleteAllUserData(knownSessionIDs: [Int64]) async throws {
+        deleteAllUserDataCallCount += 1
         if let deleteAllUserDataError {
             throw deleteAllUserDataError
         }

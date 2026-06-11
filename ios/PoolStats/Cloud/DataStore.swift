@@ -24,7 +24,8 @@ final class DataStore: ObservableObject {
     private let suppressAutoSeedKey = "suppressAutomaticSampleSeed"
     private let pendingAccountDeletionCleanupKey = "pendingAccountDeletionCloudCleanup"
     private let pendingAccountDeletionMessage = NSLocalizedString("Account deletion will finish when iCloud is available.", comment: "")
-    private let failedAccountDeletionMessage = NSLocalizedString("Deleted local session history. iCloud cleanup failed.", comment: "")
+    private let sessionPreflightFailedMessage = NSLocalizedString("Session history cleanup cannot start because iCloud could not be verified. No data was deleted.", comment: "")
+    private let sessionDeletionFailedMessage = NSLocalizedString("Session history cleanup did not complete, so local history was kept. Please try again when iCloud is available.", comment: "")
     private let localCache: LocalSessionCache
     private let deletedSessionIDStore: DeletedSessionIDStore
     private var deletedSessionIDs: Set<Int64> = []
@@ -236,27 +237,57 @@ final class DataStore: ObservableObject {
         let knownIDs = existingIDsIncludingPendingDeletes()
         do {
             try await service.deleteAllUserData(knownSessionIDs: knownIDs)
-            switch await remoteDeletionVerificationState() {
-            case .absent:
-                finishVerifiedAccountDeletionCleanup()
-            case .present:
-                persistPendingAccountDeletionCleanup(knownIDs: knownIDs, message: failedAccountDeletionMessage)
-                throw AccountDeletionCleanupError.remoteDataStillExists
-            case .unknown:
-                persistPendingAccountDeletionCleanup(knownIDs: knownIDs, message: pendingAccountDeletionMessage)
-                throw AccountDeletionCleanupError.remoteVerificationUnavailable
-            }
         } catch {
             switch await remoteDeletionVerificationState() {
             case .absent:
                 finishVerifiedAccountDeletionCleanup()
             case .present:
-                persistPendingAccountDeletionCleanup(knownIDs: knownIDs, message: failedAccountDeletionMessage)
+                preserveLocalAccountDeletionFailure(
+                    message: detailedAccountDeletionMessage(prefix: sessionDeletionFailedMessage, error: error)
+                )
                 throw error
             case .unknown:
-                persistPendingAccountDeletionCleanup(knownIDs: knownIDs, message: pendingAccountDeletionMessage)
+                preserveLocalAccountDeletionFailure(
+                    message: detailedAccountDeletionMessage(prefix: sessionDeletionFailedMessage, error: error)
+                )
                 throw error
             }
+            return
+        }
+
+        switch await remoteDeletionVerificationState() {
+        case .absent:
+            finishVerifiedAccountDeletionCleanup()
+        case .present:
+            let error = AccountDeletionCleanupError.remoteDataStillExists
+            preserveLocalAccountDeletionFailure(
+                message: detailedAccountDeletionMessage(prefix: sessionDeletionFailedMessage, error: error)
+            )
+            throw error
+        case .unknown:
+            let error = AccountDeletionCleanupError.remoteVerificationUnavailable
+            preserveLocalAccountDeletionFailure(
+                message: detailedAccountDeletionMessage(prefix: sessionDeletionFailedMessage, error: error)
+            )
+            throw error
+        }
+    }
+
+    func verifyAccountDeletionReadinessForAccountDeletion() async throws {
+        markSyncAttempt()
+        syncStatus = .syncing
+
+        do {
+            try await service.verifyAccountDeletionReadiness(knownSessionIDs: existingIDsIncludingPendingDeletes())
+            lastError = nil
+            syncStatus = .synced
+            markSyncSuccess()
+        } catch {
+            let message = detailedAccountDeletionMessage(prefix: sessionPreflightFailedMessage, error: error)
+            lastError = message
+            syncStatus = .localOnly(message)
+            markSyncFailure(message)
+            throw error
         }
     }
 
@@ -330,9 +361,8 @@ final class DataStore: ObservableObject {
         markSyncSuccess()
     }
 
-    private func persistPendingAccountDeletionCleanup(knownIDs: [Int64], message: String) {
-        clearLocalDataForAccountDeletion(pendingCloudDeleteIDs: knownIDs)
-        setPendingAccountDeletionCleanup(true)
+    private func preserveLocalAccountDeletionFailure(message: String) {
+        setPendingAccountDeletionCleanup(false)
         lastError = message
         syncStatus = .localOnly(message)
         markSyncFailure(message)
@@ -357,8 +387,6 @@ final class DataStore: ObservableObject {
                 throw AccountDeletionCleanupError.remoteVerificationUnavailable
             }
         } catch {
-            sessions = []
-            localCache.clear()
             setAutoSeedSuppressed(true)
             setPendingAccountDeletionCleanup(true)
             lastError = pendingAccountDeletionMessage
@@ -374,6 +402,12 @@ final class DataStore: ObservableObject {
         } catch {
             return .unknown
         }
+    }
+
+    private func detailedAccountDeletionMessage(prefix: String, error: Error) -> String {
+        let detail = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !detail.isEmpty else { return prefix }
+        return "\(prefix) \(detail)"
     }
 
     private func retryPendingCloudDeletes() async {
@@ -440,9 +474,18 @@ final class DataStore: ObservableObject {
         }
     }
 
-    private enum AccountDeletionCleanupError: Error {
+    private enum AccountDeletionCleanupError: LocalizedError {
         case remoteDataStillExists
         case remoteVerificationUnavailable
+
+        var errorDescription: String? {
+            switch self {
+            case .remoteDataStillExists:
+                return NSLocalizedString("iCloud still reports remaining session history after the delete request.", comment: "")
+            case .remoteVerificationUnavailable:
+                return NSLocalizedString("iCloud could not confirm whether session history was removed.", comment: "")
+            }
+        }
     }
 
     private enum RemoteDeletionVerificationState {

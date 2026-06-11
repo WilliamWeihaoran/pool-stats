@@ -144,29 +144,62 @@ struct AccountSettingsView: View {
 
         deletionFlowState = .deleting
         authStore.lastError = nil
-        var firstError: Error?
+        var failureMessages: [String] = []
+
+        do {
+            try await store.verifyAccountDeletionReadinessForAccountDeletion()
+        } catch {
+            failureMessages.append(sessionDeletionFailureMessage())
+        }
+
+        do {
+            try await socialProfileStore.verifyAccountDeletionReadinessForAccountDeletion()
+        } catch {
+            failureMessages.append(profileDeletionFailureMessage())
+        }
+
+        guard failureMessages.isEmpty else {
+            deletionFlowState = .failed(failureMessages.joined(separator: "\n\n"))
+            return
+        }
 
         do {
             try await store.deleteAllUserDataForAccountDeletion()
         } catch {
-            firstError = error
+            failureMessages.append(sessionDeletionFailureMessage())
         }
 
         do {
             try await socialProfileStore.deleteAccountData()
         } catch {
-            if firstError == nil { firstError = error }
+            failureMessages.append(profileDeletionFailureMessage())
         }
 
-        if firstError != nil {
+        if !failureMessages.isEmpty {
             socialProfileStore.resetAccountDeletionState()
-            deletionFlowState = .failed(
-                NSLocalizedString("Account deletion could not finish. Please try again when iCloud is available.", comment: "")
-            )
+            deletionFlowState = .failed(failureMessages.joined(separator: "\n\n"))
         } else {
             authStore.signOutLocal()
             socialProfileStore.resetAccountDeletionState()
             deletionFlowState = .deleted
         }
+    }
+
+    private func sessionDeletionFailureMessage() -> String {
+        let detail = store.lastError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallback = NSLocalizedString("Session history cleanup could not be verified in iCloud.", comment: "")
+        return String(
+            format: NSLocalizedString("Session history: %@", comment: ""),
+            (detail?.isEmpty == false ? detail : fallback) ?? fallback
+        )
+    }
+
+    private func profileDeletionFailureMessage() -> String {
+        let detail = socialProfileStore.lastError?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let fallback = NSLocalizedString("Public profile and shared match cleanup could not be verified in iCloud.", comment: "")
+        return String(
+            format: NSLocalizedString("Account profile: %@", comment: ""),
+            (detail?.isEmpty == false ? detail : fallback) ?? fallback
+        )
     }
 }

@@ -657,7 +657,6 @@
 "Unblock this player before accepting a shared match." = "Unblock this player before accepting a shared match.";
 "Unblock this player before sharing a match." = "Unblock this player before sharing a match.";
 "You cannot block your own profile." = "You cannot block your own profile.";
-"Deleted local session history. iCloud cleanup failed." = "Deleted local session history. iCloud cleanup failed.";
 "Deleting the account removes the linked Sign in with Apple profile, public friend code profile, saved friends, shared match records, and session history from this device and iCloud." = "Deleting the account removes the linked Sign in with Apple profile, public friend code profile, saved friends, shared match records, and session history from this device and iCloud.";
 "This removes your linked Apple sign-in metadata, public profile, saved friends, shared match records, and session history." = "This removes your linked Apple sign-in metadata, public profile, saved friends, shared match records, and session history.";
 "Community safety" = "Community safety";
@@ -666,6 +665,17 @@
 "Privacy Policy" = "Privacy Policy";
 "Support Website" = "Support Website";
 "Account deletion could not finish. Please try again when iCloud is available." = "Account deletion could not finish. Please try again when iCloud is available.";
+"Account profile: %@" = "Account profile: %@";
+"Public profile and shared match cleanup could not be verified in iCloud." = "Public profile and shared match cleanup could not be verified in iCloud.";
+"Public profile and shared match cleanup cannot start because iCloud could not be verified. No data was deleted." = "Public profile and shared match cleanup cannot start because iCloud could not be verified. No data was deleted.";
+"Public profile and shared match cleanup did not complete, so account data was kept. Please try again when iCloud is available." = "Public profile and shared match cleanup did not complete, so account data was kept. Please try again when iCloud is available.";
+"Public profile and shared match cleanup will finish when iCloud is available." = "Public profile and shared match cleanup will finish when iCloud is available.";
+"Session history: %@" = "Session history: %@";
+"Session history cleanup cannot start because iCloud could not be verified. No data was deleted." = "Session history cleanup cannot start because iCloud could not be verified. No data was deleted.";
+"Session history cleanup could not be verified in iCloud." = "Session history cleanup could not be verified in iCloud.";
+"Session history cleanup did not complete, so local history was kept. Please try again when iCloud is available." = "Session history cleanup did not complete, so local history was kept. Please try again when iCloud is available.";
+"iCloud could not confirm whether session history was removed." = "iCloud could not confirm whether session history was removed.";
+"iCloud still reports remaining session history after the delete request." = "iCloud still reports remaining session history after the delete request.";
 "This removes your linked Apple sign-in metadata, public profile, saved friends, and shared match records." = "This removes your linked Apple sign-in metadata, public profile, saved friends, and shared match records.";
 "View how PoolStats handles your data" = "View how PoolStats handles your data";
 "The selected JSON file is empty." = "The selected JSON file is empty.";

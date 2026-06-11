@@ -1263,7 +1263,6 @@
 "Unblock this player before accepting a shared match." = "接受共享比赛前，请先取消屏蔽这位玩家。";
 "Unblock this player before sharing a match." = "分享比赛前，请先取消屏蔽这位玩家。";
 "You cannot block your own profile." = "你不能屏蔽自己的资料。";
-"Deleted local session history. iCloud cleanup failed." = "本地对局历史已删除，但 iCloud 清理失败。";
 "Deleting the account removes the linked Sign in with Apple profile, public friend code profile, saved friends, shared match records, and session history from this device and iCloud." = "删除账户会移除已关联的 Apple 登录资料、公开好友码资料、已保存好友、共享比赛记录，以及此设备和 iCloud 中的对局历史。";
 "This removes your linked Apple sign-in metadata, public profile, saved friends, shared match records, and session history." = "这会移除你已关联的 Apple 登录资料、公开资料、已保存好友、共享比赛记录以及对局历史。";
 "Community safety" = "社区安全";
@@ -1272,6 +1271,17 @@
 "Privacy Policy" = "隐私政策";
 "Support Website" = "支持网站";
 "Account deletion could not finish. Please try again when iCloud is available." = "账户删除未能完成。请在 iCloud 可用时重试。";
+"Account profile: %@" = "账户资料：%@";
+"Public profile and shared match cleanup could not be verified in iCloud." = "无法在 iCloud 中验证公开资料和共享比赛清理是否完成。";
+"Public profile and shared match cleanup cannot start because iCloud could not be verified. No data was deleted." = "由于无法验证 iCloud，公开资料和共享比赛清理无法开始。没有删除任何数据。";
+"Public profile and shared match cleanup did not complete, so account data was kept. Please try again when iCloud is available." = "公开资料和共享比赛清理未完成，因此账户数据已保留。请在 iCloud 可用时重试。";
+"Public profile and shared match cleanup will finish when iCloud is available." = "公开资料和共享比赛清理会在 iCloud 可用时完成。";
+"Session history: %@" = "对局历史：%@";
+"Session history cleanup cannot start because iCloud could not be verified. No data was deleted." = "由于无法验证 iCloud，对局历史清理无法开始。没有删除任何数据。";
+"Session history cleanup could not be verified in iCloud." = "无法在 iCloud 中验证对局历史清理是否完成。";
+"Session history cleanup did not complete, so local history was kept. Please try again when iCloud is available." = "对局历史清理未完成，因此本地历史已保留。请在 iCloud 可用时重试。";
+"iCloud could not confirm whether session history was removed." = "iCloud 无法确认对局历史是否已移除。";
+"iCloud still reports remaining session history after the delete request." = "删除请求后，iCloud 仍报告存在对局历史。";
 "This removes your linked Apple sign-in metadata, public profile, saved friends, and shared match records." = "这会移除你已关联的 Apple 登录信息、公开资料、已保存好友以及已分享的比赛记录。";
 "View how PoolStats handles your data" = "查看 PoolStats 如何处理你的数据";
 "The selected JSON file is empty." = "所选 JSON 文件为空。";

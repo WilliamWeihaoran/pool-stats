@@ -6,6 +6,7 @@ protocol SessionServicing {
     func updateSessionMeta(_ session: Session) async throws
     func deleteSessions(_ ids: [Int64]) async throws
     func replaceAllSessions(existingIDs: [Int64], with newSessions: [Session]) async throws
+    func verifyAccountDeletionReadiness(knownSessionIDs: [Int64]) async throws
     func deleteAllUserData(knownSessionIDs: [Int64]) async throws
     func hasAnyUserData() async throws -> Bool
 }
@@ -36,6 +37,10 @@ final class SessionService: SessionServicing {
         for s in newSessions {
             try await cloud.saveSession(s)
         }
+    }
+
+    func verifyAccountDeletionReadiness(knownSessionIDs: [Int64]) async throws {
+        try await cloud.verifyAccountDeletionReadiness(knownSessionIDs: knownSessionIDs)
     }
 
     func deleteAllUserData(knownSessionIDs: [Int64]) async throws {
