@@ -43,8 +43,9 @@ final class OpponentStore: ObservableObject {
     private let localURL: URL
     private let storageKey = "poolstats.opponents.v1"
 
-    init() {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+    init(baseDirectory: URL? = nil) {
+        let base = baseDirectory
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
         localURL = dir.appendingPathComponent("opponents.json")
@@ -219,6 +220,18 @@ final class OpponentStore: ObservableObject {
         return top.value.display
     }
 
+    func replaceAll(_ nextProfiles: [OpponentProfile]) {
+        profiles = Self.sanitizedProfiles(nextProfiles)
+        sortProfiles()
+        saveLocal()
+    }
+
+    func clearAll() {
+        profiles = []
+        try? FileManager.default.removeItem(at: localURL)
+        UserDefaults.standard.removeObject(forKey: storageKey)
+    }
+
     private func updateLastSeen(for name: String, at date: Date) {
         guard let idx = profiles.firstIndex(where: { Self.nameMatches($0, name) }) else { return }
         if profiles[idx].lastSeenAt < date {
@@ -260,6 +273,33 @@ final class OpponentStore: ObservableObject {
 
     private static func normalize(_ text: String) -> String {
         text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private static func sanitizedProfiles(_ nextProfiles: [OpponentProfile]) -> [OpponentProfile] {
+        var usedNames = Set<String>()
+        var sanitized: [OpponentProfile] = []
+
+        for var profile in nextProfiles {
+            let displayName = profile.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+            let displayKey = normalize(displayName)
+            guard !displayKey.isEmpty, usedNames.insert(displayKey).inserted else { continue }
+
+            var localNames = Set([displayKey])
+            var aliases: [String] = []
+            for alias in profile.aliases {
+                let cleaned = alias.trimmingCharacters(in: .whitespacesAndNewlines)
+                let key = normalize(cleaned)
+                guard !key.isEmpty, !usedNames.contains(key), localNames.insert(key).inserted else { continue }
+                aliases.append(cleaned)
+            }
+
+            usedNames.formUnion(localNames)
+            profile.displayName = displayName
+            profile.aliases = aliases
+            sanitized.append(profile)
+        }
+
+        return sanitized
     }
 
     private static func nameMatches(_ profile: OpponentProfile, _ name: String) -> Bool {

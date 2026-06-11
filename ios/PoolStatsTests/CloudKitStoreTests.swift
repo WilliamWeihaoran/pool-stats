@@ -29,4 +29,28 @@ final class CloudKitStoreTests: XCTestCase {
 
         XCTAssertFalse(CloudKitStore.isIgnorableDeletionError(error))
     }
+
+    func testMissingSessionRecordTypeErrorIsRecognized() {
+        let error = CKError(
+            .serverRejectedRequest,
+            userInfo: [NSLocalizedDescriptionKey: "Did not find record type: Session"]
+        )
+
+        XCTAssertTrue(CloudKitStore.isMissingRecordTypeError(error, recordType: "Session"))
+    }
+
+    func testMissingDifferentRecordTypeErrorIsNotRecognized() {
+        let error = CKError(
+            .serverRejectedRequest,
+            userInfo: [NSLocalizedDescriptionKey: "Did not find record type: PublicPlayerProfile"]
+        )
+
+        XCTAssertFalse(CloudKitStore.isMissingRecordTypeError(error, recordType: "Session"))
+    }
+
+    func testNetworkErrorIsNotMissingRecordType() {
+        let error = CKError(.networkUnavailable)
+
+        XCTAssertFalse(CloudKitStore.isMissingRecordTypeError(error, recordType: "Session"))
+    }
 }

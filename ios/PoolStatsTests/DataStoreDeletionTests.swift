@@ -178,6 +178,64 @@ final class DataStoreDeletionTests: XCTestCase {
         }
     }
 
+    func testImportJSONKeepsImportedSessionsLocallyWhenCloudSyncFails() async throws {
+        let service = FakeSessionService()
+        service.replaceAllSessionsError = FakeError.sample
+        let (store, localCache, tempDir) = makeStore(service: service)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let session = makeSession(id: 9, ts: Date(timeIntervalSince1970: 9_000), racks: [makeRack(index: 1)])
+        let data = try JSONTransfer.exportSessions([session])
+
+        await store.importJSON(data)
+
+        XCTAssertEqual(store.sessions.map(\.id), [session.id])
+        XCTAssertEqual(localCache.loadSessions().map(\.id), [session.id])
+        XCTAssertEqual(service.replaceAllSessionsCallCount, 1)
+        XCTAssertTrue(store.lastError?.contains("Imported sessions are saved locally. iCloud sync failed.") == true)
+        if case .localOnly(let message) = store.syncStatus {
+            XCTAssertTrue(message.contains("Imported sessions are saved locally. iCloud sync failed."))
+        } else {
+            XCTFail("Expected localOnly status when import sync fails.")
+        }
+    }
+
+    func testRefreshKeepsLocalOnlyErrorWhenLocalCacheReuploadFails() async {
+        let service = FakeSessionService()
+        service.fetchedSessions = []
+        service.replaceAllSessionsError = FakeError.sample
+        let (store, localCache, tempDir) = makeStore(service: service)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let session = makeSession(id: 10, ts: Date(timeIntervalSince1970: 10_000), racks: [makeRack(index: 1)])
+        localCache.saveSessions([session])
+        store.sessions = [session]
+
+        await store.refresh()
+
+        XCTAssertEqual(store.sessions.map(\.id), [session.id])
+        XCTAssertEqual(service.replaceAllSessionsCallCount, 1)
+        XCTAssertTrue(store.lastError?.contains("Local sessions are saved on this device. iCloud sync failed.") == true)
+        XCTAssertTrue(store.lastSyncFailureReason?.contains("Local sessions are saved on this device. iCloud sync failed.") == true)
+        if case .localOnly(let message) = store.syncStatus {
+            XCTAssertTrue(message.contains("Local sessions are saved on this device. iCloud sync failed."))
+        } else {
+            XCTFail("Expected localOnly status when local cache reupload fails.")
+        }
+    }
+
+    func testHasLocalAccountDeletionDataTracksVisibleLocalSessions() {
+        let service = FakeSessionService()
+        let (store, _, tempDir) = makeStore(service: service)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        XCTAssertFalse(store.hasLocalAccountDeletionData)
+
+        store.sessions = [makeSession(id: 11, ts: Date(timeIntervalSince1970: 11_000), racks: [makeRack(index: 1)])]
+
+        XCTAssertTrue(store.hasLocalAccountDeletionData)
+    }
+
     private func makeStore(service: FakeSessionService) -> (DataStore, LocalSessionCache, URL) {
         let tempDir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let localCache = LocalSessionCache(url: tempDir.appendingPathComponent("sessions.json"))
@@ -200,10 +258,12 @@ private final class FakeSessionService: SessionServicing {
     var verifyAccountDeletionReadinessError: Error?
     var deleteAllUserDataError: Error?
     var hasAnyUserDataError: Error?
+    var replaceAllSessionsError: Error?
     var hasAnyUserDataResult = false
     var fetchedSessions: [Session] = []
     var fetchAllSessionsCallCount = 0
     var deleteAllUserDataCallCount = 0
+    var replaceAllSessionsCallCount = 0
 
     func fetchAllSessions() async throws -> [Session] {
         fetchAllSessionsCallCount += 1
@@ -212,7 +272,12 @@ private final class FakeSessionService: SessionServicing {
     func saveSession(_ session: Session) async throws {}
     func updateSessionMeta(_ session: Session) async throws {}
     func deleteSessions(_ ids: [Int64]) async throws {}
-    func replaceAllSessions(existingIDs: [Int64], with newSessions: [Session]) async throws {}
+    func replaceAllSessions(existingIDs: [Int64], with newSessions: [Session]) async throws {
+        replaceAllSessionsCallCount += 1
+        if let replaceAllSessionsError {
+            throw replaceAllSessionsError
+        }
+    }
 
     func verifyAccountDeletionReadiness(knownSessionIDs: [Int64]) async throws {
         if let verifyAccountDeletionReadinessError {

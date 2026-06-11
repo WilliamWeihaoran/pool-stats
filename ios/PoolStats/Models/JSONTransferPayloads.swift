@@ -112,4 +112,39 @@ struct JSONTransferEnvelope: Codable {
     var version: Int
     var exportedAt: Int64
     var sessions: [SessionJSON]
+    var goals: [Goal]? = nil
+    var opponents: [OpponentProfile]? = nil
+    var playerProfile: PlayerProfile? = nil
+    var social: SocialProfileBackup? = nil
+    var activeSession: ActiveSessionSnapshot? = nil
+}
+
+struct PoolStatsBackup: Equatable {
+    var sessions: [Session]
+    var goals: [Goal]?
+    var opponents: [OpponentProfile]?
+    var playerProfile: PlayerProfile?
+    var social: SocialProfileBackup?
+    var activeSession: ActiveSessionSnapshot?
+
+    var includesSupplementalData: Bool {
+        goals != nil
+            || opponents != nil
+            || playerProfile != nil
+            || social != nil
+            || activeSession != nil
+    }
+}
+
+struct JSONImportPreview: Equatable {
+    var sessionCount: Int
+    var includesSupplementalData: Bool
+}
+
+struct SocialProfileBackup: Codable, Equatable {
+    var profile: PublicPlayerProfile?
+    var friends: [SocialFriend]
+    var blockedPlayers: [BlockedPlayer]
+    var outgoingShares: [OutgoingMatchShare]
+    var incomingShares: [IncomingMatchShare]
 }

@@ -225,6 +225,80 @@ final class SocialProfileStoreTests: XCTestCase {
         XCTAssertTrue(store.hasLocalAccountData)
     }
 
+    func testDeleteAccountDataWithOnlyBlockedPlayersClearsLocalAccountData() async throws {
+        let store = makeIsolatedStore()
+        store.block(friendCode: "abc123", displayName: "Blocked player")
+
+        XCTAssertTrue(store.hasLocalAccountData)
+
+        try await store.deleteAccountData()
+
+        XCTAssertEqual(store.accountDeletionState, .deleted)
+        XCTAssertFalse(store.hasLocalAccountData)
+        XCTAssertTrue(store.blockedPlayers.isEmpty)
+        XCTAssertNil(store.profile)
+    }
+
+    func testReplaceLocalBackupSanitizesBlockedAndDeclinedSocialData() {
+        let store = makeIsolatedStore()
+        let backup = SocialProfileBackup(
+            profile: makePublicProfile(name: "  Me  ", code: "me1234"),
+            friends: [
+                makeFriend(name: "  Alex  ", code: "alx123"),
+                makeFriend(name: "Alex duplicate", code: "PS-ALX-123"),
+                makeFriend(name: "Blocked", code: "blk123"),
+                makeFriend(name: "Invalid", code: "bad")
+            ],
+            blockedPlayers: [
+                BlockedPlayer(displayName: "  Blocked  ", friendCode: "blk123", blockedAt: Date(timeIntervalSince1970: 10)),
+                BlockedPlayer(displayName: "Self", friendCode: "me1234", blockedAt: Date(timeIntervalSince1970: 11)),
+                BlockedPlayer(displayName: "Duplicate", friendCode: "PS-BLK-123", blockedAt: Date(timeIntervalSince1970: 12))
+            ],
+            outgoingShares: [
+                makeOutgoingShare(inviteUUID: "blocked-outgoing", recipientCode: "blk123"),
+                makeOutgoingShare(inviteUUID: "valid-outgoing", recipientCode: "rcv123"),
+                makeOutgoingShare(inviteUUID: "valid-outgoing", recipientCode: "rcv456")
+            ],
+            incomingShares: [
+                makeIncomingShare(inviteUUID: "blocked-incoming", senderCode: "blk123"),
+                makeIncomingShare(inviteUUID: "declined-incoming", senderCode: "snd123", status: "declined"),
+                makeIncomingShare(inviteUUID: "valid-incoming", senderCode: "snd123"),
+                makeIncomingShare(inviteUUID: "valid-incoming", senderCode: "snd456")
+            ]
+        )
+
+        store.replaceLocalBackup(backup)
+
+        XCTAssertEqual(store.profile?.displayName, "Me")
+        XCTAssertEqual(store.profile?.friendCode, "PS-ME1-234")
+        XCTAssertEqual(store.friends.map(\.friendCode), ["PS-ALX-123"])
+        XCTAssertEqual(store.friends.first?.displayName, "Alex")
+        XCTAssertEqual(store.blockedPlayers.map(\.friendCode), ["PS-BLK-123"])
+        XCTAssertEqual(store.outgoingShares.map(\.inviteUUID), ["valid-outgoing"])
+        XCTAssertEqual(store.outgoingShares.first?.recipientFriendCode, "PS-RCV-123")
+        XCTAssertEqual(store.incomingShares.map(\.inviteUUID), ["valid-incoming"])
+        XCTAssertEqual(store.incomingShares.first?.senderFriendCode, "PS-SND-123")
+    }
+
+    func testOpponentReplaceAllDropsBlankAndDuplicateImportedProfiles() {
+        let tempDir = makeTempDir()
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: tempDir)
+        }
+        let store = OpponentStore(baseDirectory: tempDir)
+
+        store.replaceAll([
+            OpponentProfile(displayName: "  Alex  ", aliases: ["A", " alex ", ""], lastSeenAt: Date(timeIntervalSince1970: 20)),
+            OpponentProfile(displayName: "alex", aliases: ["Duplicate"], lastSeenAt: Date(timeIntervalSince1970: 30)),
+            OpponentProfile(displayName: "  ", aliases: ["No display"], lastSeenAt: Date(timeIntervalSince1970: 40)),
+            OpponentProfile(displayName: "Blair", aliases: [" A ", "B"], lastSeenAt: Date(timeIntervalSince1970: 50))
+        ])
+
+        XCTAssertEqual(store.profiles.map(\.displayName), ["Blair", "Alex"])
+        XCTAssertEqual(store.profiles.first(where: { $0.displayName == "Alex" })?.aliases, ["A"])
+        XCTAssertEqual(store.profiles.first(where: { $0.displayName == "Blair" })?.aliases, ["B"])
+    }
+
     private func makeIsolatedStore() -> SocialProfileStore {
         let tempDir = makeTempDir()
         addTeardownBlock {
@@ -258,6 +332,53 @@ final class SocialProfileStoreTests: XCTestCase {
             ownerRecordName: "owner-\(normalized)",
             addedAt: Date(timeIntervalSince1970: 2_000),
             updatedAt: Date(timeIntervalSince1970: 3_000)
+        )
+    }
+
+    private func makeOutgoingShare(inviteUUID: String, recipientCode: String, status: String = "pending") -> OutgoingMatchShare {
+        let recipient = SocialProfileStore.normalizeFriendCode(recipientCode)
+        return OutgoingMatchShare(
+            inviteUUID: inviteUUID,
+            recordName: "FriendMatchShare-\(inviteUUID)",
+            senderFriendCode: "PS-ME1-234",
+            senderDisplayName: "Me",
+            recipientFriendCode: recipient,
+            recipientDisplayName: "Recipient",
+            recipientOwnerRecordName: "owner-\(recipient)",
+            sessionUUID: "session-\(inviteUUID)",
+            sessionJSON: "{}",
+            sessionLabel: "Shared match",
+            game: "8ball",
+            type: "match",
+            opponent: "",
+            wins: 1,
+            losses: 0,
+            createdAt: Date(timeIntervalSince1970: 5_000),
+            status: status,
+            failureMessage: nil
+        )
+    }
+
+    private func makeIncomingShare(inviteUUID: String, senderCode: String, status: String = "pending") -> IncomingMatchShare {
+        let sender = SocialProfileStore.normalizeFriendCode(senderCode)
+        return IncomingMatchShare(
+            inviteUUID: inviteUUID,
+            recordName: "FriendMatchShare-\(inviteUUID)",
+            senderFriendCode: sender,
+            senderDisplayName: "Sender",
+            recipientFriendCode: "PS-ME1-234",
+            sessionUUID: "session-\(inviteUUID)",
+            sessionJSON: "{}",
+            sessionLabel: "Shared match",
+            game: "8ball",
+            type: "match",
+            opponent: "",
+            wins: 1,
+            losses: 0,
+            createdAt: Date(timeIntervalSince1970: 6_000),
+            acceptedAt: nil,
+            status: status,
+            failureMessage: nil
         )
     }
 

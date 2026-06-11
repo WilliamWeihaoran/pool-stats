@@ -173,6 +173,19 @@ final class PlayerProfileStore: ObservableObject {
         rerunToken += 1
     }
 
+    func replaceProfile(_ nextProfile: PlayerProfile) {
+        var next = nextProfile
+        next.baselineFargo = min(max(next.baselineFargo, 0), 850)
+        profile = next
+        save()
+    }
+
+    func clearForAccountDeletion() {
+        profile = PlayerProfile()
+        rerunToken += 1
+        UserDefaults.standard.removeObject(forKey: key)
+    }
+
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: key),
               let decoded = try? JSONDecoder().decode(PlayerProfile.self, from: data) else { return }

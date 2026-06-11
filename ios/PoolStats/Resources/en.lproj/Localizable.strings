@@ -666,6 +666,8 @@
 "Support Website" = "Support Website";
 "Account deletion could not finish. Please try again when iCloud is available." = "Account deletion could not finish. Please try again when iCloud is available.";
 "Account profile: %@" = "Account profile: %@";
+"Imported sessions are saved locally. iCloud sync failed." = "Imported sessions are saved locally. iCloud sync failed.";
+"Local sessions are saved on this device. iCloud sync failed." = "Local sessions are saved on this device. iCloud sync failed.";
 "Public profile and shared match cleanup could not be verified in iCloud." = "Public profile and shared match cleanup could not be verified in iCloud.";
 "Public profile and shared match cleanup cannot start because iCloud could not be verified. No data was deleted." = "Public profile and shared match cleanup cannot start because iCloud could not be verified. No data was deleted.";
 "Public profile and shared match cleanup did not complete, so account data was kept. Please try again when iCloud is available." = "Public profile and shared match cleanup did not complete, so account data was kept. Please try again when iCloud is available.";

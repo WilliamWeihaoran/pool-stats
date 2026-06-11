@@ -24,6 +24,8 @@ final class DataStore: ObservableObject {
     private let suppressAutoSeedKey = "suppressAutomaticSampleSeed"
     private let pendingAccountDeletionCleanupKey = "pendingAccountDeletionCloudCleanup"
     private let pendingAccountDeletionMessage = NSLocalizedString("Account deletion will finish when iCloud is available.", comment: "")
+    private let importSyncFailedMessage = NSLocalizedString("Imported sessions are saved locally. iCloud sync failed.", comment: "")
+    private let localCacheSyncFailedMessage = NSLocalizedString("Local sessions are saved on this device. iCloud sync failed.", comment: "")
     private let sessionPreflightFailedMessage = NSLocalizedString("Session history cleanup cannot start because iCloud could not be verified. No data was deleted.", comment: "")
     private let sessionDeletionFailedMessage = NSLocalizedString("Session history cleanup did not complete, so local history was kept. Please try again when iCloud is available.", comment: "")
     private let localCache: LocalSessionCache
@@ -48,12 +50,17 @@ final class DataStore: ObservableObject {
         }
     }
 
+    var hasLocalAccountDeletionData: Bool {
+        !sessions.isEmpty || !deletedSessionIDs.isEmpty
+    }
+
     func refresh() async {
         markSyncAttempt()
         isLoading = true
         syncStatus = .syncing
         defer { isLoading = false }
         let localSnapshot = sessions.filter { !deletedSessionIDs.contains($0.id) }
+        var syncFailureMessage: String?
         do {
             await retryPendingCloudDeletes()
             guard await retryPendingAccountDeletionCleanupIfNeeded() else { return }
@@ -66,8 +73,11 @@ final class DataStore: ObservableObject {
                     syncStatus = .synced
                     markSyncSuccess()
                 } catch {
-                    syncStatus = .localOnly("Saved locally. iCloud sync failed.")
-                    markSyncFailure("Saved locally. iCloud sync failed.")
+                    let message = detailedAccountDeletionMessage(prefix: localCacheSyncFailedMessage, error: error)
+                    syncFailureMessage = message
+                    lastError = message
+                    syncStatus = .localOnly(message)
+                    markSyncFailure(message)
                 }
             } else {
                 sessions = mergeCloudAndLocal(cloud: visibleFetched, local: localSnapshot)
@@ -75,7 +85,9 @@ final class DataStore: ObservableObject {
                 markSyncSuccess()
             }
             saveLocal()
-            lastError = nil
+            if syncFailureMessage == nil {
+                lastError = nil
+            }
             await seedIfNeeded()
         } catch {
             lastError = error.localizedDescription
@@ -189,18 +201,54 @@ final class DataStore: ObservableObject {
         try JSONTransfer.exportSessions(sessions)
     }
 
+    func exportBackup(
+        goals: [Goal],
+        opponents: [OpponentProfile],
+        playerProfile: PlayerProfile,
+        social: SocialProfileBackup,
+        activeSession: ActiveSessionSnapshot?
+    ) throws -> Data {
+        try JSONTransfer.exportBackup(
+            PoolStatsBackup(
+                sessions: sessions,
+                goals: goals,
+                opponents: opponents,
+                playerProfile: playerProfile,
+                social: social,
+                activeSession: activeSession
+            )
+        )
+    }
+
     func importJSON(_ data: Data) async {
         markSyncAttempt()
         do {
-            let newSessions = try JSONTransfer.importSessions(data)
-            try await replaceAllSessions(newSessions)
-            lastError = nil
-            syncStatus = .synced
-            markSyncSuccess()
+            let backup = try JSONTransfer.importBackup(data)
+            await importSessionsFromBackup(backup.sessions)
         } catch {
             let message = error.localizedDescription
             lastError = message
             syncStatus = .error(message)
+            markSyncFailure(message)
+        }
+    }
+
+    func importSessionsFromBackup(_ newSessions: [Session]) async {
+        markSyncAttempt()
+        let existingIDs = existingIDsIncludingPendingDeletes()
+        clearDeletedSessionIDs()
+        sessions = newSessions
+        saveLocal()
+
+        do {
+            try await service.replaceAllSessions(existingIDs: existingIDs, with: newSessions)
+            lastError = nil
+            syncStatus = .synced
+            markSyncSuccess()
+        } catch {
+            let message = detailedAccountDeletionMessage(prefix: importSyncFailedMessage, error: error)
+            lastError = message
+            syncStatus = .localOnly(message)
             markSyncFailure(message)
         }
     }

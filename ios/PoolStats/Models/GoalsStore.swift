@@ -97,8 +97,9 @@ final class GoalsStore: ObservableObject {
 
     private let localURL: URL
 
-    init() {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+    init(baseDirectory: URL? = nil) {
+        let base = baseDirectory
+            ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         let dir = base.appendingPathComponent("PoolStats", isDirectory: true)
         localURL = dir.appendingPathComponent("goals.json")
@@ -190,6 +191,16 @@ final class GoalsStore: ObservableObject {
         guard !hasStarter else { return }
         goals = starterGoals + goals
         saveLocal()
+    }
+
+    func replaceAll(_ nextGoals: [Goal]) {
+        goals = nextGoals
+        saveLocal()
+    }
+
+    func clearAll() {
+        goals = []
+        try? FileManager.default.removeItem(at: localURL)
     }
 
     private func loadLocal() {

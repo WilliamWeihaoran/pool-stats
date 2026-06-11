@@ -1272,6 +1272,8 @@
 "Support Website" = "支持网站";
 "Account deletion could not finish. Please try again when iCloud is available." = "账户删除未能完成。请在 iCloud 可用时重试。";
 "Account profile: %@" = "账户资料：%@";
+"Imported sessions are saved locally. iCloud sync failed." = "导入的对局已保存在本机，但 iCloud 同步失败。";
+"Local sessions are saved on this device. iCloud sync failed." = "本机对局已保存在此设备上，但 iCloud 同步失败。";
 "Public profile and shared match cleanup could not be verified in iCloud." = "无法在 iCloud 中验证公开资料和共享比赛清理是否完成。";
 "Public profile and shared match cleanup cannot start because iCloud could not be verified. No data was deleted." = "由于无法验证 iCloud，公开资料和共享比赛清理无法开始。没有删除任何数据。";
 "Public profile and shared match cleanup did not complete, so account data was kept. Please try again when iCloud is available." = "公开资料和共享比赛清理未完成，因此账户数据已保留。请在 iCloud 可用时重试。";

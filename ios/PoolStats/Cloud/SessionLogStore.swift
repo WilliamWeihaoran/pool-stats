@@ -269,6 +269,19 @@ final class SessionLogStore: ObservableObject {
         clearState()
     }
 
+    func restoreActiveSnapshot(_ snapshot: ActiveSessionSnapshot?) {
+        guard let snapshot else {
+            clearState()
+            return
+        }
+        attachActiveSession(snapshot)
+    }
+
+    func clearForAccountDeletion() {
+        clearState()
+        lastEndedSession = nil
+    }
+
     private func clearState() {
         currentSession = nil
         currentRack = nil

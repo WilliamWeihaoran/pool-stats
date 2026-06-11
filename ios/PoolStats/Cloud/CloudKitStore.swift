@@ -60,12 +60,11 @@ final class CloudKitStore {
     }
 
     func fetchAllSessions() async throws -> [Session] {
-        let sessionQuery = CKQuery(recordType: RecordKeys.session, predicate: NSPredicate(value: true))
-        sessionQuery.sortDescriptors = [NSSortDescriptor(key: RecordKeys.ts, ascending: true)]
-        let sessionRecords = try await fetchAllRecords(query: sessionQuery)
-
-        let rackQuery = CKQuery(recordType: RecordKeys.rack, predicate: NSPredicate(value: true))
-        let rackRecords = try await fetchAllRecords(query: rackQuery)
+        let sessionRecords = try await fetchAllRecordsIfRecordTypeExists(
+            recordType: RecordKeys.session,
+            sortDescriptors: [NSSortDescriptor(key: RecordKeys.ts, ascending: true)]
+        )
+        let rackRecords = try await fetchAllRecordsIfRecordTypeExists(recordType: RecordKeys.rack)
 
         var racksBySession: [CKRecord.ID: [Rack]] = [:]
         for record in rackRecords {
@@ -144,12 +143,8 @@ final class CloudKitStore {
     }
 
     private func accountDeletionRecordIDs(knownSessionIDs: [Int64]) async throws -> Set<CKRecord.ID> {
-        let sessionRecords = try await fetchAllRecords(
-            query: CKQuery(recordType: RecordKeys.session, predicate: NSPredicate(value: true))
-        )
-        let rackRecords = try await fetchAllRecords(
-            query: CKQuery(recordType: RecordKeys.rack, predicate: NSPredicate(value: true))
-        )
+        let sessionRecords = try await fetchAllRecordsIfRecordTypeExists(recordType: RecordKeys.session)
+        let rackRecords = try await fetchAllRecordsIfRecordTypeExists(recordType: RecordKeys.rack)
 
         var recordIDs = Set(sessionRecords.map(\.recordID))
         recordIDs.formUnion(rackRecords.map(\.recordID))
@@ -173,6 +168,22 @@ final class CloudKitStore {
             cursor = nextCursor
         } while cursor != nil
         return records
+    }
+
+    private func fetchAllRecordsIfRecordTypeExists(
+        recordType: String,
+        sortDescriptors: [NSSortDescriptor] = []
+    ) async throws -> [CKRecord] {
+        let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
+        query.sortDescriptors = sortDescriptors
+        do {
+            return try await fetchAllRecords(query: query)
+        } catch {
+            guard Self.isMissingRecordTypeError(error, recordType: recordType) else {
+                throw error
+            }
+            return []
+        }
     }
 
     private func fetchBatch(query: CKQuery, cursor: CKQueryOperation.Cursor?) async throws -> ([CKRecord], CKQueryOperation.Cursor?) {
@@ -218,7 +229,11 @@ final class CloudKitStore {
                 case .success:
                     cont.resume(returning: foundRecord)
                 case .failure(let error):
-                    cont.resume(throwing: error)
+                    if Self.isMissingRecordTypeError(error, recordType: recordType) {
+                        cont.resume(returning: false)
+                    } else {
+                        cont.resume(throwing: error)
+                    }
                 }
             }
             db.add(op)
@@ -263,6 +278,21 @@ final class CloudKitStore {
                 return false
             }
             return partials.values.allSatisfy(isIgnorableDeletionError)
+        default:
+            return false
+        }
+    }
+
+    static func isMissingRecordTypeError(_ error: Error, recordType: String) -> Bool {
+        guard let ckError = error as? CKError else { return false }
+        switch ckError.code {
+        case .serverRejectedRequest, .unknownItem:
+            let needle = recordType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            let messages = ([ckError.localizedDescription] + ckError.userInfo.values.compactMap { $0 as? String })
+                .map { $0.lowercased() }
+            return messages.contains { message in
+                message.contains("did not find record type") && message.contains(needle)
+            }
         default:
             return false
         }

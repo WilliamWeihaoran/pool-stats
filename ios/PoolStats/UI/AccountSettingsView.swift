@@ -11,13 +11,23 @@ struct AccountSettingsView: View {
 
     @EnvironmentObject private var authStore: AuthStore
     @EnvironmentObject private var store: DataStore
+    @EnvironmentObject private var logStore: SessionLogStore
+    @EnvironmentObject private var goalsStore: GoalsStore
+    @EnvironmentObject private var opponentStore: OpponentStore
+    @EnvironmentObject private var profileStore: PlayerProfileStore
     @EnvironmentObject private var socialProfileStore: SocialProfileStore
 
     @State private var showDeleteConfirmation = false
     @State private var deletionFlowState: DeletionFlowState = .idle
 
     private var canDeleteAccount: Bool {
-        authStore.isSignedIn || socialProfileStore.hasLocalAccountData
+        authStore.isSignedIn
+            || socialProfileStore.hasLocalAccountData
+            || store.hasLocalAccountDeletionData
+            || !goalsStore.goals.isEmpty
+            || !opponentStore.profiles.isEmpty
+            || profileStore.profile != PlayerProfile()
+            || logStore.activeSnapshot != nil
     }
 
     private var isDeletingAccount: Bool {
@@ -145,17 +155,23 @@ struct AccountSettingsView: View {
         deletionFlowState = .deleting
         authStore.lastError = nil
         var failureMessages: [String] = []
+        let shouldDeleteSessionHistory = authStore.isSignedIn || store.hasLocalAccountDeletionData
+        let shouldDeleteSocialProfile = socialProfileStore.hasLocalAccountData
 
-        do {
-            try await store.verifyAccountDeletionReadinessForAccountDeletion()
-        } catch {
-            failureMessages.append(sessionDeletionFailureMessage())
+        if shouldDeleteSessionHistory {
+            do {
+                try await store.verifyAccountDeletionReadinessForAccountDeletion()
+            } catch {
+                failureMessages.append(sessionDeletionFailureMessage())
+            }
         }
 
-        do {
-            try await socialProfileStore.verifyAccountDeletionReadinessForAccountDeletion()
-        } catch {
-            failureMessages.append(profileDeletionFailureMessage())
+        if shouldDeleteSocialProfile {
+            do {
+                try await socialProfileStore.verifyAccountDeletionReadinessForAccountDeletion()
+            } catch {
+                failureMessages.append(profileDeletionFailureMessage())
+            }
         }
 
         guard failureMessages.isEmpty else {
@@ -163,22 +179,30 @@ struct AccountSettingsView: View {
             return
         }
 
-        do {
-            try await store.deleteAllUserDataForAccountDeletion()
-        } catch {
-            failureMessages.append(sessionDeletionFailureMessage())
+        if shouldDeleteSessionHistory {
+            do {
+                try await store.deleteAllUserDataForAccountDeletion()
+            } catch {
+                failureMessages.append(sessionDeletionFailureMessage())
+            }
         }
 
-        do {
-            try await socialProfileStore.deleteAccountData()
-        } catch {
-            failureMessages.append(profileDeletionFailureMessage())
+        if shouldDeleteSocialProfile {
+            do {
+                try await socialProfileStore.deleteAccountData()
+            } catch {
+                failureMessages.append(profileDeletionFailureMessage())
+            }
         }
 
         if !failureMessages.isEmpty {
             socialProfileStore.resetAccountDeletionState()
             deletionFlowState = .failed(failureMessages.joined(separator: "\n\n"))
         } else {
+            logStore.clearForAccountDeletion()
+            goalsStore.clearAll()
+            opponentStore.clearAll()
+            profileStore.clearForAccountDeletion()
             authStore.signOutLocal()
             socialProfileStore.resetAccountDeletionState()
             deletionFlowState = .deleted

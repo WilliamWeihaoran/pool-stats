@@ -456,11 +456,222 @@ final class SocialProfileStore: ObservableObject {
         accountDeletionState = .idle
     }
 
+    func localBackup() -> SocialProfileBackup {
+        SocialProfileBackup(
+            profile: profile,
+            friends: friends,
+            blockedPlayers: blockedPlayers,
+            outgoingShares: outgoingShares,
+            incomingShares: incomingShares
+        )
+    }
+
+    func replaceLocalBackup(_ backup: SocialProfileBackup) {
+        let sanitized = sanitizedBackup(backup)
+
+        profile = sanitized.profile
+        displayName = sanitized.profile?.displayName ?? ""
+        friends = sanitized.friends
+        blockedPlayers = sanitized.blockedPlayers
+        outgoingShares = sanitized.outgoingShares
+        incomingShares = sanitized.incomingShares
+
+        sortFriends()
+        blockedPlayers.sort { $0.blockedAt > $1.blockedAt }
+        outgoingShares.sort { $0.createdAt > $1.createdAt }
+        incomingShares.sort { $0.createdAt > $1.createdAt }
+
+        publishState = profile == nil ? .idle : .localOnly(NSLocalizedString("Profile restored locally. Publish to sync iCloud.", comment: ""))
+        friendLookupState = .idle
+        matchShareState = .idle
+        incomingShareState = .idle
+        outgoingShareRefreshState = .idle
+        accountDeletionState = .idle
+        lastError = nil
+
+        if profile == nil {
+            try? FileManager.default.removeItem(at: localPersistence.profileURL)
+        } else {
+            saveLocal()
+        }
+        saveFriendsLocal()
+        saveBlockedPlayersLocal()
+        saveOutgoingSharesLocal()
+        saveIncomingSharesLocal()
+        clearPendingDeletionProfile()
+    }
+
+    private func sanitizedBackup(_ backup: SocialProfileBackup) -> SocialProfileBackup {
+        let sanitizedProfile = sanitizedPublicProfile(backup.profile)
+        let blockedPlayers = sanitizedBlockedPlayers(backup.blockedPlayers, currentProfile: sanitizedProfile)
+        let blockedCodes = Set(blockedPlayers.map(\.friendCode))
+
+        return SocialProfileBackup(
+            profile: sanitizedProfile,
+            friends: sanitizedFriends(backup.friends, blockedCodes: blockedCodes, currentProfile: sanitizedProfile),
+            blockedPlayers: blockedPlayers,
+            outgoingShares: sanitizedOutgoingShares(backup.outgoingShares, blockedCodes: blockedCodes),
+            incomingShares: sanitizedIncomingShares(backup.incomingShares, blockedCodes: blockedCodes)
+        )
+    }
+
+    private func sanitizedPublicProfile(_ profile: PublicPlayerProfile?) -> PublicPlayerProfile? {
+        guard var profile else { return nil }
+        let friendCode = Self.normalizeFriendCode(profile.friendCode)
+        guard Self.isValidFriendCode(friendCode) else { return nil }
+        profile.friendCode = friendCode
+        profile.displayName = sanitizedDisplayName(profile.displayName)
+        profile.recordName = trimmedOptional(profile.recordName) ?? Self.recordName(for: friendCode)
+        profile.ownerRecordName = trimmedOptional(profile.ownerRecordName)
+        return profile
+    }
+
+    private func sanitizedBlockedPlayers(_ players: [BlockedPlayer], currentProfile: PublicPlayerProfile?) -> [BlockedPlayer] {
+        var seen = Set<String>()
+        var sanitized: [BlockedPlayer] = []
+
+        for var player in players {
+            let friendCode = Self.normalizeFriendCode(player.friendCode)
+            guard Self.isValidFriendCode(friendCode),
+                  friendCode != currentProfile?.friendCode,
+                  seen.insert(friendCode).inserted else {
+                continue
+            }
+            player.friendCode = friendCode
+            player.displayName = sanitizedDisplayName(player.displayName)
+            sanitized.append(player)
+        }
+
+        return sanitized
+    }
+
+    private func sanitizedFriends(_ friends: [SocialFriend], blockedCodes: Set<String>, currentProfile: PublicPlayerProfile?) -> [SocialFriend] {
+        var seen = Set<String>()
+        var sanitized: [SocialFriend] = []
+
+        for var friend in friends {
+            let friendCode = Self.normalizeFriendCode(friend.friendCode)
+            guard Self.isValidFriendCode(friendCode),
+                  friendCode != currentProfile?.friendCode,
+                  !blockedCodes.contains(friendCode),
+                  seen.insert(friendCode).inserted else {
+                continue
+            }
+            friend.friendCode = friendCode
+            friend.displayName = sanitizedDisplayName(friend.displayName)
+            friend.recordName = trimmedOptional(friend.recordName) ?? Self.recordName(for: friendCode)
+            friend.ownerRecordName = trimmedOptional(friend.ownerRecordName)
+            sanitized.append(friend)
+        }
+
+        return sanitized
+    }
+
+    private func sanitizedOutgoingShares(_ shares: [OutgoingMatchShare], blockedCodes: Set<String>) -> [OutgoingMatchShare] {
+        var seen = Set<String>()
+        var sanitized: [OutgoingMatchShare] = []
+
+        for var share in shares {
+            let inviteUUID = share.inviteUUID.trimmingCharacters(in: .whitespacesAndNewlines)
+            let senderCode = Self.normalizeFriendCode(share.senderFriendCode)
+            let recipientCode = Self.normalizeFriendCode(share.recipientFriendCode)
+            guard !inviteUUID.isEmpty,
+                  Self.isValidFriendCode(senderCode),
+                  Self.isValidFriendCode(recipientCode),
+                  !blockedCodes.contains(recipientCode),
+                  seen.insert(inviteUUID).inserted,
+                  !share.sessionUUID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !share.sessionJSON.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                continue
+            }
+
+            share.inviteUUID = inviteUUID
+            share.recordName = trimmedOptional(share.recordName)
+            share.senderFriendCode = senderCode
+            share.senderDisplayName = sanitizedDisplayName(share.senderDisplayName)
+            share.recipientFriendCode = recipientCode
+            share.recipientDisplayName = sanitizedDisplayName(share.recipientDisplayName)
+            share.recipientOwnerRecordName = trimmedOptional(share.recipientOwnerRecordName)
+            share.sessionUUID = share.sessionUUID.trimmingCharacters(in: .whitespacesAndNewlines)
+            share.sessionLabel = sanitizedShareText(share.sessionLabel, fallback: "Shared match")
+            share.game = sanitizedShareText(share.game, fallback: "8ball")
+            share.type = sanitizedShareText(share.type, fallback: "match")
+            share.opponent = share.opponent.trimmingCharacters(in: .whitespacesAndNewlines)
+            share.wins = max(0, share.wins)
+            share.losses = max(0, share.losses)
+            if !["pending", "accepted", "declined", "failed"].contains(share.status) {
+                share.status = "pending"
+            }
+            sanitized.append(share)
+        }
+
+        return sanitized
+    }
+
+    private func sanitizedIncomingShares(_ shares: [IncomingMatchShare], blockedCodes: Set<String>) -> [IncomingMatchShare] {
+        var seen = Set<String>()
+        var sanitized: [IncomingMatchShare] = []
+
+        for var share in shares where !share.isDeclined {
+            let inviteUUID = share.inviteUUID.trimmingCharacters(in: .whitespacesAndNewlines)
+            let senderCode = Self.normalizeFriendCode(share.senderFriendCode)
+            let recipientCode = Self.normalizeFriendCode(share.recipientFriendCode)
+            guard !inviteUUID.isEmpty,
+                  Self.isValidFriendCode(senderCode),
+                  Self.isValidFriendCode(recipientCode),
+                  !blockedCodes.contains(senderCode),
+                  seen.insert(inviteUUID).inserted,
+                  !share.sessionUUID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  !share.sessionJSON.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                continue
+            }
+
+            share.inviteUUID = inviteUUID
+            share.recordName = trimmedOptional(share.recordName)
+            share.senderFriendCode = senderCode
+            share.senderDisplayName = sanitizedDisplayName(share.senderDisplayName)
+            share.recipientFriendCode = recipientCode
+            share.sessionUUID = share.sessionUUID.trimmingCharacters(in: .whitespacesAndNewlines)
+            share.sessionLabel = sanitizedShareText(share.sessionLabel, fallback: "Shared match")
+            share.game = sanitizedShareText(share.game, fallback: "8ball")
+            share.type = sanitizedShareText(share.type, fallback: "match")
+            share.opponent = share.opponent.trimmingCharacters(in: .whitespacesAndNewlines)
+            share.wins = max(0, share.wins)
+            share.losses = max(0, share.losses)
+            if !["pending", "accepted", "failed"].contains(share.status) {
+                share.status = "pending"
+            }
+            sanitized.append(share)
+        }
+
+        return sanitized
+    }
+
+    private func sanitizedDisplayName(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, Self.isAllowedPublicDisplayName(trimmed) else {
+            return SocialProfileIdentity.hiddenPlayerName
+        }
+        return trimmed
+    }
+
+    private func sanitizedShareText(_ raw: String, fallback: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    private func trimmedOptional(_ raw: String?) -> String? {
+        guard let trimmed = raw?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed
+    }
+
     func deleteAccountData() async throws {
         accountDeletionState = .deleting
         lastError = nil
 
-        guard profile != nil || !friends.isEmpty || !outgoingShares.isEmpty || !incomingShares.isEmpty else {
+        guard hasLocalAccountData else {
             clearLocalAccountData()
             accountDeletionState = .deleted
             return
@@ -477,6 +688,13 @@ final class SocialProfileStore: ObservableObject {
             clearLocalAccountData()
             accountDeletionState = .deleted
         } catch {
+            if isPublicProfileOwnershipMismatch(error) {
+                let message = detailedAccountDeletionMessage(prefix: profileDeletionFailedMessage, error: error)
+                lastError = message
+                accountDeletionState = .failed(message)
+                throw error
+            }
+
             let remoteState = await accountDataRemoteState(for: currentProfile)
             switch remoteState {
             case .absent:
@@ -841,6 +1059,11 @@ final class SocialProfileStore: ObservableObject {
             return try await db.record(for: recordID)
         } catch let error as CKError where error.code == .unknownItem {
             return nil
+        } catch {
+            guard CloudKitStore.isMissingRecordTypeError(error, recordType: Constants.recordType) else {
+                throw error
+            }
+            return nil
         }
     }
 
@@ -1076,7 +1299,9 @@ final class SocialProfileStore: ObservableObject {
 
         let owner = try await currentOwnerRecordName()
         let existingOwner = existing[Constants.ownerRecordName] as? String
-        guard existingOwner == nil || existingOwner == owner else { return }
+        guard existingOwner == nil || existingOwner == owner else {
+            throw SocialProfileError.publicProfileOwnedByAnotherAccount
+        }
 
         _ = try await db.deleteRecord(withID: recordID)
     }
@@ -1110,7 +1335,21 @@ final class SocialProfileStore: ObservableObject {
         let recipientPredicate = NSPredicate(format: "%K == %@", Constants.recipientFriendCode, currentProfile.friendCode)
         let predicate = NSCompoundPredicate(orPredicateWithSubpredicates: [senderPredicate, recipientPredicate])
         let query = CKQuery(recordType: Constants.matchShareRecordType, predicate: predicate)
-        return try await fetchAllPublicRecords(query: query)
+        return try await fetchAllPublicRecordsIfRecordTypeExists(
+            query: query,
+            recordType: Constants.matchShareRecordType
+        )
+    }
+
+    private func fetchAllPublicRecordsIfRecordTypeExists(query: CKQuery, recordType: String) async throws -> [CKRecord] {
+        do {
+            return try await fetchAllPublicRecords(query: query)
+        } catch {
+            guard CloudKitStore.isMissingRecordTypeError(error, recordType: recordType) else {
+                throw error
+            }
+            return []
+        }
     }
 
     private func retryPendingAccountDeletionIfNeeded() async {
@@ -1136,9 +1375,8 @@ final class SocialProfileStore: ObservableObject {
         let recordName = currentProfile.recordName ?? Self.recordName(for: currentProfile.friendCode)
         let recordID = CKRecord.ID(recordName: recordName)
         do {
-            if let existing = try await fetchRecordIfExists(recordID),
-               profileRecordBelongsToCurrentUser(existing, currentProfile: currentProfile) {
-                return .present
+            if let existing = try await fetchRecordIfExists(recordID) {
+                return profileRecordBelongsToCurrentUser(existing, currentProfile: currentProfile) ? .present : .unknown
             }
         } catch {
             return .unknown
@@ -1156,6 +1394,16 @@ final class SocialProfileStore: ObservableObject {
         let detail = readableMessage(for: error).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !detail.isEmpty else { return prefix }
         return "\(prefix) \(detail)"
+    }
+
+    private func isPublicProfileOwnershipMismatch(_ error: Error) -> Bool {
+        guard let socialError = error as? SocialProfileError else { return false }
+        switch socialError {
+        case .publicProfileOwnedByAnotherAccount:
+            return true
+        default:
+            return false
+        }
     }
 
     private func profileRecordBelongsToCurrentUser(_ record: CKRecord, currentProfile: PublicPlayerProfile) -> Bool {

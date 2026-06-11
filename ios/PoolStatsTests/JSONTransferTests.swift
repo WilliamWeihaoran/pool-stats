@@ -65,6 +65,142 @@ final class JSONTransferTests: XCTestCase {
         XCTAssertEqual(previewCount, 2)
     }
 
+    func testFullBackupExportIncludesSupplementalDataAndImportsIt() throws {
+        let session = makeSession(id: 3, ts: Date(timeIntervalSince1970: 1_700_000_200), racks: [makeRack(index: 1)])
+        let goal = Goal(
+            id: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            title: "Win more",
+            metric: .matchWinRate,
+            target: 60,
+            window: .rolling(.init(amount: 5, unit: .sessions)),
+            createdAt: Date(timeIntervalSince1970: 1_700_000_300)
+        )
+        let opponent = OpponentProfile(
+            id: UUID(uuidString: "22222222-2222-2222-2222-222222222222")!,
+            displayName: "Alex",
+            aliases: ["A"],
+            isFavorite: true,
+            createdAt: Date(timeIntervalSince1970: 1_700_000_400),
+            lastSeenAt: Date(timeIntervalSince1970: 1_700_000_500)
+        )
+        let profile = PlayerProfile(
+            hasCompletedOnboarding: true,
+            hasSeenLegacyPrompt: true,
+            skillLevel: .advanced,
+            baselineFargo: 625,
+            dedication: .yes,
+            primaryGame: .both,
+            weeklyFrequencyBand: .threeToFour,
+            nickname: "William"
+        )
+        let publicProfile = PublicPlayerProfile(
+            displayName: "William",
+            friendCode: "PS-ME1-234",
+            recordName: "PublicPlayerProfile-PS-ME1-234",
+            ownerRecordName: "owner-1",
+            updatedAt: Date(timeIntervalSince1970: 1_700_000_600)
+        )
+        let social = SocialProfileBackup(
+            profile: publicProfile,
+            friends: [
+                SocialFriend(
+                    displayName: "Alex",
+                    friendCode: "PS-ALX-123",
+                    recordName: "PublicPlayerProfile-PS-ALX-123",
+                    ownerRecordName: "owner-2",
+                    addedAt: Date(timeIntervalSince1970: 1_700_000_700),
+                    updatedAt: Date(timeIntervalSince1970: 1_700_000_800)
+                )
+            ],
+            blockedPlayers: [],
+            outgoingShares: [],
+            incomingShares: []
+        )
+        let active = ActiveSessionSnapshot(session: session, rack: makeRack(index: 2), sessionStartedAt: Date(timeIntervalSince1970: 1_700_000_900), rackStartedAt: nil)
+
+        let exported = try JSONTransfer.exportBackup(
+            PoolStatsBackup(
+                sessions: [session],
+                goals: [goal],
+                opponents: [opponent],
+                playerProfile: profile,
+                social: social,
+                activeSession: active
+            )
+        )
+        let root = try XCTUnwrap(try JSONSerialization.jsonObject(with: exported) as? [String: Any])
+
+        XCTAssertEqual(root["format"] as? String, "pool-stats-export")
+        XCTAssertEqual(root["version"] as? Int, 3)
+        XCTAssertNotNil(root["goals"])
+        XCTAssertNotNil(root["opponents"])
+        XCTAssertNotNil(root["playerProfile"])
+        XCTAssertNotNil(root["social"])
+        XCTAssertNotNil(root["activeSession"])
+
+        let preview = try JSONTransfer.previewImport(exported)
+        let imported = try JSONTransfer.importBackup(exported)
+
+        XCTAssertEqual(preview.sessionCount, 1)
+        XCTAssertTrue(preview.includesSupplementalData)
+        XCTAssertEqual(imported.sessions.map(\.id), [session.id])
+        XCTAssertEqual(imported.goals?.first?.title, "Win more")
+        XCTAssertEqual(imported.opponents?.first?.displayName, "Alex")
+        XCTAssertEqual(imported.playerProfile?.nickname, "William")
+        XCTAssertEqual(imported.social?.profile?.friendCode, "PS-ME1-234")
+        XCTAssertEqual(imported.activeSession?.session.sessionUUID, session.sessionUUID)
+    }
+
+    func testFullBackupCanImportSupplementalDataWithoutSessions() throws {
+        let goal = Goal(title: "Practice", metric: .runouts, target: 10, window: .rolling(.init(amount: 1, unit: .weeks)))
+        let exported = try JSONTransfer.exportBackup(
+            PoolStatsBackup(
+                sessions: [],
+                goals: [goal],
+                opponents: [],
+                playerProfile: PlayerProfile(),
+                social: nil,
+                activeSession: nil
+            )
+        )
+
+        let imported = try JSONTransfer.importBackup(exported)
+
+        XCTAssertTrue(imported.sessions.isEmpty)
+        XCTAssertEqual(imported.goals?.first?.title, "Practice")
+    }
+
+    func testImportRejectsEnvelopeWithUnsupportedFormat() {
+        let json = """
+        {
+          "format": "other-app-export",
+          "version": 3,
+          "exportedAt": 1700000000000,
+          "sessions": []
+        }
+        """
+
+        XCTAssertThrowsError(try JSONTransfer.importBackup(Data(json.utf8))) { error in
+            XCTAssertEqual(error.localizedDescription, JSONTransfer.TransferError.invalidPayload.localizedDescription)
+        }
+    }
+
+    func testImportRejectsFutureBackupVersion() {
+        let json = """
+        {
+          "format": "pool-stats-export",
+          "version": 999,
+          "exportedAt": 1700000000000,
+          "sessions": [],
+          "goals": []
+        }
+        """
+
+        XCTAssertThrowsError(try JSONTransfer.importBackup(Data(json.utf8))) { error in
+            XCTAssertEqual(error.localizedDescription, JSONTransfer.TransferError.invalidPayload.localizedDescription)
+        }
+    }
+
     func testImportRejectsEmptyFiles() {
         XCTAssertThrowsError(try JSONTransfer.importSessions(Data())) { error in
             XCTAssertEqual(error.localizedDescription, JSONTransfer.TransferError.emptyFile.localizedDescription)

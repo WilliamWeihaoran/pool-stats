@@ -4,6 +4,10 @@ import Charts
 struct DashboardView: View {
     @EnvironmentObject private var store: DataStore
     @EnvironmentObject private var profileStore: PlayerProfileStore
+    @EnvironmentObject private var goalsStore: GoalsStore
+    @EnvironmentObject private var opponentStore: OpponentStore
+    @EnvironmentObject private var socialProfileStore: SocialProfileStore
+    @EnvironmentObject private var logStore: SessionLogStore
     @State private var timeFilter: TimeFilter = .all
     @State private var mode: ModeFilter = .all
     @State private var activePickerID: String? = nil
@@ -43,7 +47,15 @@ struct DashboardView: View {
             pickerOverlay
         }
         .background(Theme.bg)
-        .dashboardImportExportPresentation(state: $importExportState, store: store)
+        .dashboardImportExportPresentation(
+            state: $importExportState,
+            store: store,
+            goalsStore: goalsStore,
+            opponentStore: opponentStore,
+            profileStore: profileStore,
+            socialProfileStore: socialProfileStore,
+            logStore: logStore
+        )
         .alert(DashboardCopy.fargoInfoTitle, isPresented: $showFargoInfo) {
             Button(DashboardCopy.fargoInfoButton, role: .cancel) { }
         } message: {
@@ -383,7 +395,13 @@ struct DashboardView: View {
 
     private func presentExportSheet() {
         do {
-            let data = try store.exportJSON()
+            let data = try store.exportBackup(
+                goals: goalsStore.goals,
+                opponents: opponentStore.profiles,
+                playerProfile: profileStore.profile,
+                social: socialProfileStore.localBackup(),
+                activeSession: logStore.activeSnapshot
+            )
             importExportState.exportDocument = JSONDocument(data: data)
             importExportState.isShowingExporter = true
         } catch {
